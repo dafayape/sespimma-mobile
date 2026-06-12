@@ -1,0 +1,100 @@
+name: sespimma
+description: Sistem Evaluasi dan Pengawasan Individu Membentuk Sumber Daya Manusia Maju
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  flutter_bloc: ^9.1.1
+  get_it: ^9.2.1
+  dio: ^5.9.2
+  connectivity_plus: ^7.1.1
+  sqflite_sqlcipher: ^3.4.0
+  flutter_secure_storage: ^10.0.0
+  geolocator: ^14.0.2
+
+  mobile_scanner: ^7.2.0
+  qr_flutter: ^4.1.0
+  workmanager: ^0.9.0+3
+  fl_chart: ^1.2.0
+  shimmer: ^3.0.0
+  file_picker: ^11.0.2
+  http_certificate_pinning: ^3.0.1
+  permission_handler: ^12.0.1
+  package_info_plus: ^9.0.1
+  flutter_dotenv: ^6.0.1
+  json_annotation: ^4.11.0
+  equatable: ^2.0.8
+  sqflite_common_ffi: ^2.4.0+2
+  flutter_native_splash: ^2.4.7
+  url_launcher: ^6.3.2
+  flutter_map: ^8.3.0
+  latlong2: ^0.9.1
+  image_picker: ^1.2.2
+  pdf: ^3.12.0
+  printing: ^5.14.3
+  path_provider: ^2.1.5
+  icons_plus: ^5.0.0
+  device_info_plus: ^12.4.0
+  talker_flutter: ^5.1.16
+  talker_bloc_logger: ^5.1.17
+  talker_dio_logger: ^5.1.17
+  maps_toolkit: ^3.1.0
+  intl: ^0.20.2
+  open_filex: ^4.7.0
+  flutter_background_service: ^5.1.0
+  flutter_map_dragmarker: ^8.0.3
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  json_serializable: ^6.13.1
+  build_runner: ^2.13.1
+  flutter_launcher_icons: ^0.14.4
+  mocktail: ^1.0.4
+  bloc_test: ^10.0.0
+  image: ^4.8.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - .env
+
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter/static/Inter_18pt-Regular.ttf
+        - asset: assets/fonts/Inter/static/Inter_18pt-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter/static/Inter_18pt-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter/static/Inter_18pt-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Inter/static/Inter_18pt-Italic.ttf
+          style: italic
+        - asset: assets/fonts/Inter/static/Inter_18pt-BoldItalic.ttf
+          weight: 700
+          style: italic
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  image_path: "assets/images/icon.png"
+  adaptive_icon_background: "#000B1D"
+  adaptive_icon_foreground: "assets/images/icon.png"
+
+flutter_native_splash:
+  color: "#000B1D"
+  image: "assets/images/icon.png"
+  android_gravity: center
+  ios_content_mode: center
+  android_12:
+    color: "#000B1D"
+    image: "assets/images/icon_padded.png"
