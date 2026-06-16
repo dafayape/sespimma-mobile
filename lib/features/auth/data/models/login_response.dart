@@ -88,6 +88,9 @@ class LoginResponse {
   @JsonKey(name: 'nilai_jasmani', defaultValue: 0.0)
   final double nilaiJasmani;
 
+  @JsonKey(name: 'serdik_id')
+  final String? serdikId;
+
   @JsonKey(name: 'access_token')
   final String accessToken;
 
@@ -127,6 +130,7 @@ class LoginResponse {
     required this.nilaiAkademik,
     required this.nilaiMental,
     required this.nilaiJasmani,
+    this.serdikId,
     required this.accessToken,
     required this.refreshToken,
   });

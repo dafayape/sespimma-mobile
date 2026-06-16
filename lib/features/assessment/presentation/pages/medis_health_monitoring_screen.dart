@@ -6,13 +6,13 @@ import 'package:sespimma/core/constants/app_dimensions.dart';
 import 'package:sespimma/features/assessment/presentation/widgets/assessment_search_bar_widget.dart';
 import 'package:sespimma/features/assessment/presentation/widgets/status_filter_button_widget.dart';
 import 'package:sespimma/core/utils/app_notifier.dart';
-import 'package:sespimma/features/auth/data/datasources/serdik_real_data.dart';
 import 'package:sespimma/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:sespimma/features/auth/presentation/bloc/auth_state.dart';
-import 'package:sespimma/features/assessment/data/models/health_monitoring_data.dart';
 import 'package:sespimma/features/assessment/presentation/widgets/medis_health_grading_sheet.dart';
 import 'package:sespimma/core/theme/app_colors.dart';
 import 'package:sespimma/core/utils/avatar_helper.dart';
+import 'package:sespimma/features/assessment/data/datasources/assessment_remote_data_source.dart';
+import 'package:sespimma/injection_container.dart';
 
 class MedisHealthMonitoringScreen extends StatefulWidget {
   const MedisHealthMonitoringScreen({super.key});
@@ -27,6 +27,10 @@ class _MedisHealthMonitoringScreenState
   static const Color _primaryNavy = Color(0xFF000B1D);
   static const Color _lightGrey = Color(0xFFF8F9FA);
 
+  final List<Map<String, dynamic>> _students = [];
+  final Map<String, Map<String, dynamic>> _healthDataMap = {};
+  bool _isLoading = true;
+
   String _searchQuery = '';
   String _selectedFilter = 'Semua';
   final TextEditingController _searchController = TextEditingController();
@@ -39,6 +43,50 @@ class _MedisHealthMonitoringScreenState
     'POKJAR IV',
     'POKJAR V',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchData();
+  }
+
+  Future<void> _fetchData() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final dataSource = sl<AssessmentRemoteDataSource>();
+      final studentList = await dataSource.getStudents();
+      final Map<String, Map<String, dynamic>> tempHealthMap = {};
+
+      await Future.wait(studentList.map((student) async {
+        final noSerdik = (student['nip'] ?? student['nrp'] ?? student['no_serdik'] ?? '').toString();
+        if (noSerdik.isNotEmpty) {
+          final health = await dataSource.getHealth(noSerdik);
+          tempHealthMap[noSerdik] = health;
+        }
+      }));
+
+      if (mounted) {
+        setState(() {
+          _students.clear();
+          _students.addAll(studentList);
+          _healthDataMap.clear();
+          _healthDataMap.addAll(tempHealthMap);
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        AppNotifier.showError(context, 'Gagal memuat data kesehatan: $e');
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -55,15 +103,15 @@ class _MedisHealthMonitoringScreenState
     return Colors.red.shade700;
   }
 
-  void _refreshData() {
-    setState(() {});
-  }
-
   bool get _isAllHealthScoresFilled {
-    for (var serdik in SerdikRealData.records) {
-      final noSerdik = serdik['no_serdik'].toString();
-      final data = HealthMonitoringData.getHealthData(noSerdik);
-      if (data.nilaiA == null || data.nilaiB == null) {
+    if (_students.isEmpty) return false;
+    for (var student in _students) {
+      final noSerdik = (student['nip'] ?? student['nrp'] ?? student['no_serdik'] ?? '').toString();
+      final health = _healthDataMap[noSerdik];
+      if (health == null) return false;
+      final nilaiA = health['nilai_a'];
+      final nilaiB = health['nilai_b'];
+      if (nilaiA == null || nilaiB == null) {
         return false;
       }
     }
@@ -119,7 +167,7 @@ class _MedisHealthMonitoringScreenState
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.w700,
-            fontSize: AppDimensions.fontXxl,
+            fontSize: AppDimensions.fontXl,
           ),
         ),
       ),
@@ -141,14 +189,19 @@ class _MedisHealthMonitoringScreenState
       ),
       body: BlocBuilder<AuthBloc, AuthState>(
         builder: (context, state) {
+          if (_isLoading) {
+            return const Center(
+              child: CircularProgressIndicator(color: _primaryNavy),
+            );
+          }
           if (state is AuthSuccess) {
-            final baseList = SerdikRealData.records.toList();
+            final baseList = _students;
 
             var filteredList = baseList.where((serdik) {
-              final name = (serdik['nama_lengkap'] ?? '')
+              final name = (serdik['name'] ?? serdik['nama_lengkap'] ?? '')
                   .toString()
                   .toLowerCase();
-              final noSerdik = (serdik['no_serdik'] ?? '')
+              final noSerdik = (serdik['nip'] ?? serdik['nrp'] ?? serdik['no_serdik'] ?? '')
                   .toString()
                   .toLowerCase();
               final query = _searchQuery.toLowerCase();
@@ -156,17 +209,12 @@ class _MedisHealthMonitoringScreenState
             }).toList();
 
             if (_selectedFilter != 'Semua') {
-              final Map<String, String> pokjarMap = {
-                'POKJAR I': 'POKJAR I',
-                'POKJAR II': 'POKJAR II',
-                'POKJAR III': 'POKJAR III',
-                'POKJAR IV': 'POKJAR IV',
-                'POKJAR V': 'POKJAR V',
-              };
-              final targetPokjar =
-                  pokjarMap[_selectedFilter] ?? _selectedFilter;
+              final targetPokjar = _selectedFilter;
               filteredList = filteredList
-                  .where((serdik) => serdik['kelompok_kelas'] == targetPokjar)
+                  .where((serdik) {
+                    final pokjar = (serdik['group_name'] ?? serdik['kelompok_kelas'] ?? '').toString();
+                    return pokjar == targetPokjar;
+                  })
                   .toList();
             }
 
@@ -182,8 +230,7 @@ class _MedisHealthMonitoringScreenState
                 Expanded(
                   child: RefreshIndicator(
                     onRefresh: () async {
-                      _refreshData();
-                      await Future.delayed(const Duration(milliseconds: 500));
+                      await _fetchData();
                     },
                     color: _primaryNavy,
                     child: filteredList.isEmpty
@@ -379,12 +426,12 @@ class _MedisHealthMonitoringScreenState
     );
   }
 
-  Widget _buildSerdikCard(Map<String, dynamic> serdik) {
-    final name = (serdik['nama_lengkap'] ?? '-').toString();
-    final noSerdik = (serdik['no_serdik'] ?? '-').toString();
-    final pangkat = (serdik['pangkat'] ?? '-').toString();
+  Widget _buildSerdikCard(Map<String, dynamic> student) {
+    final noSerdik = (student['nip'] ?? student['nrp'] ?? student['no_serdik'] ?? '').toString();
+    final name = (student['name'] ?? student['nama_lengkap'] ?? '-').toString();
+    final pangkat = (student['pangkat'] ?? '-').toString();
 
-    final String rawPokjar = (serdik['kelompok_kelas'] ?? '-')
+    final String rawPokjar = (student['group_name'] ?? student['kelompok_kelas'] ?? '-')
         .toString()
         .toUpperCase();
     final Map<String, String> pokjarMap = {
@@ -396,12 +443,26 @@ class _MedisHealthMonitoringScreenState
     };
     final String displayPokjar = pokjarMap[rawPokjar] ?? rawPokjar;
 
-    final data = HealthMonitoringData.getHealthData(noSerdik);
-    final bool isGraded = data.nilaiA != null && data.nilaiB != null;
-    final double finalScore = isGraded ? data.nilaiAkhir : 0;
+    final health = _healthDataMap[noSerdik] ?? {};
+    final double? nilaiA = (health['nilai_a'] as num?)?.toDouble();
+    final double? nilaiB = (health['nilai_b'] as num?)?.toDouble();
+    final List<dynamic> records = health['records'] ?? [];
+
+    final bool isGraded = nilaiA != null && nilaiB != null;
+    final double finalScore = (health['current_nilai_c'] as num?)?.toDouble() ?? 0.0;
     final Color scoreColor = isGraded
         ? _getScoreColor(finalScore)
         : Colors.grey;
+
+    final normalizedSerdik = {
+      'id': student['id']?.toString() ?? '',
+      'no_serdik': noSerdik,
+      'nama_lengkap': name,
+      'pangkat': pangkat,
+      'kelompok_kelas': displayPokjar,
+      'jenis_kelamin': student['gender'] ?? student['jenis_kelamin'] ?? 'Laki-laki',
+      'profile_photo': student['profile_photo'] ?? student['profilePhoto'],
+    };
 
     return Container(
       decoration: BoxDecoration(
@@ -423,7 +484,7 @@ class _MedisHealthMonitoringScreenState
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              _buildAvatar(serdik),
+              _buildAvatar(normalizedSerdik),
               const SizedBox(width: AppDimensions.lg),
               Expanded(
                 child: Column(
@@ -477,12 +538,12 @@ class _MedisHealthMonitoringScreenState
                       spacing: 6,
                       runSpacing: 6,
                       children: [
-                        if (data.nilaiA != null)
+                        if (nilaiA != null)
                           _buildStatusBadge('A', Colors.green),
-                        if (data.nilaiB != null)
+                        if (nilaiB != null)
                           _buildStatusBadge('B', Colors.green),
-                        if (data.records.isNotEmpty)
-                          _buildStatusNote(data.records.length),
+                        if (records.isNotEmpty)
+                          _buildStatusNote(records.length),
                       ],
                     ),
                   ],
@@ -533,8 +594,9 @@ class _MedisHealthMonitoringScreenState
                       HapticFeedback.selectionClick();
                       MedisHealthGradingSheet.show(
                         context,
-                        serdik,
-                        _refreshData,
+                        normalizedSerdik,
+                        health,
+                        _fetchData,
                       );
                     },
                     style: ElevatedButton.styleFrom(

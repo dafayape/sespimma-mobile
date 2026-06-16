@@ -9,6 +9,7 @@ class ScoreLineChart extends StatelessWidget {
   final double nilaiJasmani;
   final String selectedCategory;
   final String noSerdik;
+  final List<Map<String, dynamic>>? trendList;
 
   const ScoreLineChart({
     super.key,
@@ -17,6 +18,7 @@ class ScoreLineChart extends StatelessWidget {
     required this.nilaiJasmani,
     required this.selectedCategory,
     required this.noSerdik,
+    this.trendList,
   });
 
   @override
@@ -30,11 +32,9 @@ class ScoreLineChart extends StatelessWidget {
         (nilaiMental > 0 && nilaiMental < 70.0) ||
         (nilaiJasmani > 0 && nilaiJasmani < 70.0);
 
-    final List<FlSpot> spotsMen = _generateSpots(
-      nilaiMental,
-      'Mental Kepribadian',
-    );
-    final List<FlSpot> spotsJas = _generateSpots(nilaiJasmani, 'Jasmani');
+    final List<FlSpot> spotsAka = _generateSpots(trendList, selectedCategory, 'Akademik', nilaiAkademik);
+    final List<FlSpot> spotsMen = _generateSpots(trendList, selectedCategory, 'Mental Kepribadian', nilaiMental);
+    final List<FlSpot> spotsJas = _generateSpots(trendList, selectedCategory, 'Jasmani', nilaiJasmani);
 
     return Container(
       width: double.infinity,
@@ -58,7 +58,7 @@ class ScoreLineChart extends StatelessWidget {
           const SizedBox(height: AppDimensions.xxl),
           SizedBox(
             height: 200,
-            child: _buildChart(spotsMen, spotsJas, colorMen, colorJas),
+            child: _buildChart(spotsAka, spotsMen, spotsJas, colorAka, colorMen, colorJas),
           ),
         ],
       ),
@@ -97,7 +97,9 @@ class ScoreLineChart extends StatelessWidget {
               ),
               const SizedBox(height: AppDimensions.xs / 2),
               Text(
-                'Grafik Perkembangan Mg 1 - Mg 4',
+                trendList != null && trendList!.isNotEmpty
+                    ? 'Grafik Perkembangan per Tahap'
+                    : 'Grafik Perkembangan Mg 1 - Mg 4',
                 style: TextStyle(
                   fontSize: AppDimensions.fontXs + 1,
                   fontWeight: FontWeight.w600,
@@ -112,11 +114,14 @@ class ScoreLineChart extends StatelessWidget {
   }
 
   LineChart _buildChart(
+    List<FlSpot> sAka,
     List<FlSpot> sMen,
     List<FlSpot> sJas,
+    Color cAka,
     Color cMen,
     Color cJas,
   ) {
+    Color dynAka = _getScoreColor(nilaiAkademik, cAka);
     Color dynMen = _getScoreColor(nilaiMental, cMen);
     Color dynJas = _getScoreColor(nilaiJasmani, cJas);
 
@@ -173,10 +178,16 @@ class ScoreLineChart extends StatelessWidget {
                   fontSize: AppDimensions.fontSm,
                 );
                 String text = '';
-                if (value == 0.0) text = 'Mg 1';
-                if (value == 1.0) text = 'Mg 2';
-                if (value == 2.0) text = 'Mg 3';
-                if (value == 3.0) text = 'Mg 4';
+                if (trendList != null && trendList!.isNotEmpty) {
+                  if (value == 0.0) text = 'Tahap 1';
+                  if (value == 1.0) text = 'Tahap 2';
+                  if (value == 2.0) text = 'Tahap 3';
+                } else {
+                  if (value == 0.0) text = 'Mg 1';
+                  if (value == 1.0) text = 'Mg 2';
+                  if (value == 2.0) text = 'Mg 3';
+                  if (value == 3.0) text = 'Mg 4';
+                }
                 if (text.isEmpty) return const SizedBox.shrink();
                 return Padding(
                   padding: const EdgeInsets.only(top: 10.0),
@@ -204,10 +215,11 @@ class ScoreLineChart extends StatelessWidget {
         ),
         borderData: FlBorderData(show: false),
         minX: -0.1,
-        maxX: 3.1,
+        maxX: (trendList != null && trendList!.isNotEmpty) ? 2.1 : 3.1,
         minY: 0,
         maxY: 100,
         lineBarsData: [
+          _buildLineBar(sAka, dynAka, 'Akademik'),
           _buildLineBar(sMen, dynMen, 'Mental Kepribadian'),
           _buildLineBar(sJas, dynJas, 'Jasmani'),
         ],
@@ -233,7 +245,8 @@ class ScoreLineChart extends StatelessWidget {
   }
 
   String _resolveLabel(int barIndex) {
-    if (barIndex == 0) return 'Mental';
+    if (barIndex == 0) return 'Akademik';
+    if (barIndex == 1) return 'Mental';
     return 'Jasmani';
   }
 
@@ -272,21 +285,38 @@ class ScoreLineChart extends StatelessWidget {
     return 3;
   }
 
-  List<FlSpot> _generateSpots(double finalScore, String cat) {
+  List<FlSpot> _generateSpots(List<Map<String, dynamic>>? trend, String selectedCat, String targetCat, double fallbackScore) {
+    if (trend != null && trend.isNotEmpty) {
+      List<FlSpot> spots = [];
+      for (int i = 0; i < trend.length; i++) {
+        final item = trend[i];
+        double val = 0.0;
+        if (targetCat == 'Akademik') {
+          val = (item['academic'] as num?)?.toDouble() ?? 0.0;
+        } else if (targetCat == 'Mental Kepribadian') {
+          val = (item['mental'] as num?)?.toDouble() ?? 0.0;
+        } else {
+          val = (item['physical'] as num?)?.toDouble() ?? 0.0;
+        }
+        spots.add(FlSpot(i.toDouble(), val));
+      }
+      return spots;
+    }
+
     int limit = _currentWeekIndex();
     int startIndex = 1;
 
     List<FlSpot> result = [];
     if (limit >= startIndex) {
       for (int i = startIndex; i <= limit; i++) {
-        if (finalScore == 0) {
-          result.add(FlSpot(i.toDouble(), 0));
+        if (fallbackScore == 0) {
+          result.add(FlSpot(i.toDouble() - 1, 0));
         } else {
-          result.add(FlSpot(i.toDouble(), finalScore));
+          result.add(FlSpot(i.toDouble() - 1, fallbackScore));
         }
       }
     } else {
-      result.add(FlSpot(startIndex.toDouble(), 0));
+      result.add(FlSpot(0.0, 0));
     }
 
     return result;

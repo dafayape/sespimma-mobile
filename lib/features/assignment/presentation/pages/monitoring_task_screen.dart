@@ -4,9 +4,10 @@ import 'package:sespimma/core/utils/app_notifier.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
-
+import 'package:intl/intl.dart';
 import 'package:sespimma/features/assignment/data/models/tugas_model.dart';
-import 'package:sespimma/features/leadership_dashboard/data/datasources/pimpinan_mock_data.dart';
+import 'package:sespimma/features/assignment/data/datasources/assignment_remote_data_source.dart';
+import 'package:sespimma/injection_container.dart';
 
 class MonitoringTaskScreen extends StatefulWidget {
   const MonitoringTaskScreen({super.key});
@@ -22,6 +23,72 @@ class _MonitoringTaskScreenState extends State<MonitoringTaskScreen>
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
   late AnimationController _animController;
+  
+  List<Map<String, dynamic>> _submissions = [];
+  bool _isLoading = false;
+  bool _initialized = false;
+  late TugasModel _task;
+
+  Future<void> _fetchSubmissions(String taskId) async {
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      final data = await sl<AssignmentRemoteDataSource>().getSubmissions(taskId);
+      if (mounted) {
+        setState(() {
+          _submissions = data.map((s) {
+            final isGraded = s['isGraded'] ?? false;
+            final submittedAt = s['submittedAt'];
+            final hasFile = s['fileName'] != null;
+
+            String status = 'belum';
+            if (hasFile) {
+              if (isGraded) {
+                status = 'dinilai';
+              } else {
+                status = 'sudah';
+              }
+            }
+
+            return {
+              'id': s['id']?.toString() ?? '',
+              'taskId': s['assignmentId']?.toString() ?? taskId,
+              'name': s['serdikName'] ?? '',
+              'nrp': s['serdikNrp'] ?? '',
+              'pokjar': (s['serdikPokjar'] ?? s['pokjar'] ?? '').toString().toUpperCase(),
+              'status': status,
+              'file': s['fileName'],
+              'time': submittedAt != null ? DateFormat('dd MMM yyyy HH:mm').format(DateTime.parse(submittedAt)) : '-',
+              'score': s['nilaiAkhir'],
+              'comment': s['catatanPengajar'],
+            };
+          }).toList();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        AppNotifier.showError(context, 'Gagal memuat pengumpulan: $e');
+      }
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialized) {
+      final taskArg = ModalRoute.of(context)?.settings.arguments as TugasModel?;
+      if (taskArg != null) {
+        _task = taskArg;
+        _fetchSubmissions(_task.id);
+      }
+      _initialized = true;
+    }
+  }
 
   @override
   void initState() {
@@ -53,10 +120,6 @@ class _MonitoringTaskScreenState extends State<MonitoringTaskScreen>
   static const Color _warningOrange = Color(0xFFF59E0B);
   static const Color _surfaceColor = Colors.white;
 
-  List<Map<String, dynamic>> _getSubmissionsForTask(String taskId) {
-    return PimpinanMockData.getSubmissionsForTask(taskId);
-  }
-
   void _showGradeDialog(Map<String, dynamic> submission) {
     final scoreCtrl = TextEditingController(
       text: submission['score'] != null ? submission['score'].toString() : '',
@@ -68,14 +131,14 @@ class _MonitoringTaskScreenState extends State<MonitoringTaskScreen>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
+      builder: (sheetCtx) {
         return Container(
           decoration: const BoxDecoration(
             color: _surfaceColor,
             borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
           ),
           padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
+            bottom: MediaQuery.of(sheetCtx).viewInsets.bottom,
             top: 12,
             left: 24,
             right: 24,
@@ -110,7 +173,7 @@ class _MonitoringTaskScreenState extends State<MonitoringTaskScreen>
                       ),
                     ),
                     IconButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () => Navigator.pop(sheetCtx),
                       icon: const Icon(
                         Icons.close_rounded,
                         color: Colors.blueGrey,
@@ -329,46 +392,33 @@ class _MonitoringTaskScreenState extends State<MonitoringTaskScreen>
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
-                    onPressed: () {
+                    onPressed: () async {
                       if (formKey.currentState!.validate()) {
                         final double newScore =
                             double.tryParse(scoreCtrl.text) ?? 0.0;
+                        final String note = noteCtrl.text.trim();
 
-                        setState(() {
-                          final subIndex = PimpinanMockData
-                              .sharedTaskSubmissions
-                              .indexWhere(
-                                (s) =>
-                                    s['nrp'] == submission['nrp'] &&
-                                    s['taskId'] == submission['taskId'],
-                              );
-                          if (subIndex != -1) {
-                            PimpinanMockData
-                                    .sharedTaskSubmissions[subIndex]['score'] =
-                                newScore;
-                            PimpinanMockData
-                                    .sharedTaskSubmissions[subIndex]['status'] =
-                                'dinilai';
-                          }
+                        Navigator.pop(sheetCtx);
 
-                          final serdikIndex = PimpinanMockData.sharedReportData
-                              .indexWhere((r) => r.nrp == submission['nrp']);
-                          if (serdikIndex != -1) {
-                            final current =
-                                PimpinanMockData.sharedReportData[serdikIndex];
-                            PimpinanMockData.sharedReportData[serdikIndex] =
-                                current.copyWith(
-                                  academicScore:
-                                      (current.academicScore + newScore) / 2,
-                                );
-                          }
-                        });
-
-                        Navigator.pop(context);
-                        AppNotifier.showSuccess(
-                          context,
-                          'Nilai berhasil disimpan untuk ${submission['name']}',
-                        );
+                        try {
+                          await sl<AssignmentRemoteDataSource>().gradeSubmission(
+                            submissionId: submission['id'],
+                            nilaiAkhir: newScore,
+                            catatanPengajar: note.isNotEmpty ? note : null,
+                          );
+                          _fetchSubmissions(submission['taskId']);
+                          if (!mounted) return;
+                          AppNotifier.showSuccess(
+                            context,
+                            'Nilai berhasil disimpan untuk ${submission["name"]}',
+                          );
+                        } catch (e) {
+                          if (!mounted) return;
+                          AppNotifier.showError(
+                            context,
+                            'Gagal menyimpan nilai: $e',
+                          );
+                        }
                       }
                     },
                     style: ElevatedButton.styleFrom(
@@ -630,7 +680,7 @@ class _MonitoringTaskScreenState extends State<MonitoringTaskScreen>
           createdByName: 'System Dummy',
         );
 
-    final allSubmissions = _getSubmissionsForTask(task.id);
+    final allSubmissions = _submissions;
     final filteredSubmissions = allSubmissions.where((sub) {
       final String q = _searchQuery.trim().toLowerCase();
       final String name = sub['name'].toString().toLowerCase();
@@ -699,19 +749,24 @@ class _MonitoringTaskScreenState extends State<MonitoringTaskScreen>
               backgroundColor: _surfaceColor,
               onRefresh: () async {
                 HapticFeedback.mediumImpact();
-                await Future.delayed(const Duration(seconds: 1));
-                if (mounted) setState(() {});
+                await _fetchSubmissions(task.id);
               },
-              child: filteredSubmissions.isEmpty
-                  ? SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      child: Container(
-                        height: MediaQuery.of(context).size.height * 0.4,
-                        alignment: Alignment.center,
-                        child: _buildEmptyState(),
+              child: _isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: _primaryNavy,
                       ),
                     )
-                  : ListView.builder(
+                  : filteredSubmissions.isEmpty
+                      ? SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          child: Container(
+                            height: MediaQuery.of(context).size.height * 0.4,
+                            alignment: Alignment.center,
+                            child: _buildEmptyState(),
+                          ),
+                        )
+                      : ListView.builder(
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 20,
@@ -923,19 +978,27 @@ class _MonitoringTaskScreenState extends State<MonitoringTaskScreen>
             ),
           ),
           ElevatedButton(
-            onPressed: () {
-              PimpinanMockData.sharedTasks.removeWhere((t) => t.id == task.id);
+            onPressed: () async {
+              final navigator = Navigator.of(this.context);
+              final dialogNavigator = Navigator.of(ctx);
 
-              PimpinanMockData.sharedTaskSubmissions.removeWhere(
-                (s) => s['taskId'] == task.id,
-              );
-
-              Navigator.pop(ctx);
-              AppNotifier.showSuccess(
-                context,
-                'Tugas "${task.judul}" berhasil dihapus!',
-              );
-              Navigator.pop(context);
+              try {
+                await sl<AssignmentRemoteDataSource>().deleteAssignment(task.id);
+                if (!mounted) return;
+                AppNotifier.showSuccess(
+                  this.context,
+                  'Tugas "${task.judul}" berhasil dihapus!',
+                );
+                dialogNavigator.pop();
+                navigator.pop(true);
+              } catch (e) {
+                if (!mounted) return;
+                AppNotifier.showError(
+                  this.context,
+                  'Gagal menghapus tugas: $e',
+                );
+                dialogNavigator.pop();
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: _dangerRed,

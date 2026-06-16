@@ -2,10 +2,9 @@ import 'package:sespimma/core/constants/app_dimensions.dart';
 import 'package:flutter/material.dart';
 import 'package:sespimma/core/utils/icon_mapper.dart';
 import '../../data/models/assignment_model.dart';
-import 'package:sespimma/features/gadik_assignment/data/datasources/gadik_assignment_mock_data.dart';
-import 'package:sespimma/features/gadik_assignment/data/models/gadik_submission_model.dart';
-import 'package:sespimma/features/auth/data/datasources/gadik_real_data.dart';
-import 'package:sespimma/features/auth/data/datasources/serdik_real_data.dart';
+import '../../data/datasources/assignment_remote_data_source.dart';
+import 'package:sespimma/injection_container.dart';
+import 'package:sespimma/core/utils/app_notifier.dart';
 import 'package:sespimma/core/theme/app_colors.dart';
 import '../widgets/task_card.dart';
 
@@ -36,76 +35,38 @@ class _AssignmentScreenState extends State<AssignmentScreen>
     'Naskah Program Transformasi Teknis (NPTT)',
   ];
 
-  List<AssignmentModel> get _mockAssignments {
-    final activeUserNrp = SerdikRealData.records.first['nrp'];
+  List<AssignmentModel> _assignments = [];
+  bool _isLoading = false;
 
-    final List<AssignmentModel> dynamicTasks = GadikAssignmentMockData
-        .assignments
-        .map((t) {
-          final submission = GadikAssignmentMockData.submissions.firstWhere(
-            (s) => s.assignmentId == t.id && s.serdikNrp == activeUserNrp,
-            orElse: () => GadikSubmissionModel(
-              id: '',
-              assignmentId: '',
-              serdikName: '',
-              serdikNrp: '',
-            ),
-          );
-
-          String status = 'aktif';
-          if (submission.id.isNotEmpty) {
-            if (submission.isGraded) {
-              status = 'selesai';
-            } else {
-              status = 'diperiksa';
-            }
-          }
-
-          String gadikName = t.createdBy;
-          String? gadikFoto;
-          final gadikMatch = GadikRealData.records.firstWhere(
-            (g) =>
-                g['nama'].toString().toLowerCase().contains(
-                  t.createdBy.toLowerCase(),
-                ) ||
-                g['nrp_nip'] == t.createdBy,
-            orElse: () => <String, dynamic>{},
-          );
-          if (gadikMatch.isNotEmpty) {
-            gadikName = gadikMatch['nama'];
-            gadikFoto = gadikMatch['foto'];
-          } else {
-            if (t.createdBy.toLowerCase().contains('gadik')) {
-              gadikName = GadikRealData.records.first['nama'];
-              gadikFoto = GadikRealData.records.first['foto'];
-            }
-          }
-
-          return AssignmentModel(
-            id: t.id,
-            judul: t.judul,
-            mapel: t.jenisTugas,
-            pengajar: gadikName,
-            pengajarFoto: gadikFoto,
-            deadline: t.deadline,
-            status: status,
-            deskripsi: t.instruksi,
-            nilai: submission.nilaiAkhir,
-            catatan: submission.catatanPengajar,
-            submissionFileName: submission.fileName,
-            attachmentName: t.fileName,
-            attachmentUrl: t.fileUrl,
-          );
-        })
-        .toList();
-
-    return dynamicTasks;
+  Future<void> _fetchAssignments() async {
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      final data = await sl<AssignmentRemoteDataSource>().getAssignments();
+      if (mounted) {
+        setState(() {
+          _assignments = data;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        AppNotifier.showError(context, 'Gagal memuat tugas: $e');
+      }
+    }
   }
+
+  List<AssignmentModel> get _mockAssignments => _assignments;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _fetchAssignments();
 
     _searchController.addListener(() {
       setState(() {
@@ -407,12 +368,17 @@ class _AssignmentScreenState extends State<AssignmentScreen>
     String emptyMessage,
     IconData iconData,
   ) {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(
+          color: _primaryNavy,
+        ),
+      );
+    }
+
     if (tasks.isEmpty) {
       return RefreshIndicator(
-        onRefresh: () async {
-          setState(() {});
-          await Future.delayed(const Duration(milliseconds: 500));
-        },
+        onRefresh: _fetchAssignments,
         color: _primaryNavy,
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -474,10 +440,7 @@ class _AssignmentScreenState extends State<AssignmentScreen>
     }
 
     return RefreshIndicator(
-      onRefresh: () async {
-        setState(() {});
-        await Future.delayed(const Duration(milliseconds: 500));
-      },
+      onRefresh: _fetchAssignments,
       color: _primaryNavy,
       child: ListView.builder(
         key: ValueKey('list_$_searchQuery'),
@@ -499,9 +462,7 @@ class _AssignmentScreenState extends State<AssignmentScreen>
             },
             child: TaskCard(
               assignment: task,
-              onRefresh: () {
-                setState(() {});
-              },
+              onRefresh: _fetchAssignments,
             ),
           );
         },

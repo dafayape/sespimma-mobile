@@ -12,7 +12,9 @@ class LocalDatabaseHelper {
       LocalDatabaseHelper._privateConstructor();
 
   static dynamic _database;
-  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
 
   static const String _dbName = 'sespimma_local.db';
   static const String _keyDbSecret = 'db_encryption_key';
@@ -77,16 +79,26 @@ class LocalDatabaseHelper {
   }
 
   Future<String> _getOrGenerateKey() async {
-    String? key = await _secureStorage.read(key: _keyDbSecret);
+    try {
+      String? key = await _secureStorage.read(key: _keyDbSecret);
 
-    if (key == null) {
+      if (key == null) {
+        final random = Random.secure();
+        final values = List<int>.generate(32, (i) => random.nextInt(256));
+        key = base64UrlEncode(values);
+        await _secureStorage.write(key: _keyDbSecret, value: key);
+      }
+      return key;
+    } catch (e) {
+      // Jika keystore Android corrupted (sering terjadi di Samsung/setelah reinstall),
+      // kita bersihkan storage dan buat key baru agar tidak force close.
+      await _secureStorage.deleteAll();
       final random = Random.secure();
       final values = List<int>.generate(32, (i) => random.nextInt(256));
-      key = base64UrlEncode(values);
+      String key = base64UrlEncode(values);
       await _secureStorage.write(key: _keyDbSecret, value: key);
+      return key;
     }
-
-    return key;
   }
 
   Future<void> _createTables(dynamic db) async {

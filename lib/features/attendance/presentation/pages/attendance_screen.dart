@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:sespimma/core/constants/app_dimensions.dart';
 import 'package:sespimma/core/theme/app_colors.dart';
 import 'package:sespimma/core/utils/icon_mapper.dart';
@@ -8,7 +9,6 @@ import 'package:sespimma/features/attendance/presentation/pages/attendance_qr_sc
 import 'package:sespimma/features/attendance/presentation/widgets/geofence_map_widget.dart';
 import 'package:sespimma/features/attendance/presentation/widgets/zone_info_sheet.dart';
 import 'package:sespimma/features/leadership_dashboard/data/datasources/pimpinan_mock_data.dart';
-import 'package:sespimma/features/assessment/data/models/korsis_inbox_mock_data.dart';
 import 'package:sespimma/features/attendance/presentation/widgets/empty_zone_sheet.dart';
 import 'package:sespimma/features/attendance/presentation/widgets/leave_form_sheet.dart';
 import 'package:sespimma/features/attendance/presentation/widgets/attendance_status_chip.dart';
@@ -16,9 +16,9 @@ import 'package:sespimma/features/attendance/presentation/widgets/attendance_flo
 import 'package:sespimma/features/attendance/presentation/widgets/attendance_action_buttons.dart';
 import 'package:sespimma/core/utils/app_notifier.dart';
 import 'package:sespimma/features/attendance/data/services/location_sync_service.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:sespimma/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:sespimma/features/auth/presentation/bloc/auth_state.dart';
+import 'package:sespimma/features/attendance/data/datasources/kegiatan_remote_data_source.dart';
+import 'package:sespimma/features/attendance/data/datasources/absensi_remote_data_source.dart';
+import 'package:sespimma/injection_container.dart';
 
 class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
@@ -37,7 +37,7 @@ class _AttendanceScreenState extends State<AttendanceScreen>
   bool _isAttended = false;
   DateTime? _lastSubmitTime;
 
-  List<AttendanceZone> _zones = AttendanceZones.activeZones;
+  List<AttendanceZone> _zones = [];
   AttendanceZone? _activeZone;
 
   late final AnimationController _chipController;
@@ -56,7 +56,28 @@ class _AttendanceScreenState extends State<AttendanceScreen>
       curve: Curves.elasticOut,
     );
 
+    _fetchZonesFromApi();
     LocationSyncService().startSyncing('202602003001');
+  }
+
+  Future<void> _fetchZonesFromApi() async {
+    if (!mounted) return;
+    try {
+      final kegiatanSource = sl<KegiatanRemoteDataSource>();
+      final zones = await kegiatanSource.fetchActiveZones();
+      if (mounted) {
+        AttendanceZones.setZonesFromApi(zones);
+        setState(() {
+          _zones = AttendanceZones.activeZones;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _zones = AttendanceZones.activeZones;
+        });
+      }
+    }
   }
 
   @override
@@ -184,153 +205,91 @@ class _AttendanceScreenState extends State<AttendanceScreen>
     HapticFeedback.lightImpact();
     setState(() => _isSubmitting = true);
 
-    await Future.delayed(const Duration(milliseconds: 1500));
-
-    if (!mounted) return;
-    HapticFeedback.heavyImpact();
-
-    setState(() {
-      _isSubmitting = false;
-      _lastSubmitTime = DateTime.now();
-      _isAttended = true;
-      PimpinanMockData.attendanceReportCount += 1;
-    });
-
-    final now = DateTime.now();
-    final timeStr =
-        "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')} WIB";
-    final activityName = _activeZone?.activityName ?? 'Kegiatan Presensi';
-
-    bool isLate = _activeZone != null && now.isAfter(_activeZone!.deadline);
-    bool isLateFromIzin = false;
-
-    final approvedIzin = KorsisInboxMockData.items
-        .where((i) => i.isIzin && i.status == 'approved')
-        .firstOrNull;
-    if (_activeZone != null &&
-        approvedIzin != null &&
-        approvedIzin.izinStartTime != null &&
-        approvedIzin.izinEndTime != null) {
-      final izinStartDt = DateTime(
-        now.year,
-        now.month,
-        now.day,
-        approvedIzin.izinStartTime!.hour,
-        approvedIzin.izinStartTime!.minute,
-      );
-      final izinEndDt = DateTime(
-        now.year,
-        now.month,
-        now.day,
-        approvedIzin.izinEndTime!.hour,
-        approvedIzin.izinEndTime!.minute,
-      );
-
-      if (_activeZone!.deadline.isAfter(izinStartDt) &&
-              _activeZone!.deadline.isBefore(izinEndDt) ||
-          _activeZone!.deadline.isAtSameMomentAs(izinStartDt)) {
-        if (now.isAfter(izinEndDt)) {
-          isLate = true;
-          isLateFromIzin = true;
-        } else {
-          isLate = false;
+    try {
+      double lat = 0.0;
+      double lng = 0.0;
+      try {
+        final position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+          ),
+        );
+        lat = position.latitude;
+        lng = position.longitude;
+      } catch (_) {
+        if (_activeZone != null) {
+          lat = _activeZone!.latitude;
+          lng = _activeZone!.longitude;
         }
       }
-    }
 
-    PimpinanMockData.addAttendance({
-      'id': 'att_${now.millisecondsSinceEpoch}',
-      'title': activityName,
-      'date': '${now.day}-${now.month}-${now.year}',
-      'time': timeStr,
-      'dateTime': now,
-      'status': isLate ? 'Telat' : 'Hadir',
-      'type': isLate ? 'telat' : 'hadir',
-      'method': fromQr ? 'QR Code' : 'Geofencing',
-      'verification': 'Valid',
-      'location': _activeZone?.name ?? 'Lokasi Sespimma',
-      'device': 'Perangkat Serdik',
-      'image': 'assets/images/avatar.png',
-      'waktuPelaksanaan': _activeZone != null
-          ? '${_activeZone!.startTime.hour.toString().padLeft(2, '0')}.${_activeZone!.startTime.minute.toString().padLeft(2, '0')} - ${_activeZone!.endTime.hour.toString().padLeft(2, '0')}.${_activeZone!.endTime.minute.toString().padLeft(2, '0')}'
-          : '-',
-      'waktuBatasAbsen': _activeZone != null
-          ? '${_activeZone!.deadline.hour.toString().padLeft(2, '0')}.${_activeZone!.deadline.minute.toString().padLeft(2, '0')}'
-          : '-',
-      'pembuatZona': _activeZone?.creator ?? '-',
-    });
+      final absensiSource = sl<AbsensiRemoteDataSource>();
+      final result = await absensiSource.checkIn(
+        kegiatanId: _activeZone!.id,
+        latitude: lat,
+        longitude: lng,
+      );
 
-    if (isLate) {
-      final actLower = activityName.toLowerCase();
-      final isApelOrOlga =
-          actLower.contains('apel pagi') ||
-          actLower.contains('apel malam') ||
-          actLower.contains('olahraga pagi') ||
-          actLower.contains('olga pagi');
-      String punishmentCode = 'P_D_02';
-      double pointsToDeduct = -0.53;
-      String desc = 'Terlambat mengikuti kegiatan kelas/ceramah/pengarahan';
+      if (!mounted) return;
+      HapticFeedback.heavyImpact();
 
-      if (isLateFromIzin) {
-        punishmentCode = 'P_D_03';
-        pointsToDeduct = -0.50;
-        desc =
-            'Terlambat kembali pada waktu ijin/IBL tanpa alasan yang dapat dipertanggungjawabkan';
-      } else if (isApelOrOlga) {
-        punishmentCode = 'P_D_04';
-        pointsToDeduct = -0.50;
-        desc = 'Terlambat mengikuti apel/olahraga/kegiatan lain';
-      } else if (fromQr || _isInRadius) {
-        punishmentCode = 'P_D_01';
-        pointsToDeduct = -0.50;
-        desc = 'Terlambat mengikuti kegiatan yang telah ditentukan';
+      final bool serverIsLate = result['is_late'] == true;
+
+      setState(() {
+        _isSubmitting = false;
+        _lastSubmitTime = DateTime.now();
+        _isAttended = true;
+        PimpinanMockData.attendanceReportCount += 1;
+      });
+
+      final now = DateTime.now();
+      final timeStr =
+          "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')} WIB";
+      final activityName = result['activity_name'] ?? _activeZone?.activityName ?? 'Kegiatan Presensi';
+
+      // Keep mock data in sync for pimpinan dashboard (until Tahap 4)
+      PimpinanMockData.addAttendance({
+        'id': 'att_${now.millisecondsSinceEpoch}',
+        'title': activityName,
+        'date': '${now.day}-${now.month}-${now.year}',
+        'time': timeStr,
+        'dateTime': now,
+        'status': serverIsLate ? 'Telat' : 'Hadir',
+        'type': serverIsLate ? 'telat' : 'hadir',
+        'method': fromQr ? 'QR Code' : 'Geofencing',
+        'verification': 'Valid',
+        'location': _activeZone?.name ?? 'Lokasi Sespimma',
+        'device': 'Perangkat Serdik',
+        'image': 'assets/images/avatar.png',
+      });
+
+      if (serverIsLate) {
+        AppNotifier.showWarning(
+          context,
+          'Tercatat masuk di jam $timeStr (Terlambat) untuk $activityName.',
+        );
+      } else {
+        AppNotifier.showSuccess(
+          context,
+          'Berhasil absen di jam $timeStr untuk kegiatan $activityName.',
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+
+      String errorMsg = 'Gagal melakukan absensi';
+      if (e.toString().contains('409') || e.toString().contains('sudah melakukan')) {
+        errorMsg = 'Anda sudah melakukan presensi untuk kegiatan ini hari ini';
+        setState(() => _isAttended = true);
+      } else if (e.toString().contains('403') || e.toString().contains('ditutup')) {
+        errorMsg = 'Waktu absensi sudah ditutup';
+      } else if (e.toString().contains('404')) {
+        errorMsg = 'Kegiatan tidak ditemukan';
       }
 
-      String sName = 'Dummy User';
-      String sPangkat = 'AKP';
-      String sNosis = '000000';
-      String sPokjar = 'POKJAR I';
 
-      final authState = context.read<AuthBloc>().state;
-      if (authState is AuthSuccess) {
-        sName = authState.user.name;
-        sPangkat = authState.user.pangkat;
-        sNosis = authState.user.noSerdik.isNotEmpty
-            ? authState.user.noSerdik
-            : authState.user.nrp;
-        sPokjar = authState.user.pokjar.isNotEmpty
-            ? authState.user.pokjar
-            : 'POKJAR I';
-      }
-
-      KorsisInboxMockData.addRecord(
-        InboxItem(
-          id: 'auto_punish_${now.millisecondsSinceEpoch}',
-          serdikName: sName,
-          pangkat: sPangkat,
-          nosis: sNosis,
-          pokjar: sPokjar,
-          isReward: false,
-          senderName: 'Sistem (Otomatis)',
-          timestamp: now,
-          points: pointsToDeduct,
-          description: desc,
-          rewardPunishmentName: '$punishmentCode | PUNISHMENT | DISIPLIN',
-          status: 'disetujui',
-        ),
-      );
-
-      AppNotifier.showWarning(
-        context,
-        isLateFromIzin
-            ? 'Tercatat masuk di jam $timeStr (Terlambat Izin) untuk $activityName.\nSanksi pelanggaran: $punishmentCode ($pointsToDeduct)'
-            : 'Tercatat masuk di jam $timeStr (Terlambat) untuk $activityName.\nSanksi pelanggaran: $punishmentCode ($pointsToDeduct)',
-      );
-    } else {
-      AppNotifier.showSuccess(
-        context,
-        'Berhasil absen di jam $timeStr untuk kegiatan $activityName.',
-      );
+      AppNotifier.showError(context, errorMsg);
     }
   }
 
@@ -487,10 +446,11 @@ class _AttendanceScreenState extends State<AttendanceScreen>
             setState(() => _hasGpsError = hasError);
           }
         },
-        onReload: () {
-          setState(() => _zones = AttendanceZones.activeZones);
+        onReload: () async {
+          await _fetchZonesFromApi();
+          if (!mounted) return;
           AppNotifier.showSuccess(
-            context,
+            this.context,
             'Daftar Radius dan Geofence berhasil diperbarui!',
           );
         },

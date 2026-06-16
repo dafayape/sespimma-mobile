@@ -35,6 +35,7 @@ class UserEntity extends Equatable {
   final double nilaiAkademik;
   final double nilaiMental;
   final double nilaiJasmani;
+  final String? serdikId;
 
   const UserEntity({
     required this.userId,
@@ -71,6 +72,7 @@ class UserEntity extends Equatable {
     required this.nilaiAkademik,
     required this.nilaiMental,
     required this.nilaiJasmani,
+    this.serdikId,
   });
 
   String get displayUmur {
@@ -129,6 +131,7 @@ class UserEntity extends Equatable {
     double? nilaiAkademik,
     double? nilaiMental,
     double? nilaiJasmani,
+    String? serdikId,
   }) {
     return UserEntity(
       userId: userId ?? this.userId,
@@ -167,6 +170,7 @@ class UserEntity extends Equatable {
       nilaiAkademik: nilaiAkademik ?? this.nilaiAkademik,
       nilaiMental: nilaiMental ?? this.nilaiMental,
       nilaiJasmani: nilaiJasmani ?? this.nilaiJasmani,
+      serdikId: serdikId ?? this.serdikId,
     );
   }
 
@@ -206,5 +210,6 @@ class UserEntity extends Equatable {
     nilaiAkademik,
     nilaiMental,
     nilaiJasmani,
+    serdikId,
   ];
 }

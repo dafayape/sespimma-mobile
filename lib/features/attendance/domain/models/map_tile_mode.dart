@@ -165,5 +165,11 @@ class AttendanceZones {
     _dynamicZones.clear();
   }
 
+  /// Replaces all dynamic zones with zones fetched from the backend API.
+  static void setZonesFromApi(List<AttendanceZone> zones) {
+    _dynamicZones.clear();
+    _dynamicZones.addAll(zones);
+  }
+
   static AttendanceZone get apelHarian => activeZones.first;
 }

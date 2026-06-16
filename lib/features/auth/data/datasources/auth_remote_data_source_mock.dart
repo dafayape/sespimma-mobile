@@ -58,6 +58,7 @@ class AuthRemoteDataSourceMock implements AuthRemoteDataSource {
         nilaiAkademik: 82.5,
         nilaiMental: 85.0,
         nilaiJasmani: 78.0,
+        serdikId: '1',
         accessToken: 'dummy_token_siswa',
         refreshToken: 'dummy_refresh_siswa',
       );
@@ -97,6 +98,7 @@ class AuthRemoteDataSourceMock implements AuthRemoteDataSource {
         nilaiAkademik: 65.0,
         nilaiMental: 68.0,
         nilaiJasmani: 70.0,
+        serdikId: '99',
         accessToken: 'dummy_token_siswa_ews',
         refreshToken: 'dummy_refresh_siswa_ews',
       );

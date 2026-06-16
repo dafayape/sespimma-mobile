@@ -2,11 +2,8 @@ import 'package:sespimma/core/constants/app_dimensions.dart';
 import 'package:flutter/material.dart';
 import 'package:sespimma/core/utils/app_notifier.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:sespimma/features/assignment/data/models/tugas_model.dart';
-import 'package:sespimma/features/leadership_dashboard/data/datasources/pimpinan_mock_data.dart';
-import 'package:sespimma/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:sespimma/features/auth/presentation/bloc/auth_state.dart';
+import 'package:sespimma/features/assignment/data/datasources/assignment_remote_data_source.dart';
+import 'package:sespimma/injection_container.dart';
 
 class CreateTaskScreen extends StatefulWidget {
   const CreateTaskScreen({super.key});
@@ -185,7 +182,9 @@ class _CreateTaskScreenState extends State<CreateTaskScreen>
     }
   }
 
-  void _publishTask() {
+  bool _isPublishing = false;
+
+  Future<void> _publishTask() async {
     if (_formKey.currentState!.validate()) {
       if (_selectedSubject == null) {
         AppNotifier.showError(
@@ -225,51 +224,37 @@ class _CreateTaskScreenState extends State<CreateTaskScreen>
         return;
       }
 
-      final authState = context.read<AuthBloc>().state;
-      String currentNrp = '';
-      String currentName = 'Pengajar';
+      setState(() => _isPublishing = true);
 
-      if (authState is AuthSuccess) {
-        currentNrp = authState.user.nrp;
-        currentName = authState.user.name;
-      }
-
-      final newTask = TugasModel(
-        id: 'TSK-${DateTime.now().millisecondsSinceEpoch}',
-        judul: _judulController.text.trim(),
-        deskripsi: _deskripsiController.text.trim(),
-        mapel: _selectedSubject == 'NKP (Naskah Karya Perseorangan)'
+      try {
+        final jenisTugas = _selectedSubject == 'NKP (Naskah Karya Perseorangan)'
             ? 'NKP - $_selectedKompetensi'
             : _selectedSubject == 'Mental Kepribadian'
             ? 'Mental - $_selectedMental'
-            : _selectedSubject!,
-        deadline: _selectedDeadline!,
-        status: 'Aktif',
-        createdBy: currentNrp,
-        createdByName: currentName,
-      );
+            : _selectedSubject!;
 
-      setState(() {
-        PimpinanMockData.sharedTasks.insert(0, newTask);
+        await sl<AssignmentRemoteDataSource>().createAssignment(
+          judul: _judulController.text.trim(),
+          jenisTugas: jenisTugas,
+          deadline: _selectedDeadline!.toIso8601String(),
+          targetPokjar: _selectedPokjar!,
+          instruksi: _deskripsiController.text.trim(),
+          fileName: _attachedFileName,
+          fileUrl: _attachedFileName != null ? 'https://example.com/$_attachedFileName' : null,
+        );
 
-        for (var serdik in PimpinanMockData.sharedReportData.take(5)) {
-          PimpinanMockData.sharedTaskSubmissions.add({
-            'taskId': newTask.id,
-            'name': serdik.name,
-            'nrp': serdik.nrp,
-            'pokjar': serdik.pokjar.toUpperCase(),
-            'status': 'belum',
-            'file': null,
-            'time': '-',
-          });
+        if (!mounted) return;
+        AppNotifier.showSuccess(
+          context,
+          'Tugas berhasil dipublikasikan ke Serdik.',
+        );
+        Navigator.pop(context);
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isPublishing = false);
+          AppNotifier.showError(context, 'Gagal mempublikasikan tugas: $e');
         }
-      });
-
-      AppNotifier.showSuccess(
-        context,
-        'Tugas berhasil dipublikasikan ke Serdik.',
-      );
-      Navigator.pop(context);
+      }
     }
   }
 
@@ -860,8 +845,8 @@ class _CreateTaskScreenState extends State<CreateTaskScreen>
         child: SizedBox(
           width: double.infinity,
           height: 56,
-          child: ElevatedButton.icon(
-            onPressed: _publishTask,
+          child: ElevatedButton(
+            onPressed: _isPublishing ? null : _publishTask,
             style: ElevatedButton.styleFrom(
               backgroundColor: _primaryNavy,
               foregroundColor: Colors.white,
@@ -871,15 +856,30 @@ class _CreateTaskScreenState extends State<CreateTaskScreen>
               elevation: 4,
               shadowColor: _primaryNavy.withValues(alpha: 0.4),
             ),
-            icon: const Icon(Icons.send_rounded, size: AppDimensions.iconLg),
-            label: const Text(
-              'PUBLIKASIKAN TUGAS',
-              style: TextStyle(
-                fontSize: AppDimensions.fontLg,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.0,
-              ),
-            ),
+            child: _isPublishing
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
+                : const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.send_rounded, size: AppDimensions.iconLg),
+                      SizedBox(width: 8),
+                      Text(
+                        'PUBLIKASIKAN TUGAS',
+                        style: TextStyle(
+                          fontSize: AppDimensions.fontLg,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                    ],
+                  ),
           ),
         ),
       ),

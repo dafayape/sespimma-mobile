@@ -7,6 +7,8 @@ import 'package:sespimma/core/utils/icon_mapper.dart';
 import 'package:sespimma/shared/widgets/evidence_bottom_sheet.dart';
 import 'package:sespimma/core/theme/app_colors.dart';
 
+import 'package:sespimma/injection_container.dart';
+import 'package:sespimma/features/assessment/data/datasources/inbox_remote_data_source.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
 import '../../../auth/domain/entities/user_entity.dart';
@@ -76,11 +78,23 @@ class _ActivityHistoryScreenState extends State<ActivityHistoryScreen>
     _animController.forward();
   }
 
-  void _populateActivities(UserEntity user) {
+  Future<void> _populateActivities(UserEntity user) async {
     final today = DateTime.now();
     final role = user.roleId.toLowerCase();
 
     final List<Map<String, dynamic>> list = [];
+
+    List<InboxItem> realInboxItems = [];
+    if (role == 'siswa') {
+      try {
+        final inboxSource = sl<InboxRemoteDataSource>();
+        realInboxItems = await inboxSource.getInbox(status: 'all');
+        debugPrint("DEBUG ACTIVITY: fetched ${realInboxItems.length} items from remote source");
+      } catch (e, stack) {
+        debugPrint("DEBUG ACTIVITY ERROR: failed to fetch inbox: $e");
+        debugPrint("$stack");
+      }
+    }
 
     if (role == 'siswa') {
       if (SociometryPeriodConfig.isAnyActive()) {
@@ -110,7 +124,7 @@ class _ActivityHistoryScreenState extends State<ActivityHistoryScreen>
         }
       }
 
-      for (var inbox in KorsisInboxMockData.items) {
+      for (var inbox in realInboxItems) {
         final bool isDirectOrApproved =
             inbox.status == 'approved' ||
             inbox.status == 'disetujui' ||
@@ -226,9 +240,12 @@ class _ActivityHistoryScreenState extends State<ActivityHistoryScreen>
       return dtB.compareTo(dtA);
     });
 
-    setState(() {
-      _mockActivities = list;
-    });
+    if (mounted) {
+      setState(() {
+        _mockActivities = list;
+        _isDataPopulated = true;
+      });
+    }
   }
 
   @override
@@ -383,9 +400,6 @@ class _ActivityHistoryScreenState extends State<ActivityHistoryScreen>
         if (!_isDataPopulated) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             _populateActivities(user);
-            setState(() {
-              _isDataPopulated = true;
-            });
           });
         }
 
@@ -531,6 +545,7 @@ class _ActivityHistoryScreenState extends State<ActivityHistoryScreen>
                 ),
                 onSelected: (value) {
                   if (value == 'refresh') {
+                    _populateActivities(user);
                     _animController.forward(from: 0.0);
                     AppNotifier.showSuccess(
                       context,

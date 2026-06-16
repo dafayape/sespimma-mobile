@@ -1,22 +1,24 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-
 import 'package:image_picker/image_picker.dart';
 import 'package:sespimma/core/utils/app_notifier.dart';
 import 'package:sespimma/core/constants/app_dimensions.dart';
-import 'package:sespimma/features/assessment/data/models/health_monitoring_data.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:sespimma/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:sespimma/features/auth/presentation/bloc/auth_state.dart';
 import 'package:sespimma/core/utils/avatar_helper.dart';
+import 'package:sespimma/features/assessment/data/datasources/assessment_remote_data_source.dart';
+import 'package:sespimma/injection_container.dart';
 
 class MedisHealthRecordScreen extends StatefulWidget {
   final Map<String, dynamic> serdik;
+  final Map<String, dynamic> initialHealth;
   final VoidCallback onRecordAdded;
 
   const MedisHealthRecordScreen({
     super.key,
     required this.serdik,
+    required this.initialHealth,
     required this.onRecordAdded,
   });
 
@@ -29,10 +31,34 @@ class _MedisHealthRecordScreenState extends State<MedisHealthRecordScreen> {
   static const Color _primaryNavy = Color(0xFF000B1D);
   static const Color _lightGrey = Color(0xFFF8F9FA);
 
+  late Map<String, dynamic> _health;
+  bool _isLoading = false;
+
   String? _selectedType;
   final TextEditingController _descController = TextEditingController();
   final TextEditingController _daysController = TextEditingController();
   String? _photoPath;
+
+  @override
+  void initState() {
+    super.initState();
+    _health = widget.initialHealth;
+  }
+
+  Future<void> _fetchHealthData() async {
+    final String noSerdik = widget.serdik['no_serdik'].toString();
+    try {
+      final dataSource = sl<AssessmentRemoteDataSource>();
+      final updatedHealth = await dataSource.getHealth(noSerdik);
+      if (mounted) {
+        setState(() {
+          _health = updatedHealth;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching updated health data: $e');
+    }
+  }
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
@@ -52,10 +78,9 @@ class _MedisHealthRecordScreenState extends State<MedisHealthRecordScreen> {
 
   int _calculateMinusPoints(String type) {
     if (type.contains('Poliklinik')) {
-      final noSerdik = widget.serdik['no_serdik'].toString();
-      final data = HealthMonitoringData.getHealthData(noSerdik);
-      final totalPoli = data.records
-          .where((r) => r.type.contains('Poliklinik'))
+      final List<dynamic> recordsList = _health['records'] ?? [];
+      final totalPoli = recordsList
+          .where((r) => (r['type'] ?? '').toString().contains('Poliklinik'))
           .length;
       final newTotal = totalPoli + 1;
 
@@ -74,7 +99,7 @@ class _MedisHealthRecordScreenState extends State<MedisHealthRecordScreen> {
     return 0;
   }
 
-  void _saveRecord(String medisName) {
+  Future<void> _saveRecord(String medisName) async {
     if (_selectedType == null || _descController.text.trim().isEmpty) {
       AppNotifier.showError(
         context,
@@ -92,24 +117,39 @@ class _MedisHealthRecordScreenState extends State<MedisHealthRecordScreen> {
     final noSerdik = widget.serdik['no_serdik'].toString();
     final minus = _calculateMinusPoints(_selectedType!);
 
-    HealthMonitoringData.addHealthRecord(
-      noSerdik,
-      _selectedType!,
-      _descController.text.trim(),
-      medisName,
-      minus,
-      photoPath: _photoPath,
-    );
+    setState(() => _isLoading = true);
 
-    widget.onRecordAdded();
-    setState(() {
-      _selectedType = null;
-      _descController.clear();
-      _daysController.clear();
-      _photoPath = null;
-    });
+    try {
+      final dataSource = sl<AssessmentRemoteDataSource>();
+      final Map<String, dynamic> body = {
+        'type': _selectedType,
+        'description': _descController.text.trim(),
+        'medis_name': medisName,
+        'minus_points': minus,
+        'photo_path': _photoPath,
+      };
 
-    AppNotifier.showSuccess(context, 'Catatan kesehatan berhasil disimpan');
+      await dataSource.createHealthRecord(noSerdik, body);
+      await _fetchHealthData();
+
+      widget.onRecordAdded();
+
+      if (mounted) {
+        setState(() {
+          _selectedType = null;
+          _descController.clear();
+          _daysController.clear();
+          _photoPath = null;
+          _isLoading = false;
+        });
+        AppNotifier.showSuccess(context, 'Catatan kesehatan berhasil disimpan');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        AppNotifier.showError(context, 'Gagal menyimpan catatan kesehatan: $e');
+      }
+    }
   }
 
   @override
@@ -122,8 +162,9 @@ class _MedisHealthRecordScreenState extends State<MedisHealthRecordScreen> {
   @override
   Widget build(BuildContext context) {
     final noSerdik = widget.serdik['no_serdik'].toString();
-    final data = HealthMonitoringData.getHealthData(noSerdik);
     final name = widget.serdik['nama_lengkap'].toString();
+
+    final List<dynamic> recordsList = _health['records'] ?? [];
 
     return Scaffold(
       backgroundColor: _lightGrey,
@@ -153,7 +194,7 @@ class _MedisHealthRecordScreenState extends State<MedisHealthRecordScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _buildHeaderInfo(name, noSerdik, data),
+                _buildHeaderInfo(name, noSerdik, _health),
                 const SizedBox(height: AppDimensions.xl),
                 _buildForm(medisName),
                 const SizedBox(height: AppDimensions.xxl),
@@ -180,7 +221,7 @@ class _MedisHealthRecordScreenState extends State<MedisHealthRecordScreen> {
                   ],
                 ),
                 const SizedBox(height: AppDimensions.md),
-                _buildRecordList(data.records),
+                _buildRecordList(recordsList),
               ],
             ),
           );
@@ -189,7 +230,7 @@ class _MedisHealthRecordScreenState extends State<MedisHealthRecordScreen> {
     );
   }
 
-  Widget _buildHeaderInfo(String name, String noSerdik, SerdikHealthData data) {
+  Widget _buildHeaderInfo(String name, String noSerdik, Map<String, dynamic> healthData) {
     final pangkat = (widget.serdik['pangkat'] ?? '-').toString();
     final String rawPokjar = (widget.serdik['kelompok_kelas'] ?? '-')
         .toString()
@@ -203,12 +244,14 @@ class _MedisHealthRecordScreenState extends State<MedisHealthRecordScreen> {
     };
     final String displayPokjar = pokjarMap[rawPokjar] ?? rawPokjar;
 
+    final currentNilaiC = (healthData['current_nilai_c'] as num?)?.toDouble() ?? 80.0;
+
     int currentDeduction = 0;
     if (_selectedType != null) {
       currentDeduction = _calculateMinusPoints(_selectedType!);
     }
 
-    final score = data.currentNilaiC - currentDeduction;
+    final score = currentNilaiC - currentDeduction;
     Color statusColor = Colors.green;
     if (score < 70) {
       statusColor = Colors.red;
@@ -296,7 +339,7 @@ class _MedisHealthRecordScreenState extends State<MedisHealthRecordScreen> {
                   ),
                 ),
                 Text(
-                  score.toString(),
+                  score.toStringAsFixed(2),
                   style: TextStyle(
                     fontSize: AppDimensions.fontXxl,
                     fontWeight: FontWeight.w900,
@@ -327,7 +370,7 @@ class _MedisHealthRecordScreenState extends State<MedisHealthRecordScreen> {
               ? FileImage(File(profilePhoto)) as ImageProvider
               : AvatarHelper.getAvatar(null),
           fit: BoxFit.cover,
-        ),
+         ),
       ),
     );
   }
@@ -486,7 +529,7 @@ class _MedisHealthRecordScreenState extends State<MedisHealthRecordScreen> {
           ],
           const SizedBox(height: AppDimensions.xl),
           ElevatedButton(
-            onPressed: () => _saveRecord(medisName),
+            onPressed: _isLoading ? null : () => _saveRecord(medisName),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
               backgroundColor: _primaryNavy,
@@ -495,20 +538,29 @@ class _MedisHealthRecordScreenState extends State<MedisHealthRecordScreen> {
                 borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
               ),
             ),
-            child: const Text(
-              'SIMPAN',
-              style: TextStyle(
-                fontSize: AppDimensions.fontMd,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            child: _isLoading
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
+                : const Text(
+                    'SIMPAN',
+                    style: TextStyle(
+                      fontSize: AppDimensions.fontMd,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildRecordList(List<HealthRecord> records) {
+  Widget _buildRecordList(List<dynamic> records) {
     if (records.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(AppDimensions.xl),
@@ -532,7 +584,16 @@ class _MedisHealthRecordScreenState extends State<MedisHealthRecordScreen> {
       separatorBuilder: (context, index) =>
           const SizedBox(height: AppDimensions.md),
       itemBuilder: (context, index) {
-        final record = records[index];
+        final record = records[index] as Map<String, dynamic>;
+        final String recordType = record['type'] ?? '';
+        final String recordDesc = record['description'] ?? '';
+        final String recordMedis = record['medis_name'] ?? '';
+        final int recordMinus = (record['minus_points'] as num?)?.toInt() ?? 0;
+
+        final DateTime timestamp = record['timestamp'] != null
+            ? DateTime.parse(record['timestamp'].toString())
+            : DateTime.now();
+
         final indonesianMonths = [
           'Januari',
           'Februari',
@@ -547,9 +608,9 @@ class _MedisHealthRecordScreenState extends State<MedisHealthRecordScreen> {
           'November',
           'Desember',
         ];
-        final month = indonesianMonths[record.timestamp.month - 1];
+        final month = indonesianMonths[timestamp.month - 1];
         final timeStr =
-            '${record.timestamp.day.toString().padLeft(2, '0')} $month ${record.timestamp.year} ${record.timestamp.hour.toString().padLeft(2, '0')}:${record.timestamp.minute.toString().padLeft(2, '0')}';
+            '${timestamp.day.toString().padLeft(2, '0')} $month ${timestamp.year} ${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
 
         return Container(
           padding: const EdgeInsets.all(AppDimensions.md),
@@ -579,7 +640,7 @@ class _MedisHealthRecordScreenState extends State<MedisHealthRecordScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      record.type,
+                      recordType,
                       style: const TextStyle(
                         fontWeight: FontWeight.w800,
                         color: _primaryNavy,
@@ -587,7 +648,7 @@ class _MedisHealthRecordScreenState extends State<MedisHealthRecordScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      record.description,
+                      recordDesc,
                       style: TextStyle(color: Colors.blueGrey.shade700),
                     ),
                     const SizedBox(height: 8),
@@ -615,7 +676,7 @@ class _MedisHealthRecordScreenState extends State<MedisHealthRecordScreen> {
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
-                            record.medisName,
+                            recordMedis,
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.blueGrey.shade400,
@@ -641,7 +702,7 @@ class _MedisHealthRecordScreenState extends State<MedisHealthRecordScreen> {
                   borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
                 ),
                 child: Text(
-                  '-${record.minusPoints}',
+                  '-$recordMinus',
                   style: TextStyle(
                     fontWeight: FontWeight.w900,
                     fontSize: AppDimensions.fontLg,

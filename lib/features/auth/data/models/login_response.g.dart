@@ -34,6 +34,7 @@ LoginResponse _$LoginResponseFromJson(Map<String, dynamic> json) =>
       nilaiAkademik: (json['nilai_akademik'] as num?)?.toDouble() ?? 0.0,
       nilaiMental: (json['nilai_mental'] as num?)?.toDouble() ?? 0.0,
       nilaiJasmani: (json['nilai_jasmani'] as num?)?.toDouble() ?? 0.0,
+      serdikId: json['serdik_id'] as String?,
       accessToken: json['access_token'] as String,
       refreshToken: json['refresh_token'] as String,
     );
@@ -72,6 +73,7 @@ Map<String, dynamic> _$LoginResponseToJson(LoginResponse instance) =>
       'nilai_akademik': instance.nilaiAkademik,
       'nilai_mental': instance.nilaiMental,
       'nilai_jasmani': instance.nilaiJasmani,
+      'serdik_id': instance.serdikId,
       'access_token': instance.accessToken,
       'refresh_token': instance.refreshToken,
     };

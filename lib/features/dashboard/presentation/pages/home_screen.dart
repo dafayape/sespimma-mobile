@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:sespimma/core/utils/icon_mapper.dart';
+import 'package:sespimma/injection_container.dart';
+import 'package:sespimma/features/assessment/data/datasources/inbox_remote_data_source.dart';
+import 'package:sespimma/features/dashboard/data/datasources/dashboard_remote_data_source.dart';
 
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
@@ -29,6 +32,12 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _animController;
+  List<InboxItem> _inboxItems = [];
+  double? _dbAcademicScore;
+  double? _dbMentalScore;
+  double? _dbPhysicalScore;
+  double? _dbRewardPoints;
+  double? _dbPunishmentPoints;
 
   @override
   void initState() {
@@ -38,6 +47,58 @@ class _HomeScreenState extends State<HomeScreen>
       duration: const Duration(milliseconds: 1000),
     );
     _animController.forward();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchInboxData();
+      _fetchDashboardData();
+    });
+  }
+
+  Future<void> _fetchDashboardData() async {
+    final state = context.read<AuthBloc>().state;
+    if (state is AuthSuccess && state.user.roleId.toLowerCase() == 'siswa') {
+      try {
+        final dashboardSource = sl<DashboardRemoteDataSource>();
+        final data = await dashboardSource.getSerdikDashboard();
+        final scoreData = data['scoreData'] as Map<String, dynamic>?;
+        if (scoreData != null) {
+          setState(() {
+            _dbAcademicScore = (scoreData['academicScore'] as num?)?.toDouble() ?? 0.0;
+            _dbMentalScore = (scoreData['mentalScore'] as num?)?.toDouble() ?? 0.0;
+            _dbPhysicalScore = (scoreData['physicalScore'] as num?)?.toDouble() ?? 0.0;
+            _dbRewardPoints = (scoreData['rewardPoints'] as num?)?.toDouble() ?? 0.0;
+            _dbPunishmentPoints = (scoreData['punishmentPoints'] as num?)?.toDouble() ?? 0.0;
+          });
+        }
+      } catch (e) {
+        debugPrint("DEBUG HOME ERROR: failed to fetch dashboard scores: $e");
+      }
+    }
+  }
+
+  Future<void> _fetchInboxData() async {
+    final state = context.read<AuthBloc>().state;
+    debugPrint("DEBUG HOME: auth state is ${state.runtimeType}");
+    if (state is AuthSuccess) {
+      debugPrint("DEBUG HOME: user noSerdik=${state.user.noSerdik}, roleId=${state.user.roleId}");
+      if (state.user.roleId.toLowerCase() == 'siswa') {
+        try {
+          final inboxSource = sl<InboxRemoteDataSource>();
+          final items = await inboxSource.getInbox(status: 'all');
+          debugPrint("DEBUG HOME: fetched ${items.length} inbox items");
+          for (var item in items) {
+            debugPrint("DEBUG HOME: item id=${item.id}, isReward=${item.isReward}, status=${item.status}, nosis=${item.nosis}, points=${item.points}");
+          }
+          if (mounted) {
+            setState(() {
+              _inboxItems = items;
+            });
+          }
+        } catch (e, stack) {
+          debugPrint("DEBUG HOME ERROR: failed to fetch inbox: $e");
+          debugPrint("$stack");
+        }
+      }
+    }
   }
 
   @override
@@ -54,8 +115,9 @@ class _HomeScreenState extends State<HomeScreen>
   static const Color _warningYellow = Color(0xFFFBC02D);
 
   double _getRewardPoints(UserEntity user) {
+    if (_dbRewardPoints != null) return _dbRewardPoints!;
     if (user.roleId.toLowerCase() != 'siswa') return 0.0;
-    return KorsisInboxMockData.items
+    return _inboxItems
         .where(
           (i) =>
               (i.status == 'disetujui' || i.status == 'approved') &&
@@ -66,8 +128,9 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   double _getPunishmentPoints(UserEntity user) {
+    if (_dbPunishmentPoints != null) return _dbPunishmentPoints!;
     if (user.roleId.toLowerCase() != 'siswa') return 0.0;
-    return KorsisInboxMockData.items
+    return _inboxItems
         .where(
           (i) =>
               (i.status == 'disetujui' || i.status == 'approved') &&
@@ -135,7 +198,7 @@ class _HomeScreenState extends State<HomeScreen>
         });
       }
 
-      for (var inbox in KorsisInboxMockData.items) {
+      for (var inbox in _inboxItems) {
         final bool isDirectOrApproved =
             inbox.status == 'approved' ||
             inbox.status == 'disetujui' ||
@@ -213,9 +276,9 @@ class _HomeScreenState extends State<HomeScreen>
               orElse: () => allRecaps.first,
             );
 
-            final double nilaiAkademik = finalRecap.academicScore;
-            final double nilaiMental = finalRecap.mentalScore;
-            final double nilaiJasmani = finalRecap.physicalScore;
+            final double nilaiAkademik = _dbAcademicScore ?? finalRecap.academicScore;
+            final double nilaiMental = _dbMentalScore ?? finalRecap.mentalScore;
+            final double nilaiJasmani = _dbPhysicalScore ?? finalRecap.physicalScore;
 
             return SafeArea(
               top: false,
@@ -224,7 +287,10 @@ class _HomeScreenState extends State<HomeScreen>
                 backgroundColor: Colors.white,
                 onRefresh: () async {
                   HapticFeedback.mediumImpact();
-                  await Future.delayed(const Duration(seconds: 1));
+                  await Future.wait([
+                    _fetchInboxData(),
+                    _fetchDashboardData(),
+                  ]);
                   if (mounted) setState(() {});
                 },
                 child: SingleChildScrollView(

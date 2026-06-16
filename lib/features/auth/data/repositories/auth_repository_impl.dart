@@ -61,6 +61,7 @@ class AuthRepositoryImpl implements AuthRepository {
       nilaiAkademik: loginResponse.nilaiAkademik,
       nilaiMental: loginResponse.nilaiMental,
       nilaiJasmani: loginResponse.nilaiJasmani,
+      serdikId: loginResponse.serdikId,
     );
   }
 

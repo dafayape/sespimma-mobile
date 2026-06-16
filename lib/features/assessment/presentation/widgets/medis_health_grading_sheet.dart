@@ -2,31 +2,34 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sespimma/core/constants/app_dimensions.dart';
 import 'package:sespimma/core/utils/app_notifier.dart';
-import 'package:sespimma/features/assessment/data/models/health_monitoring_data.dart';
-import 'package:sespimma/features/assessment/data/models/serdik_physical_scores.dart';
+import 'package:sespimma/features/assessment/data/datasources/assessment_remote_data_source.dart';
+import 'package:sespimma/injection_container.dart';
 import 'package:sespimma/features/assessment/presentation/pages/medis_health_record_screen.dart';
 
 class MedisHealthGradingSheet extends StatefulWidget {
   final Map<String, dynamic> serdik;
+  final Map<String, dynamic> health;
   final VoidCallback onDataChanged;
 
   const MedisHealthGradingSheet({
     super.key,
     required this.serdik,
+    required this.health,
     required this.onDataChanged,
   });
 
   static void show(
     BuildContext context,
     Map<String, dynamic> serdik,
+    Map<String, dynamic> health,
     VoidCallback onDataChanged,
   ) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) =>
-          MedisHealthGradingSheet(serdik: serdik, onDataChanged: onDataChanged),
+      builder: (sheetCtx) =>
+          MedisHealthGradingSheet(serdik: serdik, health: health, onDataChanged: onDataChanged),
     );
   }
 
@@ -60,22 +63,23 @@ class _MedisHealthGradingSheetState extends State<MedisHealthGradingSheet> {
     Navigator.pop(context);
 
     final TextEditingController controller = TextEditingController();
-    final TextEditingController noteController = TextEditingController();
     final noSerdik = widget.serdik['no_serdik'].toString();
-    final data = HealthMonitoringData.getHealthData(noSerdik);
-    if (type == 'A' && data.nilaiA != null) {
-      controller.text = data.nilaiA.toString();
-      noteController.text = data.catatanDokterA ?? '';
-    } else if (type == 'B' && data.nilaiB != null) {
-      controller.text = data.nilaiB.toString();
-      noteController.text = data.catatanDokterB ?? '';
+    
+    final double? existingScore = type == 'A'
+        ? (widget.health['nilai_a'] as num?)?.toDouble()
+        : (widget.health['nilai_b'] as num?)?.toDouble();
+
+    if (existingScore != null) {
+      controller.text = existingScore.toString();
     }
+
+    bool dialogSaving = false;
 
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogCtx) {
         return StatefulBuilder(
-          builder: (context, setStateDialog) {
+          builder: (dialogCtx2, setStateDialog) {
             final double currentScore = double.tryParse(controller.text) ?? 0.0;
             final Color scoreColor = _getScoreColor(currentScore);
             final String scoreCategory = _getScoreCategory(currentScore);
@@ -97,6 +101,7 @@ class _MedisHealthGradingSheetState extends State<MedisHealthGradingSheet> {
                 children: [
                   TextField(
                     controller: controller,
+                    enabled: !dialogSaving,
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
@@ -172,33 +177,11 @@ class _MedisHealthGradingSheetState extends State<MedisHealthGradingSheet> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: AppDimensions.lg),
-                  TextField(
-                    controller: noteController,
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                      hintText: 'Catatan Dokter (opsional)',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(
-                          AppDimensions.radiusMd,
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(
-                          AppDimensions.radiusMd,
-                        ),
-                        borderSide: const BorderSide(
-                          color: _primaryNavy,
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                  ),
                 ],
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: dialogSaving ? null : () => Navigator.pop(dialogCtx2),
                   child: const Text(
                     'Batal',
                     style: TextStyle(color: Colors.grey),
@@ -214,43 +197,52 @@ class _MedisHealthGradingSheetState extends State<MedisHealthGradingSheet> {
                       ),
                     ),
                   ),
-                  onPressed: () {
-                    final val = double.tryParse(controller.text);
-                    if (val != null) {
-                      final catatan = noteController.text.trim();
-                      if (type == 'A') {
-                        HealthMonitoringData.updateNilaiA(
-                          noSerdik,
-                          val,
-                          catatan: catatan.isEmpty ? null : catatan,
-                        );
-                        SerdikPhysicalScores.updateScore(
-                          noSerdik,
-                          'tes_awal',
-                          val,
-                        );
-                      } else {
-                        HealthMonitoringData.updateNilaiB(
-                          noSerdik,
-                          val,
-                          catatan: catatan.isEmpty ? null : catatan,
-                        );
-                        SerdikPhysicalScores.updateScore(
-                          noSerdik,
-                          'tes_akhir',
-                          val,
-                        );
-                      }
-                      widget.onDataChanged();
-                      Navigator.pop(context);
-
-                      AppNotifier.showSuccess(
-                        context,
-                        'Nilai berhasil disimpan',
-                      );
-                    }
-                  },
-                  child: const Text('Simpan'),
+                  onPressed: dialogSaving
+                      ? null
+                      : () async {
+                          final val = double.tryParse(controller.text);
+                          if (val != null) {
+                            setStateDialog(() {
+                              dialogSaving = true;
+                            });
+                            try {
+                              final dataSource = sl<AssessmentRemoteDataSource>();
+                              if (type == 'A') {
+                                await dataSource.updateHealthScoreA(noSerdik, val);
+                              } else {
+                                await dataSource.updateHealthScoreB(noSerdik, val);
+                              }
+                              widget.onDataChanged();
+                              if (dialogCtx2.mounted) {
+                                Navigator.pop(dialogCtx2);
+                                AppNotifier.showSuccess(
+                                  dialogCtx2,
+                                  'Nilai berhasil disimpan',
+                                );
+                              }
+                            } catch (e) {
+                              setStateDialog(() {
+                                dialogSaving = false;
+                              });
+                              if (dialogCtx2.mounted) {
+                                AppNotifier.showError(
+                                  dialogCtx2,
+                                  'Gagal menyimpan nilai: $e',
+                                );
+                              }
+                            }
+                          }
+                        },
+                  child: dialogSaving
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Simpan'),
                 ),
               ],
             );
@@ -267,6 +259,7 @@ class _MedisHealthGradingSheetState extends State<MedisHealthGradingSheet> {
       MaterialPageRoute(
         builder: (_) => MedisHealthRecordScreen(
           serdik: widget.serdik,
+          initialHealth: widget.health,
           onRecordAdded: widget.onDataChanged,
         ),
       ),

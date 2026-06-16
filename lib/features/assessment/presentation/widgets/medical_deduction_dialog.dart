@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:sespimma/core/utils/app_notifier.dart';
 import 'package:flutter/services.dart';
 import 'package:sespimma/core/constants/app_dimensions.dart';
 import 'package:sespimma/core/theme/app_colors.dart';
-import 'package:sespimma/features/leadership_dashboard/data/datasources/pimpinan_mock_data.dart';
+import 'package:sespimma/features/assessment/data/datasources/assessment_remote_data_source.dart';
 
 class MedicalDeductionDialog extends StatefulWidget {
   final Map<String, String> serdik;
@@ -90,22 +91,32 @@ class _MedicalDeductionDialogState extends State<MedicalDeductionDialog> {
     );
   }
 
-  void _save() {
-    final index = PimpinanMockData.sharedReportData.indexWhere(
-      (r) => r.nrp == widget.serdik['nrp'],
-    );
-    if (index != -1 && pengurangan > 0) {
-      final current = PimpinanMockData.sharedReportData[index];
-      PimpinanMockData.sharedReportData[index] = current.copyWith(
-        sanksiKesehatan: current.sanksiKesehatan + pengurangan,
-      );
+  Future<void> _save() async {
+    try {
+      final String noSerdik = widget.serdik['nrp'] ?? widget.serdik['nosis'] ?? '';
+      final int duration = int.tryParse(hariController.text) ?? 1;
+
+      final Map<String, dynamic> body = {
+        'type': statusCatatan.contains('Poliklinik') ? 'Poliklinik' : 'Rawat Inap',
+        'description': statusCatatan,
+        'medis_name': 'Tim Medis',
+        'minus_points': statusCatatan.contains('Poliklinik') ? 0 : duration * 2,
+      };
+
+      final dataSource = GetIt.instance<AssessmentRemoteDataSource>();
+      await dataSource.createHealthRecord(noSerdik, body);
+
+      if (!mounted) return;
+      Navigator.pop(context);
+      final msg = pengurangan > 0
+          ? 'Berhasil mencatat rawat inap ${hariController.text} hari. Sanksi -$pengurangan poin diterapkan.'
+          : 'Berhasil mencatat riwayat kunjungan poliklinik.';
+      AppNotifier.showInfo(context, msg);
+      widget.onSaved();
+    } catch (e) {
+      if (!mounted) return;
+      AppNotifier.showInfo(context, 'Gagal mencatat medis: $e');
     }
-    Navigator.pop(context);
-    final msg = pengurangan > 0
-        ? 'Berhasil mencatat rawat inap ${hariController.text} hari. Sanksi -$pengurangan poin diterapkan.'
-        : 'Berhasil mencatat riwayat kunjungan poliklinik.';
-    AppNotifier.showError(context, msg);
-    widget.onSaved();
   }
 
   @override

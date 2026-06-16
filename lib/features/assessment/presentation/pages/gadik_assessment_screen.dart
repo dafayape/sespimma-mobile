@@ -4,6 +4,7 @@ import 'package:sespimma/core/utils/app_notifier.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:sespimma/core/constants/app_dimensions.dart';
 import 'package:sespimma/core/theme/app_colors.dart';
+import 'package:sespimma/features/assessment/data/datasources/assessment_remote_data_source.dart';
 import 'package:sespimma/features/assessment/presentation/widgets/assessment_action_sheet.dart';
 import 'package:sespimma/features/assessment/presentation/widgets/assessment_empty_state_widget.dart';
 import 'package:sespimma/features/assessment/presentation/widgets/assessment_search_bar_widget.dart';
@@ -14,7 +15,7 @@ import 'package:sespimma/features/assessment/presentation/widgets/medical_deduct
 import 'package:sespimma/features/assessment/presentation/widgets/numeric_input_dialog_sheet.dart';
 import 'package:sespimma/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:sespimma/features/auth/presentation/bloc/auth_state.dart';
-import 'package:sespimma/features/leadership_dashboard/data/datasources/pimpinan_mock_data.dart';
+import 'package:sespimma/injection_container.dart';
 
 class GadikAssessmentScreen extends StatefulWidget {
   const GadikAssessmentScreen({super.key});
@@ -31,6 +32,8 @@ class _GadikAssessmentScreenState extends State<GadikAssessmentScreen>
   final TextEditingController _searchController = TextEditingController();
   late AnimationController _animController;
   Timer? _debounce;
+  bool _isLoading = false;
+  List<Map<String, String>> _serdikList = [];
 
   final List<String> _statuses = [
     'Semua Status',
@@ -54,6 +57,9 @@ class _GadikAssessmentScreenState extends State<GadikAssessmentScreen>
       duration: const Duration(milliseconds: 600),
     );
     _animController.forward();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchData();
+    });
   }
 
   @override
@@ -64,24 +70,55 @@ class _GadikAssessmentScreenState extends State<GadikAssessmentScreen>
     super.dispose();
   }
 
-  List<Map<String, String>> get _mockSerdikList {
-    return PimpinanMockData.sharedReportData.map((report) {
-      final bool sudahDinilai = PimpinanMockData.ratedSerdikForAssessment
-          .contains(report.nrp);
-      return {
-        'name': report.name,
-        'nrp': report.nrp,
-        'nosis': report.nosis,
-        'pokjar': report.pokjar.toUpperCase(),
-        'status': sudahDinilai ? 'Sudah Dinilai' : 'Belum Dinilai',
-        if (sudahDinilai) 'lookupPoints': '+0.50',
-        'tanggalLahir': report.tanggalLahir,
-        'jenisKelamin': report.jenisKelamin,
-        'sanksiKesehatan': report.sanksiKesehatan.toString(),
-        'sosiometriAwal': (report.mentalScore * 1.05).toStringAsFixed(2),
-        'sosiometriAkhir': (report.mentalScore * 1.02).toStringAsFixed(2),
-      };
-    }).toList();
+  Future<void> _fetchData() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+    try {
+      final role = _getCurrentRole(context);
+      String category = 'Akademik';
+      if (role == 'Patun') {
+        category = 'Mental Kepribadian';
+      } else if (role == 'Tim Medis' || role == 'Korsis') {
+        category = 'Jasmani';
+      }
+
+      final dataSource = sl<AssessmentRemoteDataSource>();
+      final students = await dataSource.getStudents();
+      final gradedIds = await dataSource.getGradedStatus(category);
+      final gradedSet = gradedIds.toSet();
+
+      final List<Map<String, String>> list = [];
+      for (final student in students) {
+        final int id = student['id'] ?? 0;
+        final bool sudahDinilai = gradedSet.contains(id);
+
+        list.add({
+          'id': id.toString(),
+          'name': student['name'] ?? '',
+          'nrp': student['nrp'] ?? '',
+          'nosis': student['no_serdik'] ?? '',
+          'pokjar': (student['pokjar'] ?? '').toString().toUpperCase(),
+          'status': sudahDinilai ? 'Sudah Dinilai' : 'Belum Dinilai',
+          'jenisKelamin': student['jenis_kelamin'] ?? 'Laki-laki',
+          'tanggalLahir': student['tanggal_lahir'] ?? '',
+          'sanksiKesehatan': '0',
+          'sosiometriAwal': '0.00',
+          'sosiometriAkhir': '0.00',
+        });
+      }
+
+      if (mounted) {
+        setState(() {
+          _serdikList = list;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _showSnackbar('Gagal memuat data serdik: $e', Colors.red);
+      }
+    }
   }
 
   String _getCurrentRole(BuildContext context) {
@@ -149,7 +186,7 @@ class _GadikAssessmentScreenState extends State<GadikAssessmentScreen>
       context: context,
       builder: (_) => MedicalDeductionDialog(
         serdik: serdik,
-        onSaved: () => setState(() {}),
+        onSaved: () => _fetchData(),
       ),
     );
   }
@@ -170,13 +207,14 @@ class _GadikAssessmentScreenState extends State<GadikAssessmentScreen>
     );
   }
 
-  void _onSaveScore(
+  Future<void> _onSaveScore(
     double averageScore,
     String localCategory,
     Map<String, String> serdik,
     List<Map<String, dynamic>> subCategories,
     TextEditingController justificationController,
-  ) {
+    List<TextEditingController> inputControllers,
+  ) async {
     if (averageScore > 90.00 && justificationController.text.trim().isEmpty) {
       _showSnackbar(
         'Justifikasi Gagal! Wajib mengisi Berita Acara khusus untuk nilai > 90,00.',
@@ -184,44 +222,80 @@ class _GadikAssessmentScreenState extends State<GadikAssessmentScreen>
       );
       return;
     }
-    setState(() {
-      PimpinanMockData.ratedSerdikForAssessment.add(serdik['nrp']!);
-      serdik['status'] = 'Sudah Dinilai';
-      _updateMockData(localCategory, averageScore, serdik, subCategories);
-    });
-    Navigator.pop(context);
-    _showResultSnackbar(averageScore);
-  }
 
-  void _updateMockData(
-    String localCategory,
-    double averageScore,
-    Map<String, String> serdik,
-    List<Map<String, dynamic>> subCategories,
-  ) {
-    final index = PimpinanMockData.sharedReportData.indexWhere(
-      (r) => r.nrp == serdik['nrp'],
-    );
-    if (index == -1) return;
+    try {
+      final dataSource = sl<AssessmentRemoteDataSource>();
+      final String noSerdik = serdik['nrp'] ?? serdik['nosis'] ?? '';
+      
+      final Map<String, dynamic> body = {};
+      if (justificationController.text.isNotEmpty) {
+        body['catatan'] = justificationController.text;
+      }
 
-    final current = PimpinanMockData.sharedReportData[index];
-    double newPhysicalScore = current.physicalScore;
-    double newMentalScore = current.mentalScore;
-    double newAcademicScore = current.academicScore;
+      final keysMap = {
+        'Akademik': {
+          0: 'nump',
+          1: 'nkkp',
+          2: 'npkp',
+          3: 'nkp',
+          4: 'nsk_keaktifan',
+          5: 'nsk_produk',
+          6: 'nsk_tata_ruang',
+          7: 'nt_materi',
+          8: 'nt_penulisan',
+          9: 'nt_paparan',
+        },
+        'Mental Kepribadian': {
+          0: 'moral',
+          1: 'disiplin',
+          2: 'kepemimpinan',
+          3: 'pengendalian_diri',
+          4: 'penampilan',
+          5: 'sosiometri_awal',
+          6: 'sosiometri_akhir',
+        },
+        'Jasmani': {
+          0: 'tes_awal',
+          1: 'tes_akhir',
+          2: 'status_kesehatan',
+          3: 'nga',
+          4: 'pullup',
+          5: 'situp',
+          6: 'pushup',
+          7: 'shuttle',
+        }
+      };
 
-    if (localCategory == 'Mental Kepribadian') {
-      newMentalScore = averageScore;
-    } else if (localCategory == 'Akademik') {
-      newAcademicScore = averageScore;
-    } else {
-      newPhysicalScore = averageScore;
+      final subKeys = keysMap[localCategory];
+      if (subKeys != null) {
+        for (final entry in subKeys.entries) {
+          final idx = entry.key;
+          final key = entry.value;
+          final String txt = inputControllers[idx].text;
+          if (txt.isNotEmpty) {
+            final double? val = double.tryParse(txt);
+            if (val != null) {
+              body[key] = val;
+            }
+          }
+        }
+      }
+
+      if (localCategory == 'Akademik') {
+        await dataSource.updateAcademic(noSerdik, body);
+      } else if (localCategory == 'Mental Kepribadian') {
+        await dataSource.updateMental(noSerdik, body);
+      } else {
+        await dataSource.updatePhysical(noSerdik, body);
+      }
+
+      await _fetchData();
+      if (!mounted) return;
+      Navigator.pop(context);
+      _showResultSnackbar(averageScore);
+    } catch (e) {
+      _showSnackbar('Gagal menyimpan nilai: $e', Colors.red);
     }
-
-    PimpinanMockData.sharedReportData[index] = current.copyWith(
-      physicalScore: newPhysicalScore,
-      mentalScore: newMentalScore,
-      academicScore: newAcademicScore,
-    );
   }
 
   void _showResultSnackbar(double averageScore) {
@@ -266,7 +340,7 @@ class _GadikAssessmentScreenState extends State<GadikAssessmentScreen>
 
   @override
   Widget build(BuildContext context) {
-    final filteredList = _mockSerdikList.where((serdik) {
+    final filteredList = _serdikList.where((serdik) {
       final q = _searchQuery.toLowerCase();
       final matchSearch =
           serdik['name']!.toLowerCase().contains(q) ||
@@ -351,22 +425,28 @@ class _GadikAssessmentScreenState extends State<GadikAssessmentScreen>
             thickness: AppDimensions.dividerHeight,
           ),
           Expanded(
-            child: filteredList.isEmpty
-                ? const AssessmentEmptyStateWidget()
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppDimensions.xl,
-                      vertical: AppDimensions.lg,
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      color: AppColors.primaryNavy,
                     ),
-                    itemCount: filteredList.length,
-                    itemBuilder: (context, index) => SerdikCardWidget(
-                      serdik: filteredList[index],
-                      onTap: () => _showAssessmentActionSheet(
-                        context,
-                        filteredList[index],
+                  )
+                : filteredList.isEmpty
+                    ? const AssessmentEmptyStateWidget()
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppDimensions.xl,
+                          vertical: AppDimensions.lg,
+                        ),
+                        itemCount: filteredList.length,
+                        itemBuilder: (context, index) => SerdikCardWidget(
+                          serdik: filteredList[index],
+                          onTap: () => _showAssessmentActionSheet(
+                            context,
+                            filteredList[index],
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
           ),
         ],
       ),

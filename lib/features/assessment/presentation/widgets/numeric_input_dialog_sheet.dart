@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get_it/get_it.dart';
 import 'package:sespimma/core/constants/app_dimensions.dart';
 import 'package:sespimma/core/theme/app_colors.dart';
+import 'package:sespimma/features/assessment/data/datasources/assessment_remote_data_source.dart';
 import 'package:sespimma/features/assessment/domain/services/assessment_sub_categories.dart';
 import 'package:sespimma/features/assessment/domain/services/samapta_scoring_service.dart';
 import 'package:sespimma/features/assessment/presentation/widgets/samapta_calculator_dialog.dart';
@@ -17,6 +19,7 @@ class NumericInputDialogSheet extends StatefulWidget {
     Map<String, String>,
     List<Map<String, dynamic>>,
     TextEditingController,
+    List<TextEditingController>,
   )
   onSaveScore;
 
@@ -37,6 +40,7 @@ class _NumericInputDialogSheetState extends State<NumericInputDialogSheet> {
   late String localTahap;
   List<Map<String, dynamic>> subCategories = [];
   double averageScore = 0.0;
+  bool _isLoading = false;
   final TextEditingController justificationController = TextEditingController();
   final List<TextEditingController> _inputControllers = List.generate(
     10,
@@ -52,6 +56,81 @@ class _NumericInputDialogSheetState extends State<NumericInputDialogSheet> {
       localCategory = 'Jasmani';
     }
     _setupCategory(localCategory);
+    _loadActualScores();
+  }
+
+  Future<void> _loadActualScores() async {
+    setState(() => _isLoading = true);
+    try {
+      final dataSource = GetIt.instance<AssessmentRemoteDataSource>();
+      final String noSerdik = widget.serdik['nrp'] ?? widget.serdik['nosis'] ?? '';
+      Map<String, dynamic> data = {};
+
+      if (localCategory == 'Akademik') {
+        data = await dataSource.getAcademic(noSerdik);
+      } else if (localCategory == 'Mental Kepribadian') {
+        data = await dataSource.getMental(noSerdik);
+      } else {
+        data = await dataSource.getPhysical(noSerdik);
+      }
+
+      final keysMap = {
+        'Akademik': {
+          0: 'nump',
+          1: 'nkkp',
+          2: 'npkp',
+          3: 'nkp',
+          4: 'nsk_keaktifan',
+          5: 'nsk_produk',
+          6: 'nsk_tata_ruang',
+          7: 'nt_materi',
+          8: 'nt_penulisan',
+          9: 'nt_paparan',
+        },
+        'Mental Kepribadian': {
+          0: 'moral',
+          1: 'disiplin',
+          2: 'kepemimpinan',
+          3: 'pengendalian_diri',
+          4: 'penampilan',
+          5: 'sosiometri_awal',
+          6: 'sosiometri_akhir',
+        },
+        'Jasmani': {
+          0: 'tes_awal',
+          1: 'tes_akhir',
+          2: 'status_kesehatan',
+          3: 'nga',
+          4: 'pullup',
+          5: 'situp',
+          6: 'pushup',
+          7: 'shuttle',
+        }
+      };
+
+      final subKeys = keysMap[localCategory];
+      if (subKeys != null) {
+        for (final entry in subKeys.entries) {
+          final idx = entry.key;
+          final key = entry.value;
+          final val = data[key];
+          if (val != null) {
+            final double dVal = double.tryParse(val.toString()) ?? 0.0;
+            if (dVal > 0) {
+              _inputControllers[idx].text = dVal.toStringAsFixed(2);
+            } else {
+              _inputControllers[idx].text = '';
+            }
+          }
+        }
+      }
+
+      _calculateAverage();
+    } catch (e) {
+      // ignore
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -238,10 +317,16 @@ class _NumericInputDialogSheetState extends State<NumericInputDialogSheet> {
                     height: AppDimensions.dividerHeight,
                   ),
                   Expanded(
-                    child: _buildInputList(
-                      filteredSubCategories,
-                      scrollController,
-                    ),
+                    child: _isLoading
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.primaryNavy,
+                            ),
+                          )
+                        : _buildInputList(
+                            filteredSubCategories,
+                            scrollController,
+                          ),
                   ),
                   if (averageScore > 90.0) _buildJustificationSection(),
                   _buildFooter(),
@@ -724,6 +809,7 @@ class _NumericInputDialogSheetState extends State<NumericInputDialogSheet> {
               widget.serdik,
               subCategories,
               justificationController,
+              _inputControllers,
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryNavy,

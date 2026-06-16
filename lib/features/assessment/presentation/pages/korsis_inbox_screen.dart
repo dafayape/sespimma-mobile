@@ -8,9 +8,10 @@ import 'package:sespimma/core/utils/icon_mapper.dart';
 import 'package:sespimma/core/utils/app_notifier.dart';
 import 'package:sespimma/features/assessment/presentation/widgets/assessment_search_bar_widget.dart';
 import '../../data/models/korsis_inbox_mock_data.dart';
+import '../../data/datasources/inbox_remote_data_source.dart';
+import 'package:sespimma/injection_container.dart';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:sespimma/features/leadership_dashboard/data/datasources/pimpinan_mock_data.dart';
 import 'package:sespimma/core/utils/avatar_helper.dart';
 
 class KorsisInboxScreen extends StatefulWidget {
@@ -47,11 +48,37 @@ class _KorsisInboxScreenState extends State<KorsisInboxScreen> {
     'Izin',
   ];
 
+  bool _isLoading = false;
+
+  Future<void> _fetchInboxData() async {
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      final data = await sl<InboxRemoteDataSource>().getInbox(
+        pokjar: _selectedPokjar,
+      );
+      if (mounted) {
+        setState(() {
+          _allItems = data;
+          _isLoading = false;
+          _applyFilters();
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        AppNotifier.showError(context, 'Gagal memuat data inbox: $e');
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    _allItems = KorsisInboxMockData.generateMockData();
-    _applyFilters();
+    _fetchInboxData();
   }
 
   @override
@@ -63,9 +90,7 @@ class _KorsisInboxScreenState extends State<KorsisInboxScreen> {
   @override
   void reassemble() {
     super.reassemble();
-
-    _allItems = KorsisInboxMockData.generateMockData();
-    _applyFilters();
+    _fetchInboxData();
   }
 
   String _mapRomanToArabic(String roman) {
@@ -182,81 +207,91 @@ class _KorsisInboxScreenState extends State<KorsisInboxScreen> {
     });
   }
 
-  void _updateMockDatabase(String nosis, double points) {
-    final reportIndex = PimpinanMockData.sharedReportData.indexWhere(
-      (r) => r.nosis == nosis,
-    );
-    if (reportIndex != -1) {
-      final current = PimpinanMockData.sharedReportData[reportIndex];
 
-      double newScore = current.mentalScore + points;
-      if (newScore > 100) newScore = 100;
-      if (newScore < 0) newScore = 0;
 
-      PimpinanMockData.sharedReportData[reportIndex] = current.copyWith(
-        mentalScore: newScore,
-      );
-    }
-  }
-
-  void _approveAll() {
-    setState(() {
-      int count = 0;
-      for (var item in _filteredItems) {
-        if (item.status == 'pending') {
-          item.status = 'approved';
-          _updateMockDatabase(item.nosis, item.points);
-          count++;
-        }
+  Future<void> _approveAll() async {
+    int count = 0;
+    final pendingItems = _filteredItems.where((item) => item.status == 'pending').toList();
+    for (var item in pendingItems) {
+      try {
+        await sl<InboxRemoteDataSource>().updateStatus(item.id, 'approved');
+        count++;
+      } catch (e) {
+        debugPrint('Failed to approve item ${item.id}: $e');
       }
+    }
+    if (mounted) {
       if (count > 0) {
         AppNotifier.showSuccess(
           context,
           '$count pencatatan berhasil disetujui',
         );
+        _fetchInboxData();
       } else {
         AppNotifier.showInfo(context, 'Tidak ada pencatatan tertunda');
       }
-      _applyFilters();
-    });
+    }
   }
 
-  void _rejectAll() {
-    setState(() {
-      int count = 0;
-      for (var item in _filteredItems) {
-        if (item.status == 'pending') {
-          item.status = 'rejected';
-          count++;
-        }
+  Future<void> _rejectAll() async {
+    int count = 0;
+    final pendingItems = _filteredItems.where((item) => item.status == 'pending').toList();
+    for (var item in pendingItems) {
+      try {
+        await sl<InboxRemoteDataSource>().updateStatus(item.id, 'rejected');
+        count++;
+      } catch (e) {
+        debugPrint('Failed to reject item ${item.id}: $e');
       }
+    }
+    if (mounted) {
       if (count > 0) {
         AppNotifier.showSuccess(context, '$count pencatatan berhasil ditolak');
+        _fetchInboxData();
       } else {
         AppNotifier.showInfo(context, 'Tidak ada pencatatan tertunda');
       }
-      _applyFilters();
-    });
+    }
   }
 
-  void _approveItem(String id) {
-    setState(() {
-      final index = _allItems.indexWhere((i) => i.id == id);
-      if (index != -1) {
-        final item = _allItems[index];
-        item.status = 'approved';
-        _updateMockDatabase(item.nosis, item.points);
+  Future<void> _approveItem(String id) async {
+    try {
+      await sl<InboxRemoteDataSource>().updateStatus(id, 'approved');
+      if (mounted) {
+        setState(() {
+          final index = _allItems.indexWhere((i) => i.id == id);
+          if (index != -1) {
+            _allItems[index].status = 'approved';
+          }
+          _applyFilters();
+        });
+        AppNotifier.showSuccess(context, 'Pencatatan berhasil disetujui');
       }
-      _applyFilters();
-    });
+    } catch (e) {
+      if (mounted) {
+        AppNotifier.showError(context, 'Gagal menyetujui pencatatan: $e');
+      }
+    }
   }
 
-  void _rejectItem(String id) {
-    setState(() {
-      final index = _allItems.indexWhere((i) => i.id == id);
-      if (index != -1) _allItems[index].status = 'rejected';
-      _applyFilters();
-    });
+  Future<void> _rejectItem(String id) async {
+    try {
+      await sl<InboxRemoteDataSource>().updateStatus(id, 'rejected');
+      if (mounted) {
+        setState(() {
+          final index = _allItems.indexWhere((i) => i.id == id);
+          if (index != -1) {
+            _allItems[index].status = 'rejected';
+          }
+          _applyFilters();
+        });
+        AppNotifier.showSuccess(context, 'Pencatatan berhasil ditolak');
+      }
+    } catch (e) {
+      if (mounted) {
+        AppNotifier.showError(context, 'Gagal menolak pencatatan: $e');
+      }
+    }
   }
 
   Widget _buildFilterDropdown({
@@ -615,17 +650,17 @@ class _KorsisInboxScreenState extends State<KorsisInboxScreen> {
           _buildListHeader(),
           Expanded(
             child: RefreshIndicator(
-              onRefresh: () async {
-                setState(() {
-                  _allItems = KorsisInboxMockData.generateMockData();
-                  _applyFilters();
-                });
-                await Future.delayed(const Duration(milliseconds: 500));
-              },
+              onRefresh: _fetchInboxData,
               color: AppColors.primaryNavy,
-              child: _filteredItems.isEmpty
-                  ? SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
+              child: _isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primaryNavy,
+                      ),
+                    )
+                  : _filteredItems.isEmpty
+                      ? SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
                       child: Container(
                         height: MediaQuery.of(context).size.height * 0.6,
                         alignment: Alignment.center,

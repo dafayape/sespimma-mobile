@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import '../models/attendance_report_model.dart';
 import 'package:sespimma/features/auth/data/datasources/serdik_real_data.dart';
 import 'dart:math';
@@ -132,5 +133,72 @@ class AttendanceRemoteDataSourceMock implements AttendanceRemoteDataSource {
     }
 
     return newReport;
+  }
+}
+
+class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
+  final Dio dio;
+
+  const AttendanceRemoteDataSourceImpl({required this.dio});
+
+  @override
+  Future<List<AttendanceReportModel>> getReports(
+    String pokjar, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    try {
+      final queryParams = <String, dynamic>{
+        'pokjar': pokjar,
+      };
+      if (startDate != null) {
+        queryParams['start_date'] = startDate.toIso8601String().split('T')[0];
+      }
+      if (endDate != null) {
+        queryParams['end_date'] = endDate.toIso8601String().split('T')[0];
+      }
+
+      final response = await dio.get(
+        '/attendance/reports',
+        queryParameters: queryParams,
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data;
+        return data.map((json) => AttendanceReportModel.fromJson(json)).toList();
+      }
+      throw Exception('Failed to load attendance reports');
+    } on DioException catch (e) {
+      if (e.response != null && e.response?.data is Map) {
+        final data = e.response!.data as Map;
+        throw Exception(data['error'] ?? data['message'] ?? 'Server error');
+      }
+      throw Exception(e.message ?? 'Network error');
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
+  @override
+  Future<AttendanceReportModel> generateCurrentReport(String pokjar) async {
+    try {
+      final response = await dio.post(
+        '/attendance/reports/generate',
+        data: {'pokjar': pokjar},
+      );
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        return AttendanceReportModel.fromJson(response.data);
+      }
+      throw Exception('Failed to generate attendance report');
+    } on DioException catch (e) {
+      if (e.response != null && e.response?.data is Map) {
+        final data = e.response!.data as Map;
+        throw Exception(data['error'] ?? data['message'] ?? 'Server error');
+      }
+      throw Exception(e.message ?? 'Network error');
+    } catch (e) {
+      throw Exception(e.toString());
+    }
   }
 }

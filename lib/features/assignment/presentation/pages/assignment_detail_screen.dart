@@ -6,10 +6,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:sespimma/features/assignment/data/models/assignment_model.dart';
 import 'package:sespimma/features/assignment/presentation/widgets/assignment_widgets.dart';
-import 'package:sespimma/features/gadik_assignment/data/models/gadik_submission_model.dart';
-import 'package:sespimma/features/gadik_assignment/data/datasources/gadik_assignment_mock_data.dart';
-import 'package:sespimma/features/leadership_dashboard/data/datasources/pimpinan_mock_data.dart';
 import 'package:sespimma/features/auth/data/datasources/serdik_real_data.dart';
+import 'package:sespimma/features/assignment/data/datasources/assignment_remote_data_source.dart';
+import 'package:sespimma/injection_container.dart';
 
 class AssignmentDetailScreen extends StatefulWidget {
   const AssignmentDetailScreen({super.key});
@@ -99,30 +98,20 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen>
   Future<void> _submitTask(AssignmentModel a) async {
     await HapticFeedback.heavyImpact();
 
-    final serdik = SerdikRealData.records.first;
-    final newSubmission = GadikSubmissionModel(
-      id: 'SUB-${DateTime.now().millisecondsSinceEpoch}',
-      assignmentId: a.id,
-      serdikName: serdik['nama_lengkap'],
-      serdikNrp: serdik['nrp'],
-      serdikPangkat: serdik['pangkat'],
-      serdikNosis: serdik['no_serdik'],
-      submittedAt: DateTime.now(),
-      fileName: _fileName,
-      fileUrl: 'https://example.com/$_fileName',
-      isGraded: false,
-    );
-    GadikAssignmentMockData.submissions.add(newSubmission);
+    try {
+      await sl<AssignmentRemoteDataSource>().submitAssignment(
+        assignmentId: a.id,
+        fileName: _fileName,
+        fileUrl: 'https://example.com/$_fileName',
+      );
 
-    final idx = PimpinanMockData.sharedTasks.indexWhere((t) => t.id == a.id);
-    if (idx != -1) {
-      final t = PimpinanMockData.sharedTasks[idx];
-      PimpinanMockData.sharedTasks[idx] = t.copyWith(status: 'Selesai');
+      if (!mounted) return;
+      AssignmentSnackbars.showSuccess(context, 'Tugas berhasil dikumpulkan');
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      AssignmentSnackbars.showError(context, 'Gagal mengumpulkan tugas: $e');
     }
-
-    if (!mounted) return;
-    AssignmentSnackbars.showSuccess(context, 'Tugas berhasil dikumpulkan');
-    Navigator.pop(context, true);
   }
 
   Future<void> _downloadFile(String name) async {

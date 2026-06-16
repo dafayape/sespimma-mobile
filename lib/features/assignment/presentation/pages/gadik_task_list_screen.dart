@@ -1,10 +1,9 @@
 import 'package:sespimma/core/constants/app_dimensions.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:sespimma/features/assignment/data/models/tugas_model.dart';
-import 'package:sespimma/features/leadership_dashboard/data/datasources/pimpinan_mock_data.dart';
-import 'package:sespimma/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:sespimma/features/auth/presentation/bloc/auth_state.dart';
+import 'package:sespimma/features/assignment/data/datasources/assignment_remote_data_source.dart';
+import 'package:sespimma/injection_container.dart';
+import 'package:sespimma/core/utils/app_notifier.dart';
 
 class GadikTaskListScreen extends StatefulWidget {
   const GadikTaskListScreen({super.key});
@@ -18,6 +17,39 @@ class _GadikTaskListScreenState extends State<GadikTaskListScreen>
   late AnimationController _animController;
   String _searchQuery = '';
   String _selectedFilter = 'Semua';
+  List<TugasModel> _assignments = [];
+  bool _isLoading = false;
+
+  Future<void> _fetchAssignments() async {
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      final data = await sl<AssignmentRemoteDataSource>().getGadikAssignments();
+      if (mounted) {
+        setState(() {
+          _assignments = data.map((a) => TugasModel(
+            id: a.id,
+            judul: a.judul,
+            deskripsi: a.deskripsi ?? '',
+            mapel: a.mapel,
+            deadline: a.deadline,
+            status: a.status,
+            createdBy: '',
+            createdByName: a.pengajar,
+          )).toList();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        AppNotifier.showError(context, 'Gagal memuat tugas: $e');
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -27,6 +59,13 @@ class _GadikTaskListScreenState extends State<GadikTaskListScreen>
       duration: const Duration(milliseconds: 800),
     );
     _animController.forward();
+    _fetchAssignments();
+  }
+
+  @override
+  void reassemble() {
+    super.reassemble();
+    _fetchAssignments();
   }
 
   @override
@@ -40,23 +79,9 @@ class _GadikTaskListScreenState extends State<GadikTaskListScreen>
   static const Color _successGreen = Color(0xFF10B981);
   static const Color _surfaceColor = Colors.white;
 
-  List<TugasModel> get _mockTasks {
-    return PimpinanMockData.sharedTasks;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final authState = context.read<AuthBloc>().state;
-    String currentNrp = '';
-    if (authState is AuthSuccess) {
-      currentNrp = authState.user.nrp;
-    }
-
-    final rawTasks = _mockTasks
-        .where((t) => t.createdBy == currentNrp)
-        .toList();
-
-    final tasks = rawTasks.where((task) {
+    final tasks = _assignments.where((task) {
       final matchesSearch =
           task.judul.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           task.mapel.toLowerCase().contains(_searchQuery.toLowerCase());
@@ -92,18 +117,22 @@ class _GadikTaskListScreenState extends State<GadikTaskListScreen>
             _buildSearchAndFilter(),
             Expanded(
               child: RefreshIndicator(
-                onRefresh: () async {
-                  setState(() {});
-                },
+                onRefresh: _fetchAssignments,
                 color: _primaryNavy,
-                child: tasks.isEmpty
-                    ? _buildEmptyState()
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 20,
+                child: _isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: _primaryNavy,
                         ),
-                        itemCount: tasks.length,
+                      )
+                    : tasks.isEmpty
+                        ? _buildEmptyState()
+                        : ListView.builder(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 20,
+                            ),
+                            itemCount: tasks.length,
                         itemBuilder: (context, index) {
                           final animation = CurvedAnimation(
                             parent: _animController,
@@ -134,7 +163,7 @@ class _GadikTaskListScreenState extends State<GadikTaskListScreen>
         heroTag: null,
         onPressed: () {
           Navigator.pushNamed(context, '/buat-tugas').then((_) {
-            if (mounted) setState(() {});
+            if (mounted) _fetchAssignments();
           });
         },
         backgroundColor: _primaryNavy,
@@ -357,8 +386,10 @@ class _GadikTaskListScreenState extends State<GadikTaskListScreen>
               context,
               '/monitoring-tugas',
               arguments: task,
-            ).then((_) {
-              if (mounted) setState(() {});
+            ).then((val) {
+              if (mounted) {
+                _fetchAssignments();
+              }
             });
           },
           child: Padding(

@@ -14,29 +14,45 @@ class ReportContentBody extends StatelessWidget {
   final UserEntity user;
   final String selectedCategory;
   final ValueChanged<String> onCategoryChanged;
+  final Map<String, dynamic> reportData;
+  final Future<void> Function() onRefresh;
 
   const ReportContentBody({
     super.key,
     required this.user,
     required this.selectedCategory,
     required this.onCategoryChanged,
+    required this.reportData,
+    required this.onRefresh,
   });
 
   @override
   Widget build(BuildContext context) {
-    final allRecaps = ScoreCalculatorService.generateRealReports();
-    final finalRecap = allRecaps.firstWhere(
-      (r) => r.id == user.noSerdik,
-      orElse: () => allRecaps.first,
-    );
+    final summary = reportData['summary'];
+    double dynamicMentalScore;
+    double dynamicJasmaniScore;
+    double dynamicAcademicScore;
 
-    final double dynamicMentalScore = finalRecap.mentalScore;
-    final double dynamicJasmaniScore = finalRecap.physicalScore;
+    if (summary != null && summary is Map) {
+      dynamicMentalScore = (summary['mental_score'] as num?)?.toDouble() ?? 0.0;
+      dynamicJasmaniScore = (summary['physical_score'] as num?)?.toDouble() ?? 0.0;
+      dynamicAcademicScore = (summary['academic_score'] as num?)?.toDouble() ?? 0.0;
+    } else {
+      final allRecaps = ScoreCalculatorService.generateRealReports();
+      final finalRecap = allRecaps.firstWhere(
+        (r) => r.id == user.noSerdik,
+        orElse: () => allRecaps.first,
+      );
+      dynamicMentalScore = finalRecap.mentalScore;
+      dynamicJasmaniScore = finalRecap.physicalScore;
+      dynamicAcademicScore = user.nilaiAkademik;
+    }
+
     double currentScore = 0.0;
     if (selectedCategory == 'Mental Kepribadian') {
       currentScore = dynamicMentalScore;
     } else if (selectedCategory == 'Akademik') {
-      currentScore = user.nilaiAkademik;
+      currentScore = dynamicAcademicScore;
     } else {
       currentScore = dynamicJasmaniScore;
     }
@@ -46,7 +62,7 @@ class ReportContentBody extends StatelessWidget {
       backgroundColor: Colors.white,
       onRefresh: () async {
         await HapticFeedback.mediumImpact();
-        await Future.delayed(const Duration(seconds: 1));
+        await onRefresh();
       },
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -58,7 +74,7 @@ class ReportContentBody extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ScoreCategoryRow(
-              nilaiAkademik: user.nilaiAkademik,
+              nilaiAkademik: dynamicAcademicScore,
               nilaiMental: dynamicMentalScore,
               nilaiJasmani: dynamicJasmaniScore,
               selectedCategory: selectedCategory,
@@ -69,11 +85,12 @@ class ReportContentBody extends StatelessWidget {
             const SizedBox(height: AppDimensions.md),
             ScoreLineChart(
               key: const ValueKey('integrated_trend_chart'),
-              nilaiAkademik: user.nilaiAkademik,
+              nilaiAkademik: dynamicAcademicScore,
               nilaiMental: dynamicMentalScore,
               nilaiJasmani: dynamicJasmaniScore,
               selectedCategory: selectedCategory,
               noSerdik: user.noSerdik,
+              trendList: reportData['trend'] != null ? List<Map<String, dynamic>>.from(reportData['trend']) : null,
             ),
             const SizedBox(height: AppDimensions.xxl + AppDimensions.md),
             const ReportSectionHeader(judul: 'Rincian Kompetensi'),
@@ -83,6 +100,7 @@ class ReportContentBody extends StatelessWidget {
                 key: ValueKey<String>('details_$selectedCategory'),
                 category: selectedCategory,
                 user: user,
+                rawScores: reportData['raw_scores'] != null ? Map<String, dynamic>.from(reportData['raw_scores']) : null,
               ),
             ),
             const SizedBox(height: AppDimensions.xxl),

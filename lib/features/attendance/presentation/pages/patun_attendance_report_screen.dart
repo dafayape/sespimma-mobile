@@ -12,6 +12,7 @@ import '../bloc/patun_report_event.dart';
 import '../bloc/patun_report_state.dart';
 import 'package:sespimma/features/attendance/data/datasources/attendance_remote_data_source.dart';
 import 'package:sespimma/features/attendance/data/repositories/attendance_repository_impl.dart';
+import 'package:sespimma/injection_container.dart';
 
 class PatunAttendanceReportScreen extends StatelessWidget {
   final String pokjar;
@@ -23,7 +24,7 @@ class PatunAttendanceReportScreen extends StatelessWidget {
     return BlocProvider(
       create: (context) => PatunReportBloc(
         repository: AttendanceRepositoryImpl(
-          remoteDataSource: AttendanceRemoteDataSourceMock(),
+          remoteDataSource: sl<AttendanceRemoteDataSource>(),
         ),
       )..add(CheckAutoGenerateReport(pokjar: pokjar)),
       child: _PatunAttendanceReportView(pokjar: pokjar),

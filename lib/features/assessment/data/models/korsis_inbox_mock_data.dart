@@ -38,6 +38,33 @@ class InboxItem {
     this.izinEndTime,
     this.attachmentPath,
   });
+
+  factory InboxItem.fromJson(Map<String, dynamic> json) {
+    return InboxItem(
+      id: json['id']?.toString() ?? '',
+      serdikName: json['serdik_name'] ?? json['serdikName'] ?? '',
+      pangkat: json['pangkat'] ?? '',
+      nosis: json['nosis'] ?? '',
+      pokjar: json['pokjar'] ?? '',
+      isReward: json['is_reward'] ?? json['isReward'] ?? false,
+      senderName: json['sender_name'] ?? json['senderName'] ?? '',
+      timestamp: json['timestamp'] != null ? DateTime.parse(json['timestamp']) : DateTime.now(),
+      points: (json['points'] as num?)?.toDouble() ?? 0.0,
+      description: json['description'] ?? '',
+      rewardPunishmentName: json['reward_punishment_name'] ?? json['rewardPunishmentName'] ?? '',
+      status: json['status'] ?? 'pending',
+      photoPath: json['photo_url'] ?? json['photoPath'],
+      rewardPunishmentId: json['reward_punishment_id'] ?? json['rewardPunishmentId'],
+      isIzin: json['is_izin'] ?? json['isIzin'] ?? false,
+      izinStartTime: json['izin_start_time'] != null 
+          ? DateTime.parse(json['izin_start_time']) 
+          : (json['izinStartTime'] != null ? DateTime.parse(json['izinStartTime']) : null),
+      izinEndTime: json['izin_end_time'] != null 
+          ? DateTime.parse(json['izin_end_time']) 
+          : (json['izinEndTime'] != null ? DateTime.parse(json['izinEndTime']) : null),
+      attachmentPath: json['attachment_url'] ?? json['attachmentPath'],
+    );
+  }
 }
 
 class KorsisInboxMockData {
