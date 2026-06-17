@@ -121,8 +121,9 @@ class _PatunPhysicalMonitoringScreenState
 
                 serdik['_mock_score'] = score;
                 serdik['_mock_status'] = status;
-                serdik['_senat_role'] = serdik['jabatan_senat'] ?? serdik['jabatan'];
-                return serdik;
+                 final jSenat = (serdik['jabatan_senat'] ?? '').toString();
+                 serdik['_senat_role'] = jSenat.isNotEmpty ? jSenat : null;
+                 return serdik;
               }).toList();
 
               var filteredList = listWithEWS.where((serdik) {
@@ -372,8 +373,8 @@ class _PatunPhysicalMonitoringScreenState
               const SizedBox(height: AppDimensions.md),
           itemBuilder: (context, index) {
             final serdik = serdikList[index];
-            final name = (serdik['nama_lengkap'] ?? '-').toString();
-            final noSerdik = (serdik['no_serdik'] ?? '-').toString();
+            final name = (serdik['name'] ?? serdik['nama_lengkap'] ?? '-').toString();
+            final noSerdik = (serdik['nip'] ?? serdik['nosis'] ?? serdik['no_serdik'] ?? '-').toString();
             final pangkat = (serdik['pangkat'] ?? '-').toString();
 
             final double score =
@@ -503,7 +504,7 @@ class _PatunPhysicalMonitoringScreenState
                               ),
                             ],
                           ),
-                          if (senatRole != null) ...[
+                          if (senatRole != null && senatRole.toString().isNotEmpty) ...[
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 7,
@@ -595,21 +596,24 @@ class _PatunPhysicalMonitoringScreenState
   }
 
   Widget _buildAvatar(Map<String, dynamic> serdik) {
-    final String? profilePhoto =
-        serdik['foto'] ?? serdik['profile_photo'] ?? serdik['profilePhoto'];
-
     return Container(
       width: 56,
       height: 56,
+      padding: const EdgeInsets.all(AppDimensions.xs / 2),
       decoration: BoxDecoration(
-        color: _lightGrey,
         shape: BoxShape.circle,
-        border: Border.all(color: Colors.grey.shade200, width: 2),
-        image: DecorationImage(
-          image: (profilePhoto != null && profilePhoto.isNotEmpty)
-              ? NetworkImage(profilePhoto) as ImageProvider
-              : AvatarHelper.getAvatar(null),
-          fit: BoxFit.cover,
+        border: Border.all(
+          color: Colors.blueGrey.shade100,
+          width: 2,
+        ),
+      ),
+      child: CircleAvatar(
+        radius: 24,
+        backgroundColor: Colors.blueGrey.shade50,
+        child: const Icon(
+          Icons.person_rounded,
+          color: Colors.blueGrey.shade300,
+          size: 28,
         ),
       ),
     );
