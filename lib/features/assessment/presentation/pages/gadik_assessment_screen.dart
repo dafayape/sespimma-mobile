@@ -18,7 +18,8 @@ import 'package:sespimma/features/auth/presentation/bloc/auth_state.dart';
 import 'package:sespimma/injection_container.dart';
 
 class GadikAssessmentScreen extends StatefulWidget {
-  const GadikAssessmentScreen({super.key});
+  final String? categoryOverride;
+  const GadikAssessmentScreen({super.key, this.categoryOverride});
 
   @override
   State<GadikAssessmentScreen> createState() => _GadikAssessmentScreenState();
@@ -58,6 +59,18 @@ class _GadikAssessmentScreenState extends State<GadikAssessmentScreen>
     );
     _animController.forward();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      final state = context.read<AuthBloc>().state;
+      if (state is AuthSuccess) {
+        final roleId = state.user.roleId.toLowerCase();
+        if (roleId.contains('patun')) {
+          final uPokjar = state.user.pokjar;
+          if (uPokjar.isNotEmpty && uPokjar != '-') {
+            setState(() {
+              _selectedPokjar = _normalizePokjarToRoman(uPokjar);
+            });
+          }
+        }
+      }
       _fetchData();
     });
   }
@@ -75,11 +88,13 @@ class _GadikAssessmentScreenState extends State<GadikAssessmentScreen>
     setState(() => _isLoading = true);
     try {
       final role = _getCurrentRole(context);
-      String category = 'Akademik';
-      if (role == 'Patun') {
-        category = 'Mental Kepribadian';
-      } else if (role == 'Tim Medis' || role == 'Korsis') {
-        category = 'Jasmani';
+      String category = widget.categoryOverride ?? 'Akademik';
+      if (widget.categoryOverride == null) {
+        if (role == 'Patun') {
+          category = 'Mental Kepribadian';
+        } else if (role == 'Tim Medis' || role == 'Korsis') {
+          category = 'Jasmani';
+        }
       }
 
       final dataSource = sl<AssessmentRemoteDataSource>();
@@ -195,13 +210,24 @@ class _GadikAssessmentScreenState extends State<GadikAssessmentScreen>
     BuildContext context,
     Map<String, String> serdik,
   ) {
+    final role = _getCurrentRole(context);
+    String category = widget.categoryOverride ?? 'Akademik';
+    if (widget.categoryOverride == null) {
+      if (role == 'Patun') {
+        category = 'Mental Kepribadian';
+      } else if (role == 'Tim Medis' || role == 'Korsis') {
+        category = 'Jasmani';
+      }
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => NumericInputDialogSheet(
         serdik: serdik,
-        currentRole: _getCurrentRole(context),
+        currentRole: role,
+        category: category,
         onSaveScore: _onSaveScore,
       ),
     );
@@ -321,21 +347,24 @@ class _GadikAssessmentScreenState extends State<GadikAssessmentScreen>
     AppNotifier.showInfo(context, msg);
   }
 
-  String _mapRomanToArabic(String roman) {
-    switch (roman) {
-      case 'POKJAR I':
-        return 'POKJAR I';
-      case 'POKJAR II':
-        return 'POKJAR II';
-      case 'POKJAR III':
-        return 'POKJAR III';
-      case 'POKJAR IV':
-        return 'POKJAR IV';
-      case 'POKJAR V':
-        return 'POKJAR V';
-      default:
-        return roman;
-    }
+  String _normalizePokjarToRoman(String pokjar) {
+    final clean = pokjar.toUpperCase().replaceAll(' ', '');
+    if (clean.contains('III') || clean.contains('3')) return 'POKJAR III';
+    if (clean.contains('II') || clean.contains('2')) return 'POKJAR II';
+    if (clean.contains('IV') || clean.contains('4')) return 'POKJAR IV';
+    if (clean.contains('V') || clean.contains('5')) return 'POKJAR V';
+    if (clean.contains('I') || clean.contains('1')) return 'POKJAR I';
+    return pokjar;
+  }
+
+  String _normalizePokjarToArabic(String pokjar) {
+    final clean = pokjar.toUpperCase().replaceAll(' ', '');
+    if (clean.contains('III') || clean.contains('3')) return 'POKJAR 3';
+    if (clean.contains('II') || clean.contains('2')) return 'POKJAR 2';
+    if (clean.contains('IV') || clean.contains('4')) return 'POKJAR 4';
+    if (clean.contains('V') || clean.contains('5')) return 'POKJAR 5';
+    if (clean.contains('I') || clean.contains('1')) return 'POKJAR 1';
+    return pokjar;
   }
 
   @override
@@ -347,7 +376,8 @@ class _GadikAssessmentScreenState extends State<GadikAssessmentScreen>
           serdik['nrp']!.toLowerCase().contains(q);
       final matchPokjar =
           _selectedPokjar == 'Semua Pokjar' ||
-          serdik['pokjar'] == _mapRomanToArabic(_selectedPokjar);
+          _normalizePokjarToArabic(serdik['pokjar'] ?? '') ==
+              _normalizePokjarToArabic(_selectedPokjar);
       final matchStatus =
           _selectedStatus == 'Semua Status' ||
           serdik['status'] == _selectedStatus;
@@ -359,9 +389,20 @@ class _GadikAssessmentScreenState extends State<GadikAssessmentScreen>
       appBar: AppBar(
         backgroundColor: AppColors.primaryNavy,
         centerTitle: true,
-        title: const Text(
-          'Input Penilaian Serdik',
-          style: TextStyle(
+        automaticallyImplyLeading: Navigator.canPop(context),
+        leading: Navigator.canPop(context)
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+                onPressed: () => Navigator.pop(context),
+              )
+            : null,
+        title: Text(
+          widget.categoryOverride == 'Mental Kepribadian'
+              ? 'Penilaian Mental'
+              : widget.categoryOverride == 'Jasmani'
+                  ? 'Penilaian Jasmani'
+                  : 'Penilaian Akademik',
+          style: const TextStyle(
             color: AppColors.textOnPrimary,
             fontWeight: FontWeight.w700,
             fontSize: AppDimensions.fontXxl,
@@ -396,17 +437,19 @@ class _GadikAssessmentScreenState extends State<GadikAssessmentScreen>
                     },
                   ),
                 ),
-                const SizedBox(width: AppDimensions.md),
-                Expanded(
-                  child: PokjarDropdownWidget(
-                    selectedPokjar: _selectedPokjar,
-                    pokjars: _pokjars,
-                    onChanged: (val) {
-                      setState(() => _selectedPokjar = val);
-                      _animController.forward(from: 0.0);
-                    },
+                if (_getCurrentRole(context) != 'Patun') ...[
+                  const SizedBox(width: AppDimensions.md),
+                  Expanded(
+                    child: PokjarDropdownWidget(
+                      selectedPokjar: _selectedPokjar,
+                      pokjars: _pokjars,
+                      onChanged: (val) {
+                        setState(() => _selectedPokjar = val);
+                        _animController.forward(from: 0.0);
+                      },
+                    ),
                   ),
-                ),
+                ],
                 const SizedBox(width: AppDimensions.sm),
                 StatusFilterButtonWidget(
                   selectedStatus: _selectedStatus,

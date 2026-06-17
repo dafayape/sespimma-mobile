@@ -10,6 +10,7 @@ import 'package:sespimma/features/assessment/presentation/widgets/status_filter_
 import 'package:sespimma/features/auth/data/datasources/serdik_real_data.dart';
 import 'package:sespimma/features/assessment/presentation/pages/korsis_generate_mental_report_screen.dart';
 import 'package:sespimma/features/assessment/presentation/pages/korsis_mental_form_screen.dart';
+import 'package:sespimma/features/assessment/presentation/pages/gadik_assessment_screen.dart';
 import 'package:sespimma/core/utils/avatar_helper.dart';
 import 'package:sespimma/features/assessment/data/models/korsis_inbox_mock_data.dart';
 import 'package:sespimma/features/leadership_report/domain/services/score_calculator_service.dart';
@@ -153,6 +154,18 @@ class _KorsisMentalMonitoringScreenState
             context,
             MaterialPageRoute(
               builder: (_) => const KorsisMentalFormScreen(isReward: false),
+            ),
+          );
+          if (mounted) setState(() {});
+        },
+        onNumeric: () async {
+          Navigator.pop(context);
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const GadikAssessmentScreen(
+                categoryOverride: 'Mental Kepribadian',
+              ),
             ),
           );
           if (mounted) setState(() {});
@@ -990,8 +1003,13 @@ class _KorsisMentalMonitoringScreenState
 class _InputTypeSheet extends StatelessWidget {
   final VoidCallback onReward;
   final VoidCallback onPunishment;
+  final VoidCallback onNumeric;
 
-  const _InputTypeSheet({required this.onReward, required this.onPunishment});
+  const _InputTypeSheet({
+    required this.onReward,
+    required this.onPunishment,
+    required this.onNumeric,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1041,12 +1059,21 @@ class _InputTypeSheet extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: AppDimensions.xxl),
+              _SheetOptionCard(
+                title: 'Nilai Rutin (Angka)',
+                subtitle: 'Input Nilai Moral, Disiplin, Kepemimpinan, dll.',
+                icon: Icons.edit_note_rounded,
+                color: const Color(0xFF0D47A1),
+                bgColor: const Color(0xFFE3F2FD),
+                onTap: onNumeric,
+              ),
+              const SizedBox(height: AppDimensions.lg),
               Row(
                 children: [
                   Expanded(
                     child: _SheetOptionCard(
                       title: 'Reward',
-                      subtitle: 'Penilaian Positif',
+                      subtitle: 'Pujian / Positif',
                       icon: Icons.thumb_up_rounded,
                       color: const Color(0xFF1B5E20),
                       bgColor: const Color(0xFFE8F5E9),
@@ -1057,7 +1084,7 @@ class _InputTypeSheet extends StatelessWidget {
                   Expanded(
                     child: _SheetOptionCard(
                       title: 'Punishment',
-                      subtitle: 'Penilaian Negatif',
+                      subtitle: 'Teguran / Negatif',
                       icon: Icons.thumb_down_rounded,
                       color: const Color(0xFFC62828),
                       bgColor: const Color(0xFFFFEBEE),

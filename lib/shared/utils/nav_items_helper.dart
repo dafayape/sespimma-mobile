@@ -7,11 +7,10 @@ import '../../features/attendance/presentation/pages/attendance_screen.dart';
 import '../../features/dashboard/presentation/pages/home_screen.dart';
 import 'package:sespimma/features/assessment/presentation/pages/medis_health_monitoring_screen.dart';
 import 'package:sespimma/features/assessment/presentation/pages/operator_jasmani_screen.dart';
-import '../../features/assessment/presentation/pages/patun_mental_monitoring_screen.dart';
 import '../../features/assessment/presentation/pages/patun_physical_monitoring_screen.dart';
 import '../../features/assessment/presentation/pages/korsis_inbox_screen.dart';
-import '../../features/assessment/presentation/pages/gadik_mental_monitoring_screen.dart';
 import '../../features/assessment/presentation/pages/korsis_mental_monitoring_screen.dart';
+import '../../features/assessment/presentation/pages/gadik_assessment_screen.dart';
 
 import '../../features/leadership_dashboard/presentation/pages/pimpinan_home_screen.dart';
 import '../../features/attendance/presentation/pages/pimpinan_attendance_monitoring_screen.dart';
@@ -61,7 +60,7 @@ List<NavItem> getNavItemsByRole(String roleId) {
           label: 'Penilaian',
           icon: AppIcons.shieldCheck,
           activeIcon: AppIcons.shieldCheckFill,
-          screen: GadikMentalMonitoringScreen(),
+          screen: GadikAssessmentScreen(),
         ),
         NavItem(
           label: 'Profil',
@@ -76,7 +75,7 @@ List<NavItem> getNavItemsByRole(String roleId) {
           label: 'Mental',
           icon: AppIcons.shieldCheck,
           activeIcon: AppIcons.shieldCheckFill,
-          screen: PatunMentalMonitoringScreen(),
+          screen: GadikAssessmentScreen(),
         ),
         NavItem(
           label: 'Jasmani',

@@ -13,6 +13,7 @@ import 'package:sespimma/features/leadership_dashboard/data/datasources/pimpinan
 class NumericInputDialogSheet extends StatefulWidget {
   final Map<String, String> serdik;
   final String currentRole;
+  final String? category;
   final Function(
     double,
     String,
@@ -27,6 +28,7 @@ class NumericInputDialogSheet extends StatefulWidget {
     super.key,
     required this.serdik,
     required this.currentRole,
+    this.category,
     required this.onSaveScore,
   });
 
@@ -50,10 +52,12 @@ class _NumericInputDialogSheetState extends State<NumericInputDialogSheet> {
   @override
   void initState() {
     super.initState();
-    localCategory = 'Akademik';
-    if (widget.currentRole == 'Patun') localCategory = 'Mental Kepribadian';
-    if (widget.currentRole == 'Tim Medis' || widget.currentRole == 'Korsis') {
-      localCategory = 'Jasmani';
+    localCategory = widget.category ?? 'Akademik';
+    if (widget.category == null) {
+      if (widget.currentRole == 'Patun') localCategory = 'Mental Kepribadian';
+      if (widget.currentRole == 'Tim Medis' || widget.currentRole == 'Korsis') {
+        localCategory = 'Jasmani';
+      }
     }
     _setupCategory(localCategory);
     _loadActualScores();

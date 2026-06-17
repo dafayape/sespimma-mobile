@@ -4,7 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:sespimma/core/constants/app_dimensions.dart';
 import 'package:sespimma/features/assessment/presentation/widgets/assessment_search_bar_widget.dart';
 import 'package:sespimma/features/assessment/presentation/widgets/status_filter_button_widget.dart';
-import 'package:sespimma/features/auth/data/datasources/serdik_real_data.dart';
+import 'package:sespimma/features/assessment/data/datasources/assessment_remote_data_source.dart';
+import 'package:sespimma/injection_container.dart';
 import 'package:sespimma/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:sespimma/features/auth/presentation/bloc/auth_state.dart';
 
@@ -27,8 +28,35 @@ class _PatunPhysicalMonitoringScreenState
   String _searchQuery = '';
   String _selectedFilter = 'Semua';
   final TextEditingController _searchController = TextEditingController();
+  bool _isLoading = false;
+  List<Map<String, dynamic>> _students = [];
 
   final List<String> _filterOptions = ['Semua', 'Aman', 'Warning', 'Kritis'];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchData();
+  }
+
+  Future<void> _fetchData() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+    try {
+      final dataSource = sl<AssessmentRemoteDataSource>();
+      final list = await dataSource.getStudents();
+      if (mounted) {
+        setState(() {
+          _students = list;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -54,87 +82,102 @@ class _PatunPhysicalMonitoringScreenState
           ),
         ),
       ),
-      body: BlocBuilder<AuthBloc, AuthState>(
-        builder: (context, state) {
-          if (state is AuthSuccess) {
-            final user = state.user;
-            final userPokjar = user.pokjar;
+      body: RefreshIndicator(
+        onRefresh: _fetchData,
+        color: _primaryNavy,
+        child: BlocBuilder<AuthBloc, AuthState>(
+          builder: (context, state) {
+            if (state is AuthSuccess) {
+              if (_isLoading) {
+                return const Center(
+                  child: CircularProgressIndicator(color: _primaryNavy),
+                );
+              }
+              final user = state.user;
+              final userPokjar = user.pokjar;
 
-            final baseList = SerdikRealData.records
-                .where((r) => r['kelompok_kelas'] == userPokjar)
-                .toList();
+              final baseList = _students
+                  .where((r) =>
+                      _normalizePokjar(r['group_name'] ?? r['kelompok_kelas'] ?? '') ==
+                      _normalizePokjar(userPokjar))
+                  .toList();
 
-            final allRecaps = ScoreCalculatorService.generateRealReports();
+              final listWithEWS = baseList.map((student) {
+                final serdik = Map<String, dynamic>.from(student);
+                final noSerdik = (serdik['no_serdik'] ?? serdik['nip'] ?? '').toString();
 
-            final listWithEWS = baseList.asMap().entries.map((entry) {
-              final serdik = Map<String, dynamic>.from(entry.value);
-              final noSerdik = serdik['no_serdik'] as String? ?? '';
+                final raw = ScoreCalculatorService.generateSimulatedScores(noSerdik);
+                final finalRecap = ScoreCalculatorService.calculateFinalRecap(serdik, raw);
+                final double score = finalRecap.physicalScore;
 
-              final finalRecap = allRecaps.firstWhere(
-                (r) => r.id == noSerdik,
-                orElse: () => allRecaps.first,
-              );
-              final double score = finalRecap.physicalScore;
+                final String status;
+                if (score >= 80.0) {
+                  status = 'Aman';
+                } else if (score >= 70.0) {
+                  status = 'Warning';
+                } else {
+                  status = 'Kritis';
+                }
 
-              final String status;
-              if (score >= 80.0) {
-                status = 'Aman';
-              } else if (score >= 70.0) {
-                status = 'Warning';
-              } else {
-                status = 'Kritis';
+                serdik['_mock_score'] = score;
+                serdik['_mock_status'] = status;
+                serdik['_senat_role'] = serdik['jabatan_senat'] ?? serdik['jabatan'];
+                return serdik;
+              }).toList();
+
+              var filteredList = listWithEWS.where((serdik) {
+                final name = (serdik['nama_lengkap'] ?? serdik['name'] ?? '')
+                    .toString()
+                    .toLowerCase();
+                final noSerdik = (serdik['no_serdik'] ?? serdik['nip'] ?? '')
+                    .toString()
+                    .toLowerCase();
+                final query = _searchQuery.toLowerCase();
+                return name.contains(query) || noSerdik.contains(query);
+              }).toList();
+
+              if (_selectedFilter != 'Semua') {
+                filteredList = filteredList
+                    .where((serdik) => serdik['_mock_status'] == _selectedFilter)
+                    .toList();
               }
 
-              serdik['_mock_score'] = score;
-              serdik['_mock_status'] = status;
-              serdik['_senat_role'] = serdik['jabatan_senat'];
-              return serdik;
-            }).toList();
+              filteredList.sort((a, b) {
+                final scoreA = (a['_mock_score'] as double?) ?? 100.0;
+                final scoreB = (b['_mock_score'] as double?) ?? 100.0;
+                return scoreA.compareTo(scoreB);
+              });
 
-            var filteredList = listWithEWS.where((serdik) {
-              final name = (serdik['nama_lengkap'] ?? '')
-                  .toString()
-                  .toLowerCase();
-              final noSerdik = (serdik['no_serdik'] ?? '')
-                  .toString()
-                  .toLowerCase();
-              final query = _searchQuery.toLowerCase();
-              return name.contains(query) || noSerdik.contains(query);
-            }).toList();
-
-            if (_selectedFilter != 'Semua') {
-              filteredList = filteredList
-                  .where((serdik) => serdik['_mock_status'] == _selectedFilter)
-                  .toList();
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildHeaderBlock(userPokjar, baseList.length),
+                  Divider(
+                    height: AppDimensions.dividerHeight,
+                    color: Colors.grey.shade200,
+                    thickness: AppDimensions.dividerHeight,
+                  ),
+                  Expanded(
+                    child: filteredList.isEmpty
+                        ? ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            children: [
+                              SizedBox(
+                                height: MediaQuery.of(context).size.height * 0.6,
+                                child: _buildEmptyState(userPokjar),
+                              ),
+                            ],
+                          )
+                        : _buildSerdikList(filteredList),
+                  ),
+                ],
+              );
             }
-
-            filteredList.sort((a, b) {
-              final scoreA = (a['_mock_score'] as double?) ?? 100.0;
-              final scoreB = (b['_mock_score'] as double?) ?? 100.0;
-              return scoreA.compareTo(scoreB);
-            });
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildHeaderBlock(userPokjar, baseList.length),
-                Divider(
-                  height: AppDimensions.dividerHeight,
-                  color: Colors.grey.shade200,
-                  thickness: AppDimensions.dividerHeight,
-                ),
-                Expanded(
-                  child: filteredList.isEmpty
-                      ? _buildEmptyState(userPokjar)
-                      : _buildSerdikList(filteredList),
-                ),
-              ],
+            return const Center(
+              child: CircularProgressIndicator(color: _primaryNavy),
             );
-          }
-          return const Center(
-            child: CircularProgressIndicator(color: _primaryNavy),
-          );
-        },
+          },
+        ),
       ),
     );
   }
@@ -564,5 +607,15 @@ class _PatunPhysicalMonitoringScreenState
         ),
       ),
     );
+  }
+
+  String _normalizePokjar(String pokjar) {
+    final clean = pokjar.toUpperCase().replaceAll(' ', '');
+    if (clean.contains('III') || clean.contains('3')) return 'POKJAR III';
+    if (clean.contains('II') || clean.contains('2')) return 'POKJAR II';
+    if (clean.contains('IV') || clean.contains('4')) return 'POKJAR IV';
+    if (clean.contains('V') || clean.contains('5')) return 'POKJAR V';
+    if (clean.contains('I') || clean.contains('1')) return 'POKJAR I';
+    return pokjar;
   }
 }
