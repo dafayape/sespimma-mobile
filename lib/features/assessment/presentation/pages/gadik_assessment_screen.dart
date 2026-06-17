@@ -112,7 +112,7 @@ class _GadikAssessmentScreenState extends State<GadikAssessmentScreen>
           'name': student['name'] ?? '',
           'nrp': student['nrp'] ?? '',
           'nosis': student['no_serdik'] ?? '',
-          'pokjar': (student['pokjar'] ?? '').toString().toUpperCase(),
+          'pokjar': (student['group_name'] ?? student['pokjar'] ?? student['kelompok_kelas'] ?? '').toString().toUpperCase(),
           'status': sudahDinilai ? 'Sudah Dinilai' : 'Belum Dinilai',
           'jenisKelamin': student['jenis_kelamin'] ?? 'Laki-laki',
           'tanggalLahir': student['tanggal_lahir'] ?? '',

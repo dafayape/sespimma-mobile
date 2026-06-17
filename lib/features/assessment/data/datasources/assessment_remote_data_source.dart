@@ -8,7 +8,7 @@ class AssessmentRemoteDataSource {
   Future<List<Map<String, dynamic>>> getStudents({String? search, String? pokjar}) async {
     try {
       final params = <String, dynamic>{
-        'limit': 100,
+        'limit': 1000,
       };
       if (search != null && search.isNotEmpty) {
         params['search'] = search;

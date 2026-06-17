@@ -245,10 +245,11 @@ class _NumericInputDialogSheetState extends State<NumericInputDialogSheet> {
   }
 
   bool _isCategoryAllowed(String cat, String role) {
+    if (widget.category == cat) return true;
     if (role == 'Gadik' && cat != 'Akademik') return false;
     if (role == 'Patun' && cat != 'Mental Kepribadian') return false;
     if (role == 'Tim Medis' && cat != 'Jasmani') return false;
-    if (role == 'Korsis' && cat != 'Jasmani') return false;
+    if (role == 'Korsis' && cat != 'Jasmani' && cat != 'Mental Kepribadian') return false;
     return true;
   }
 
