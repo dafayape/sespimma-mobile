@@ -9,6 +9,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:maps_toolkit/maps_toolkit.dart' as mp;
 import 'package:sespimma/core/utils/icon_mapper.dart';
 import 'package:sespimma/core/utils/app_notifier.dart';
+import 'package:sespimma/core/utils/avatar_helper.dart';
 
 import '../../domain/models/map_tile_mode.dart';
 
@@ -30,6 +31,7 @@ class GeofenceMapWidget extends StatefulWidget {
   final double? fabBottomBase;
   final Widget? customFab;
   final Widget? contentOverlay;
+  final List<Map<String, dynamic>>? serdikMarkers;
 
   const GeofenceMapWidget({
     super.key,
@@ -41,6 +43,7 @@ class GeofenceMapWidget extends StatefulWidget {
     this.fabBottomBase,
     this.customFab,
     this.contentOverlay,
+    this.serdikMarkers,
   });
 
   @override
@@ -553,6 +556,82 @@ class _GeofenceMapWidgetState extends State<GeofenceMapWidget>
           ),
         MarkerLayer(
           markers: [
+            if (widget.serdikMarkers != null)
+              ...widget.serdikMarkers!.map((serdik) {
+                final double lat = (serdik['mock_lat'] as num?)?.toDouble() ?? (serdik['latitude'] as num?)?.toDouble() ?? 0.0;
+                final double lng = (serdik['mock_lng'] as num?)?.toDouble() ?? (serdik['longitude'] as num?)?.toDouble() ?? 0.0;
+                final Color color = (serdik['mock_color'] ?? Colors.grey) as Color;
+                final String? profilePhoto = serdik['profile_photo'] as String?;
+
+                return Marker(
+                  point: LatLng(lat, lng),
+                  width: 44,
+                  height: 44,
+                  child: GestureDetector(
+                    onTap: () => _showSerdikInfo(serdik),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: color.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white,
+                            border: Border.all(color: color, width: 2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.15),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: profilePhoto != null && profilePhoto.isNotEmpty && profilePhoto != "/default-avatar.png"
+                                ? Image(
+                                    image: AvatarHelper.getAvatar(profilePhoto),
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) => Icon(
+                                      Icons.person,
+                                      size: 18,
+                                      color: color,
+                                    ),
+                                  )
+                                : Icon(
+                                    Icons.person,
+                                    size: 18,
+                                    color: color,
+                                  ),
+                          ),
+                        ),
+                        Positioned(
+                          right: 2,
+                          bottom: 2,
+                          child: Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              color: color,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 1.5),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
             if (_userLatLng != null)
               Marker(
                 point: _userLatLng!,
@@ -605,6 +684,215 @@ class _GeofenceMapWidgetState extends State<GeofenceMapWidget>
               ),
             ),
           ],
+        );
+      },
+    );
+  }
+
+  void _showSerdikInfo(Map<String, dynamic> serdik) {
+    HapticFeedback.lightImpact();
+    final String name = serdik['nama_lengkap'] ?? '-';
+    final String pangkat = serdik['pangkat'] ?? '-';
+    final String noSerdik = serdik['no_serdik'] ?? '-';
+    final String status = serdik['mock_status'] ?? '-';
+    final double distance = (serdik['mock_distance'] as num?)?.toDouble() ?? 999.0;
+    final String? profilePhoto = serdik['profile_photo'] as String?;
+
+    final bool isInsideZone =
+        widget.zones.isNotEmpty && distance <= widget.zones.first.radiusMeters;
+    final zoneName = widget.zones.isNotEmpty ? widget.zones.first.name : '-';
+    final activityName = widget.zones.isNotEmpty ? widget.zones.first.activityName : '-';
+
+    Color badgeColor = Colors.grey;
+    if (status == 'Hadir') {
+      badgeColor = Colors.green.shade600;
+    } else if (status == 'Telat') {
+      badgeColor = Colors.yellow.shade700;
+    } else if (status == 'Tanpa Keterangan') {
+      badgeColor = Colors.red.shade600;
+    } else if (status == 'Sakit') {
+      badgeColor = Colors.pink.shade400;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 48,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.grey.shade200,
+                        border: Border.all(
+                          color: Colors.grey.shade300,
+                          width: 2,
+                        ),
+                        image: DecorationImage(
+                          image: AvatarHelper.getAvatar(profilePhoto),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name,
+                            style: const TextStyle(
+                              fontSize: AppDimensions.fontLg,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF001C40),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '$pangkat • $noSerdik',
+                            style: TextStyle(
+                              fontSize: AppDimensions.fontSm,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.blueGrey.shade400,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          if (status == 'Izin')
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.blue.shade200),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Izin',
+                                    style: TextStyle(
+                                      fontSize: AppDimensions.fontXs,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.blue.shade700,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Icon(
+                                    Icons.person,
+                                    size: 12,
+                                    color: Colors.blue.shade700,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'AKBP Budi Setiawan',
+                                    style: TextStyle(
+                                      fontSize: AppDimensions.fontXs,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.blue.shade700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          else
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: badgeColor.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: badgeColor.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              child: Text(
+                                status,
+                                style: TextStyle(
+                                  fontSize: AppDimensions.fontXs,
+                                  fontWeight: FontWeight.w800,
+                                  color: badgeColor,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.blueGrey.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        AppIcons.mapPinFill,
+                        color: Color(0xFF001C40),
+                        size: 24,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Lokasi Realtime',
+                              style: TextStyle(
+                                fontSize: AppDimensions.fontXs,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.blueGrey,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              isInsideZone
+                                  ? '$activityName\n$zoneName'
+                                  : 'Luar Zona',
+                              style: const TextStyle(
+                                fontSize: AppDimensions.fontMd,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF001C40),
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
         );
       },
     );

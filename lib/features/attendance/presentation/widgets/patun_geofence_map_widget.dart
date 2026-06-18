@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -8,10 +10,10 @@ import 'package:latlong2/latlong.dart';
 import 'package:sespimma/core/constants/app_dimensions.dart';
 import 'package:sespimma/core/utils/icon_mapper.dart';
 import 'package:sespimma/features/attendance/domain/models/map_tile_mode.dart';
-import 'package:sespimma/features/auth/data/datasources/serdik_real_data.dart';
-import 'package:sespimma/features/attendance/data/services/location_sync_service.dart';
 import 'package:sespimma/core/utils/app_notifier.dart';
 import 'package:sespimma/core/utils/avatar_helper.dart';
+import 'package:sespimma/features/attendance/data/datasources/kegiatan_remote_data_source.dart';
+import 'package:sespimma/injection_container.dart';
 
 class PatunGeofenceMapWidget extends StatefulWidget {
   final String pokjar;
@@ -25,7 +27,7 @@ class PatunGeofenceMapWidget extends StatefulWidget {
 class _PatunGeofenceMapWidgetState extends State<PatunGeofenceMapWidget>
     with TickerProviderStateMixin, WidgetsBindingObserver {
   late final MapController _mapController;
-  MapTileMode _tileMode = MapTileMode.normal;
+  MapTileMode _tileMode = MapTileMode.satellite;
   bool _isRefreshingMap = false;
   bool _isLoading = false;
 
@@ -74,14 +76,28 @@ class _PatunGeofenceMapWidgetState extends State<PatunGeofenceMapWidget>
       }
     });
 
+    _fetchZonesFromApi();
     _checkPermissionsAndStartTracking();
-    _generateMockSerdikData();
+    _fetchLiveLocations();
 
     _refreshTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
       if (mounted) {
-        _generateMockSerdikData();
+        _fetchLiveLocations();
       }
     });
+  }
+
+  Future<void> _fetchZonesFromApi() async {
+    try {
+      final kegiatanSource = sl<KegiatanRemoteDataSource>();
+      final zones = await kegiatanSource.fetchActiveZones();
+      if (mounted) {
+        AttendanceZones.setZonesFromApi(zones);
+        setState(() {
+          _zones = AttendanceZones.activeZones;
+        });
+      }
+    } catch (_) {}
   }
 
   void _setLoadingState(bool loading) {
@@ -160,7 +176,8 @@ class _PatunGeofenceMapWidgetState extends State<PatunGeofenceMapWidget>
     _positionStreamSubscription =
         Geolocator.getPositionStream(locationSettings: locationSettings).listen(
           (Position pos) {
-            if (mounted && pos.latitude.isFinite && pos.longitude.isFinite) {
+            if (!mounted) return;
+            if (pos.latitude.isFinite && pos.longitude.isFinite) {
               setState(() {
                 _userLatLng = LatLng(pos.latitude, pos.longitude);
               });
@@ -200,7 +217,7 @@ class _PatunGeofenceMapWidgetState extends State<PatunGeofenceMapWidget>
   void didUpdateWidget(covariant PatunGeofenceMapWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.pokjar != widget.pokjar) {
-      _generateMockSerdikData();
+      _fetchLiveLocations();
     }
   }
 
@@ -216,73 +233,88 @@ class _PatunGeofenceMapWidgetState extends State<PatunGeofenceMapWidget>
     super.dispose();
   }
 
-  void _generateMockSerdikData() {
-    final baseList = SerdikRealData.records
-        .where(
-          (r) => widget.pokjar.isEmpty || r['kelompok_kelas'] == widget.pokjar,
-        )
-        .toList();
+  Future<void> _fetchLiveLocations() async {
+    try {
+      final dio = sl<Dio>();
+      final response = await dio.get(
+        '/mobile/location/live',
+        queryParameters: {'pokjar': widget.pokjar},
+      );
 
-    final List<Map<String, dynamic>> generated = [];
-    const Distance distanceCalc = Distance();
+      if (response.statusCode == 200 && response.data != null) {
+        final List<dynamic> dataList = response.data['data'] ?? [];
+        final List<Map<String, dynamic>> generated = [];
+        const Distance distanceCalc = Distance();
 
-    for (int i = 0; i < baseList.length; i++) {
-      final serdik = Map<String, dynamic>.from(baseList[i]);
-      final noSerdik = serdik['no_serdik']?.toString() ?? '';
+        for (var item in dataList) {
+          final mapItem = Map<String, dynamic>.from(item);
+          final double lat = (mapItem['latitude'] as num).toDouble();
+          final double lng = (mapItem['longitude'] as num).toDouble();
 
-      final backendData = MockBackendDatabase.serdikLocations[noSerdik];
+          double distanceOffset = 999999.0;
+          if (_zones.isNotEmpty) {
+            distanceOffset = distanceCalc.as(
+              LengthUnit.Meter,
+              LatLng(lat, lng),
+              LatLng(_zones.first.latitude, _zones.first.longitude),
+            );
+          }
 
-      if (backendData == null) continue;
-
-      final double lat = backendData['latitude'];
-      final double lng = backendData['longitude'];
-
-      double distanceOffset = 999999.0;
-      if (_zones.isNotEmpty) {
-        distanceOffset = distanceCalc.as(
-          LengthUnit.Meter,
-          LatLng(lat, lng),
-          LatLng(_zones.first.latitude, _zones.first.longitude),
-        );
-      }
-
-      String status = 'Belum Absen';
-      Color color = Colors.grey;
-
-      if (_zones.isNotEmpty) {
-        final zone = _zones.first;
-        final now = DateTime.now();
-        if (distanceOffset <= zone.radiusMeters) {
-          if (now.isAfter(zone.deadline)) {
-            status = 'Telat';
-            color = Colors.yellow.shade700;
-          } else {
+          // Convert backend status to display status
+          String status = 'Belum Absen';
+          Color color = Colors.grey;
+          
+          final backendStatus = mapItem['status']?.toString().toLowerCase() ?? 'tk';
+          if (backendStatus == 'hadir') {
             status = 'Hadir';
-            color = Colors.grey;
-          }
-        } else {
-          if (now.isAfter(zone.cutoffTime)) {
-            status = 'Tanpa Keterangan';
-            color = Colors.red.shade600;
+            color = Colors.green.shade600;
+          } else if (backendStatus == 'sakit') {
+            status = 'Sakit';
+            color = Colors.pink.shade400;
+          } else if (backendStatus == 'izin') {
+            status = 'Izin';
+            color = Colors.orange;
           } else {
-            status = 'Belum Absen';
-            color = Colors.grey;
+            // "tk" or not checked in
+            if (_zones.isNotEmpty) {
+              final zone = _zones.first;
+              final now = DateTime.now();
+              if (now.isAfter(zone.cutoffTime)) {
+                status = 'Tanpa Keterangan';
+                color = Colors.red.shade600;
+              } else {
+                status = 'Belum Absen';
+                color = Colors.grey;
+              }
+            } else {
+              status = 'Belum Absen';
+              color = Colors.grey;
+            }
           }
+
+          final serdikData = {
+            'no_serdik': mapItem['nrp'] ?? '',
+            'nama_lengkap': mapItem['name'] ?? '',
+            'pangkat': mapItem['pangkat'] ?? '',
+            'profile_photo': mapItem['profile_photo'],
+            'mock_lat': lat,
+            'mock_lng': lng,
+            'mock_status': status,
+            'mock_color': color,
+            'mock_distance': distanceOffset,
+          };
+          generated.add(serdikData);
+        }
+
+        if (mounted) {
+          setState(() {
+            _serdikMarkers = generated;
+          });
         }
       }
-
-      serdik['mock_lat'] = lat;
-      serdik['mock_lng'] = lng;
-      serdik['mock_status'] = status;
-      serdik['mock_color'] = color;
-      serdik['mock_distance'] = distanceOffset;
-
-      generated.add(serdik);
+    } catch (e) {
+      developer.log('Error fetching live locations: $e', name: 'PatunGeofenceMap');
     }
-
-    setState(() {
-      _serdikMarkers = generated;
-    });
   }
 
   void _animateTo(LatLng target) {
@@ -695,29 +727,76 @@ class _PatunGeofenceMapWidgetState extends State<PatunGeofenceMapWidget>
         MarkerLayer(
           markers: [
             ..._serdikMarkers.map((serdik) {
-              final double lat = serdik['mock_lat'];
-              final double lng = serdik['mock_lng'];
-              final Color color = serdik['mock_color'];
+              final double lat = (serdik['mock_lat'] as num?)?.toDouble() ?? 0.0;
+              final double lng = (serdik['mock_lng'] as num?)?.toDouble() ?? 0.0;
+              final Color color = (serdik['mock_color'] ?? Colors.grey) as Color;
+              final String? profilePhoto = serdik['profile_photo'] as String?;
 
               return Marker(
                 point: LatLng(lat, lng),
-                width: 14,
-                height: 14,
+                width: 44,
+                height: 44,
                 child: GestureDetector(
                   onTap: () => _showSerdikInfo(serdik),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: color,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 1.5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: color.withValues(alpha: 0.5),
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: color.withValues(alpha: 0.2),
                         ),
-                      ],
-                    ),
+                      ),
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white,
+                          border: Border.all(color: color, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.15),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: profilePhoto != null && profilePhoto.isNotEmpty && profilePhoto != "/default-avatar.png"
+                              ? Image(
+                                  image: AvatarHelper.getAvatar(profilePhoto),
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) => Icon(
+                                    Icons.person,
+                                    size: 18,
+                                    color: color,
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.person,
+                                  size: 18,
+                                  color: color,
+                                ),
+                        ),
+                      ),
+                      Positioned(
+                        right: 2,
+                        bottom: 2,
+                        child: Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 1.5),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               );
@@ -801,13 +880,12 @@ class _PatunGeofenceMapWidgetState extends State<PatunGeofenceMapWidget>
                 : () async {
                     HapticFeedback.mediumImpact();
                     setState(() => _isRefreshingMap = true);
-                    await Future.delayed(const Duration(milliseconds: 1000));
+                    await _fetchZonesFromApi();
                     if (mounted) {
                       setState(() {
-                        _zones = AttendanceZones.activeZones;
-                        _generateMockSerdikData();
                         _isRefreshingMap = false;
                       });
+                      _fetchLiveLocations();
                     }
                   },
           ),

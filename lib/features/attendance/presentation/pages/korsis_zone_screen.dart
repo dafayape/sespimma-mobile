@@ -1,5 +1,8 @@
+import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:sespimma/core/constants/app_dimensions.dart';
 import 'package:sespimma/core/theme/app_colors.dart';
 import 'package:sespimma/core/utils/app_notifier.dart';
@@ -9,6 +12,9 @@ import 'package:sespimma/features/attendance/presentation/pages/korsis_zone_mark
 import 'package:sespimma/features/attendance/presentation/widgets/geofence_map_widget.dart';
 import 'package:sespimma/features/attendance/presentation/widgets/korsis_zone_info_sheet.dart';
 import 'package:sespimma/features/attendance/presentation/widgets/korsis_zone_qr_sheet.dart';
+import 'package:sespimma/injection_container.dart';
+
+import 'package:sespimma/features/attendance/data/datasources/kegiatan_remote_data_source.dart';
 
 class KorsisZoneScreen extends StatefulWidget {
   const KorsisZoneScreen({super.key});
@@ -21,11 +27,118 @@ class _KorsisZoneScreenState extends State<KorsisZoneScreen> {
   List<AttendanceZone> _zones = [];
   bool _isLocating = true;
   bool _hasLocationError = false;
+  List<Map<String, dynamic>> _serdikMarkers = [];
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _loadZones();
+    _fetchZonesFromApi();
+    _fetchLiveLocations();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      if (mounted) {
+        _fetchZonesFromApi();
+        _fetchLiveLocations();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _fetchZonesFromApi() async {
+    try {
+      final kegiatanSource = sl<KegiatanRemoteDataSource>();
+      final zones = await kegiatanSource.fetchActiveZones();
+      if (mounted) {
+        AttendanceZones.setZonesFromApi(zones);
+        _loadZones();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _fetchLiveLocations() async {
+    try {
+      final dio = sl<Dio>();
+      final response = await dio.get('/mobile/location/live');
+
+      if (response.statusCode == 200 && response.data != null) {
+        final List<dynamic> dataList = response.data['data'] ?? [];
+        final List<Map<String, dynamic>> generated = [];
+        const Distance distanceCalc = Distance();
+
+        for (var item in dataList) {
+          final mapItem = Map<String, dynamic>.from(item);
+          final double lat = (mapItem['latitude'] as num?)?.toDouble() ?? 0.0;
+          final double lng = (mapItem['longitude'] as num?)?.toDouble() ?? 0.0;
+
+          double distanceOffset = 999999.0;
+          if (_zones.isNotEmpty) {
+            distanceOffset = distanceCalc.as(
+              LengthUnit.Meter,
+              LatLng(lat, lng),
+              LatLng(_zones.first.latitude, _zones.first.longitude),
+            );
+          }
+
+          // Convert backend status to display status
+          String status = 'Belum Absen';
+          Color color = Colors.grey;
+          
+          final backendStatus = mapItem['status']?.toString().toLowerCase() ?? 'tk';
+          if (backendStatus == 'hadir') {
+            status = 'Hadir';
+            color = Colors.green.shade600;
+          } else if (backendStatus == 'sakit') {
+            status = 'Sakit';
+            color = Colors.pink.shade400;
+          } else if (backendStatus == 'izin') {
+            status = 'Izin';
+            color = Colors.orange;
+          } else {
+            if (_zones.isNotEmpty) {
+              final zone = _zones.first;
+              final now = DateTime.now();
+              if (now.isAfter(zone.cutoffTime)) {
+                status = 'Tanpa Keterangan';
+                color = Colors.red.shade600;
+              } else {
+                status = 'Belum Absen';
+                color = Colors.grey;
+              }
+            } else {
+              status = 'Belum Absen';
+              color = Colors.grey;
+            }
+          }
+
+          final serdikData = {
+            'no_serdik': mapItem['nrp'] ?? '',
+            'nama_lengkap': mapItem['name'] ?? '',
+            'pangkat': mapItem['pangkat'] ?? '',
+            'profile_photo': mapItem['profile_photo'],
+            'mock_lat': lat,
+            'mock_lng': lng,
+            'mock_status': status,
+            'mock_color': color,
+            'mock_distance': distanceOffset,
+          };
+          generated.add(serdikData);
+        }
+
+        if (mounted) {
+          setState(() {
+            _serdikMarkers = generated;
+          });
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
   }
 
   void _loadZones() {
@@ -48,10 +161,16 @@ class _KorsisZoneScreenState extends State<KorsisZoneScreen> {
       ),
       builder: (_) => KorsisZoneInfoSheet(
         zone: zone,
-        onDeleted: () {
-          AttendanceZones.removeZone(zone.id);
-          _loadZones();
-          AppNotifier.showSuccess(context, 'Zona berhasil dihapus.');
+        onDeleted: () async {
+          try {
+            final dio = sl<Dio>();
+            await dio.delete('/attendance/zones/${zone.id}');
+            AttendanceZones.removeZone(zone.id);
+            _loadZones();
+            AppNotifier.showSuccess(context, 'Zona berhasil dihapus.');
+          } catch (e) {
+            AppNotifier.showError(context, 'Gagal menghapus zona dari server: $e');
+          }
         },
       ),
     );
@@ -116,6 +235,7 @@ class _KorsisZoneScreenState extends State<KorsisZoneScreen> {
       ),
       body: GeofenceMapWidget(
         zones: _zones,
+        serdikMarkers: _serdikMarkers,
         onLocationDetected: (zone, dist, isFake) {
           if (_isLocating) {
             setState(() => _isLocating = false);

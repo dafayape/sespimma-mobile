@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:developer' as developer;
+import 'package:dio/dio.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:sespimma/injection_container.dart';
 import '../../domain/models/map_tile_mode.dart';
 import '../../../notification/data/datasources/notification_mock_data.dart';
 
@@ -75,10 +77,25 @@ class LocationSyncService {
       'timestamp': DateTime.now(),
     };
 
-    developer.log(
-      'MENGIRIM LOKASI REALTIME KE BACKEND -> NRP: $nrp | Lat: ${pos.latitude}, Lng: ${pos.longitude}',
-      name: 'LocationSyncAPI',
-    );
+    try {
+      final dio = sl<Dio>();
+      await dio.post(
+        '/mobile/location',
+        data: {
+          'latitude': pos.latitude,
+          'longitude': pos.longitude,
+        },
+      );
+      developer.log(
+        'MENGIRIM LOKASI REALTIME KE BACKEND -> NRP: $nrp | Lat: ${pos.latitude}, Lng: ${pos.longitude}',
+        name: 'LocationSyncAPI',
+      );
+    } catch (e) {
+      developer.log(
+        'Gagal mengirim lokasi realtime ke backend: $e',
+        name: 'LocationSyncAPI',
+      );
+    }
   }
 
   void _checkGeofenceAlerts() {

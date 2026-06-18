@@ -586,7 +586,7 @@ class _AnimatedNotificationTile extends StatelessWidget {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                '${(notification['dateTime'] as DateTime).hour.toString().padLeft(2, '0')}.${(notification['dateTime'] as DateTime).minute.toString().padLeft(2, '0')}',
+                                '${(notification['dateTime'] as DateTime).toLocal().hour.toString().padLeft(2, '0')}.${(notification['dateTime'] as DateTime).toLocal().minute.toString().padLeft(2, '0')}',
                                 style: TextStyle(
                                   fontSize: AppDimensions.fontSm + 1,
                                   color: Colors.blueGrey.shade400,

@@ -83,4 +83,52 @@ class AssessmentRemoteDataSource {
   Future<void> createHealthRecord(String noSerdik, Map<String, dynamic> data) async {
     await dio.post('/health/$noSerdik/records', data: data);
   }
+
+  Future<List<Map<String, dynamic>>> getAllMentalScores() async {
+    try {
+      final response = await dio.get('/assessment/mental');
+      if (response.statusCode == 200) {
+        final List<dynamic> list = response.data;
+        return list.map((json) => Map<String, dynamic>.from(json)).toList();
+      }
+      throw Exception('Failed to load all mental scores');
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getPoints(String category) async {
+    try {
+      final response = await dio.get('/points/category/$category');
+      if (response.statusCode == 200) {
+        final List<dynamic> list = response.data;
+        return list.map((json) => Map<String, dynamic>.from(json)).toList();
+      }
+      throw Exception('Failed to load points for category $category');
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
+  Future<void> submitUserReward(Map<String, dynamic> data) async {
+    try {
+      final response = await dio.post('/user_rewards', data: data);
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception('Failed to submit user reward');
+      }
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
+  Future<void> submitPunishmentLog(Map<String, dynamic> data) async {
+    try {
+      final response = await dio.post('/punishment_logs', data: data);
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception('Failed to submit punishment log');
+      }
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
 }

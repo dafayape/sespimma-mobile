@@ -15,7 +15,7 @@ import '../../../assessment/data/models/korsis_inbox_mock_data.dart';
 import '../../../notification/data/datasources/notification_mock_data.dart';
 import '../../../attendance/presentation/pages/attendance_history_screen.dart';
 import 'package:sespimma/shared/widgets/evidence_bottom_sheet.dart';
-import '../../../assessment/data/models/sociometry_period_config.dart';
+
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../leadership_dashboard/data/datasources/pimpinan_mock_data.dart';
 import '../../../attendance/domain/models/map_tile_mode.dart';
@@ -38,6 +38,11 @@ class _HomeScreenState extends State<HomeScreen>
   double? _dbPhysicalScore;
   double? _dbRewardPoints;
   double? _dbPunishmentPoints;
+  int _dbHadir = 0;
+  int _dbTelat = 0;
+  int _dbIzin = 0;
+  int _dbAlpha = 0;
+  bool _attendanceLoaded = false;
 
   @override
   void initState() {
@@ -67,6 +72,16 @@ class _HomeScreenState extends State<HomeScreen>
             _dbPhysicalScore = (scoreData['physicalScore'] as num?)?.toDouble() ?? 0.0;
             _dbRewardPoints = (scoreData['rewardPoints'] as num?)?.toDouble() ?? 0.0;
             _dbPunishmentPoints = (scoreData['punishmentPoints'] as num?)?.toDouble() ?? 0.0;
+          });
+        }
+        final attendanceData = data['attendanceData'] as Map<String, dynamic>?;
+        if (attendanceData != null) {
+          setState(() {
+            _dbHadir = (attendanceData['hadir'] as num?)?.toInt() ?? 0;
+            _dbTelat = (attendanceData['telat'] as num?)?.toInt() ?? 0;
+            _dbIzin = (attendanceData['izin'] as num?)?.toInt() ?? 0;
+            _dbAlpha = (attendanceData['alpha'] as num?)?.toInt() ?? 0;
+            _attendanceLoaded = true;
           });
         }
       } catch (e) {
@@ -161,8 +176,9 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   String _formatDynamicTime(DateTime target) {
-    final hourStr = target.hour.toString().padLeft(2, '0');
-    final minStr = target.minute.toString().padLeft(2, '0');
+    final localTarget = target.toLocal();
+    final hourStr = localTarget.hour.toString().padLeft(2, '0');
+    final minStr = localTarget.minute.toString().padLeft(2, '0');
     return '$hourStr.$minStr';
   }
 
@@ -176,28 +192,10 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   List<Map<String, dynamic>> _getMockActivities(UserEntity user) {
-    final today = DateTime.now();
     final role = user.roleId.toLowerCase();
     final List<Map<String, dynamic>> list = [];
 
     if (role == 'siswa') {
-      final raw = ScoreCalculatorService.generateSimulatedScores(user.noSerdik);
-      final double sosiometriScore = (raw['NS'] as num?)?.toDouble() ?? 0.0;
-
-      if (sosiometriScore > 0) {
-        list.add({
-          'id': 'act_dyn_sosiometri',
-          'title': 'Nilai Sosiometri Telah Keluar',
-          'subtitle':
-              'Sosiometri berhasil dinilai silahkan cek laporan nilai untuk melihat hasilnya',
-          'timeRaw': _formatDynamicTime(today),
-          'date': _getDynamicDateStr(today),
-          'dateTime': today,
-          'points': '',
-          'type': 'task',
-        });
-      }
-
       for (var inbox in _inboxItems) {
         final bool isDirectOrApproved =
             inbox.status == 'approved' ||
@@ -323,15 +321,7 @@ class _HomeScreenState extends State<HomeScreen>
                                   beginInterval: 0.2,
                                   endInterval: 0.5,
                                 ),
-                                if (SociometryPeriodConfig.isAnyActive()) ...[
-                                  const SizedBox(height: AppDimensions.md),
-                                  _buildAnimatedSection(
-                                    context: context,
-                                    child: _buildSosiometriBanner(context),
-                                    beginInterval: 0.3,
-                                    endInterval: 0.6,
-                                  ),
-                                ],
+
                                 const SizedBox(height: AppDimensions.md),
                                 _buildAnimatedSection(
                                   context: context,
@@ -718,143 +708,21 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildSosiometriBanner(BuildContext context) {
-    const Color primaryIndigo = Color(0xFF4F46E5);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: InkWell(
-        onTap: () async {
-          HapticFeedback.lightImpact();
-          await Navigator.pushNamed(context, '/serdik-sosiometri');
-          if (mounted) {
-            setState(() {});
-          }
-        },
-        borderRadius: BorderRadius.circular(AppDimensions.radiusXl),
-        child: Container(
-          padding: const EdgeInsets.all(AppDimensions.xl - 4),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                primaryIndigo.withValues(alpha: 0.08),
-                primaryIndigo.withValues(alpha: 0.03),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(AppDimensions.radiusXl),
-            border: Border.all(color: primaryIndigo.withValues(alpha: 0.2)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(AppDimensions.md),
-                decoration: BoxDecoration(
-                  color: primaryIndigo.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  AppIcons.usersThreeFill,
-                  color: primaryIndigo,
-                  size: AppDimensions.iconLg,
-                ),
-              ),
-              const SizedBox(width: AppDimensions.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          SociometryPeriodConfig.isAkhirActive()
-                              ? 'Sosiometri Akhir Peleton'
-                              : 'Sosiometri Awal Peleton',
-                          style: const TextStyle(
-                            fontSize: AppDimensions.fontLg,
-                            fontWeight: FontWeight.w800,
-                            color: _primaryNavy,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: primaryIndigo,
-                            borderRadius: BorderRadius.circular(
-                              AppDimensions.radiusSm,
-                            ),
-                          ),
-                          child: const Text(
-                            'ISI SEKARANG',
-                            style: TextStyle(
-                              fontSize: AppDimensions.fontXs,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppDimensions.radiusSm),
-                    Text(
-                      'Evaluasi 5 Kompetensi Inti mental kepribadian rekan satu Pokjar Anda secara anonim.',
-                      style: TextStyle(
-                        fontSize: AppDimensions.fontSm + 1,
-                        fontWeight: FontWeight.w500,
-                        height: 1.4,
-                        color: Colors.blueGrey.shade700,
-                      ),
-                    ),
-                    const SizedBox(height: AppDimensions.sm),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(
-                              AppDimensions.radiusXs,
-                            ),
-                            child: LinearProgressIndicator(
-                              value:
-                                  SociometryPeriodConfig.getFilledCount() /
-                                  SociometryPeriodConfig.getTotalCount(),
-                              backgroundColor: Colors.black12,
-                              color: primaryIndigo,
-                              minHeight: 5,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: AppDimensions.sm + 2),
-                        Text(
-                          '${SociometryPeriodConfig.getFilledCount()} / ${SociometryPeriodConfig.getTotalCount()} Rekan',
-                          style: const TextStyle(
-                            fontSize: AppDimensions.fontSm,
-                            fontWeight: FontWeight.w800,
-                            color: primaryIndigo,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildAttendanceRecap(BuildContext context) {
-    final history = PimpinanMockData.serdikAttendanceHistory;
-    final int hadir = history.where((e) => e['type'] == 'hadir').length;
-    final int telat = history.where((e) => e['type'] == 'telat').length;
-    final int izin = history.where((e) => e['type'] == 'izin').length;
-    final int alpha = history.where((e) => e['type'] == 'alpha').length;
+    // Use real attendance data from API if loaded, otherwise fall back to mock data
+    int hadir, telat, izin, alpha;
+    if (_attendanceLoaded) {
+      hadir = _dbHadir;
+      telat = _dbTelat;
+      izin = _dbIzin;
+      alpha = _dbAlpha;
+    } else {
+      final history = PimpinanMockData.serdikAttendanceHistory;
+      hadir = history.where((e) => e['type'] == 'hadir').length;
+      telat = history.where((e) => e['type'] == 'telat').length;
+      izin = history.where((e) => e['type'] == 'izin').length;
+      alpha = history.where((e) => e['type'] == 'alpha').length;
+    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),

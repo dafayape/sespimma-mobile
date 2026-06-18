@@ -151,10 +151,12 @@ abstract final class AppNotifier {
       ),
     );
 
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) return;
+
     Future.microtask(() {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(snackBar);
     });
   }
 }

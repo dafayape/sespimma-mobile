@@ -16,6 +16,8 @@ import 'package:sespimma/features/assessment/presentation/widgets/numeric_input_
 import 'package:sespimma/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:sespimma/features/auth/presentation/bloc/auth_state.dart';
 import 'package:sespimma/injection_container.dart';
+import 'package:sespimma/features/report/presentation/pages/report_screen.dart';
+import 'package:sespimma/features/auth/domain/entities/user_entity.dart';
 
 class GadikAssessmentScreen extends StatefulWidget {
   final String? categoryOverride;
@@ -189,6 +191,51 @@ class _GadikAssessmentScreenState extends State<GadikAssessmentScreen>
             arguments: {'type': 'punishment', 'serdik': serdik},
           );
         },
+        onViewReport: _getCurrentRole(context) == 'Patun'
+            ? null
+            : () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ReportScreen(
+                      targetUser: UserEntity(
+                        userId: serdik['id'] ?? '',
+                        name: serdik['name'] ?? '',
+                        roleId: 'serdik',
+                        pokjar: serdik['pokjar'] ?? '',
+                        nrp: serdik['nrp'] ?? serdik['nosis'] ?? '',
+                        nosis: serdik['nosis'] ?? '',
+                        pangkat: '',
+                        angkatan: '',
+                        agama: '',
+                        jenisKelamin: serdik['jenisKelamin'] ?? 'Laki-laki',
+                        jabatan: '',
+                        noSerdik: serdik['nosis'] ?? '',
+                        nik: '',
+                        jabatanSenat: '',
+                        tempatLahir: '',
+                        noHandphone: '',
+                        pendidikanTerakhir: '',
+                        alamatLengkap: '',
+                        email: '',
+                        noTelepon: '',
+                        kelompok: '',
+                        diktukAwal: '',
+                        tahunDiktuk: '',
+                        personel: '',
+                        satker: '',
+                        eselon: '',
+                        golongan: '',
+                        nilaiAkademik: 0.0,
+                        nilaiMental: 0.0,
+                        nilaiJasmani: 0.0,
+                        serdikId: serdik['id'],
+                      ),
+                    ),
+                  ),
+                );
+              },
       ),
     );
   }
@@ -383,6 +430,12 @@ class _GadikAssessmentScreenState extends State<GadikAssessmentScreen>
           serdik['status'] == _selectedStatus;
       return matchSearch && matchPokjar && matchStatus;
     }).toList();
+
+    filteredList.sort((a, b) {
+      final nameA = (a['name'] ?? '').toUpperCase();
+      final nameB = (b['name'] ?? '').toUpperCase();
+      return nameA.compareTo(nameB);
+    });
 
     return Scaffold(
       backgroundColor: AppColors.background,

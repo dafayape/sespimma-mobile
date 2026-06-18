@@ -10,8 +10,11 @@ import 'package:sespimma/features/report/presentation/widgets/report_error_state
 import 'package:sespimma/features/report/data/datasources/report_remote_data_source.dart';
 import 'package:sespimma/injection_container.dart';
 
+import 'package:sespimma/features/auth/domain/entities/user_entity.dart';
+
 class ReportScreen extends StatefulWidget {
-  const ReportScreen({super.key});
+  final UserEntity? targetUser;
+  const ReportScreen({super.key, this.targetUser});
 
   @override
   State<ReportScreen> createState() => _ReportScreenState();
@@ -26,11 +29,16 @@ class _ReportScreenState extends State<ReportScreen> {
   @override
   void initState() {
     super.initState();
-    final authState = context.read<AuthBloc>().state;
-    if (authState is AuthSuccess) {
-      final serdikId = authState.user.serdikId;
-      if (serdikId != null && serdikId.isNotEmpty) {
-        _fetchReportData(serdikId);
+    if (widget.targetUser != null) {
+      final serdikId = widget.targetUser!.serdikId ?? widget.targetUser!.noSerdik;
+      _fetchReportData(serdikId);
+    } else {
+      final authState = context.read<AuthBloc>().state;
+      if (authState is AuthSuccess) {
+        final serdikId = authState.user.serdikId;
+        if (serdikId != null && serdikId.isNotEmpty) {
+          _fetchReportData(serdikId);
+        }
       }
     }
   }
@@ -71,9 +79,9 @@ class _ReportScreenState extends State<ReportScreen> {
         backgroundColor: AppColors.primaryNavy,
         elevation: 0,
         centerTitle: true,
-        title: const Text(
-          'Laporan Nilai',
-          style: TextStyle(
+        title: Text(
+          widget.targetUser != null ? 'Rapor ${widget.targetUser!.name}' : 'Laporan Nilai',
+          style: const TextStyle(
             color: AppColors.textOnPrimary,
             fontWeight: FontWeight.w700,
             fontSize: AppDimensions.fontXxl,
@@ -98,12 +106,14 @@ class _ReportScreenState extends State<ReportScreen> {
               return ReportErrorState(message: _reportError!);
             }
 
+            final displayUser = widget.targetUser ?? state.user;
+
             return ReportContentBody(
-              user: state.user,
+              user: displayUser,
               selectedCategory: _selectedCategory,
               onCategoryChanged: _updateCategory,
               reportData: _reportData ?? {},
-              onRefresh: () => _fetchReportData(state.user.serdikId ?? ''),
+              onRefresh: () => _fetchReportData(displayUser.serdikId ?? displayUser.noSerdik),
             );
           }
           return const Center(

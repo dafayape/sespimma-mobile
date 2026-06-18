@@ -33,6 +33,31 @@ class _GadikMentalFormScreenState extends State<GadikMentalFormScreen> {
   final TextEditingController _justificationController =
       TextEditingController();
 
+  String get _selectedSerdikName {
+    if (_selectedSerdik == null) return '';
+    return (_selectedSerdik!['nama_lengkap'] ?? _selectedSerdik!['name'] ?? '-').toString();
+  }
+
+  String get _selectedSerdikNosis {
+    if (_selectedSerdik == null) return '';
+    return (_selectedSerdik!['no_serdik'] ?? _selectedSerdik!['nip'] ?? _selectedSerdik!['nrp'] ?? '-').toString();
+  }
+
+  String get _selectedSerdikPokjar {
+    if (_selectedSerdik == null) return '';
+    return (_selectedSerdik!['kelompok_kelas'] ?? _selectedSerdik!['group_name'] ?? '-').toString();
+  }
+
+  String get _selectedSerdikPangkat {
+    if (_selectedSerdik == null) return '';
+    return (_selectedSerdik!['pangkat'] ?? '-').toString();
+  }
+
+  String? get _selectedSerdikPhoto {
+    if (_selectedSerdik == null) return null;
+    return (_selectedSerdik!['profile_photo'] ?? _selectedSerdik!['profilePhoto'])?.toString();
+  }
+
   final List<Map<String, dynamic>> _serdikList = SerdikRealData.records;
   String _serdikSearchQuery = '';
   String _indicatorSearchQuery = '';
@@ -72,7 +97,7 @@ class _GadikMentalFormScreenState extends State<GadikMentalFormScreen> {
     if (_selectedSerdik != null) {
       double dynamicPoints = 0.0;
       for (var item in KorsisInboxMockData.items) {
-        if (item.nosis == _selectedSerdik!['no_serdik'] &&
+        if (item.nosis == _selectedSerdikNosis &&
             item.status == 'disetujui') {
           dynamicPoints += item.isReward ? item.points : -item.points;
         }
@@ -184,7 +209,6 @@ class _GadikMentalFormScreenState extends State<GadikMentalFormScreen> {
 
     HapticFeedback.heavyImpact();
 
-    final serdik = _selectedSerdik!;
     final category = _selectedCategory!;
 
     String dynamicSender = 'Gadik Sespimma';
@@ -195,10 +219,10 @@ class _GadikMentalFormScreenState extends State<GadikMentalFormScreen> {
 
     final newItem = InboxItem(
       id: 'gadik_${DateTime.now().millisecondsSinceEpoch}',
-      serdikName: serdik['nama_lengkap'] ?? '-',
-      pangkat: serdik['pangkat'] ?? '-',
-      nosis: serdik['no_serdik'] ?? '-',
-      pokjar: serdik['kelompok_kelas'] ?? '-',
+      serdikName: _selectedSerdikName,
+      pangkat: _selectedSerdikPangkat,
+      nosis: _selectedSerdikNosis,
+      pokjar: _selectedSerdikPokjar,
       isReward: widget.isReward,
       senderName: dynamicSender,
       timestamp: DateTime.now(),
@@ -346,7 +370,7 @@ class _GadikMentalFormScreenState extends State<GadikMentalFormScreen> {
         child: Row(
           children: [
             _buildAvatar(
-              isSelected ? _selectedSerdik!['profile_photo'] : null,
+              _selectedSerdikPhoto,
               isPlaceholder: !isSelected,
             ),
             const SizedBox(width: AppDimensions.md),
@@ -356,7 +380,7 @@ class _GadikMentalFormScreenState extends State<GadikMentalFormScreen> {
                 children: [
                   Text(
                     isSelected
-                        ? _selectedSerdik!['nama_lengkap']
+                        ? _selectedSerdikName
                         : 'Pilih Target Serdik',
                     style: TextStyle(
                       fontSize: AppDimensions.fontLg,
@@ -369,7 +393,7 @@ class _GadikMentalFormScreenState extends State<GadikMentalFormScreen> {
                   const SizedBox(height: 4),
                   Text(
                     isSelected
-                        ? '${_selectedSerdik!['pangkat']} · No. ${_selectedSerdik!['no_serdik']}'
+                        ? '$_selectedSerdikPangkat · No. $_selectedSerdikNosis'
                         : 'Tekan untuk mencari Serdik',
                     style: TextStyle(
                       fontSize: AppDimensions.fontMd,
@@ -1177,11 +1201,10 @@ class _GadikMentalFormScreenState extends State<GadikMentalFormScreen> {
                       final opt = filteredList[index];
 
                       EligibilityStatus eligibility = EligibilityStatus(true);
-                      if (_selectedSerdik != null &&
-                          _selectedSerdik!['no_serdik'] != null) {
+                      if (_selectedSerdik != null && _selectedSerdikNosis != '-') {
                         eligibility =
                             RewardPunishmentEligibility.checkEligibility(
-                              _selectedSerdik!['no_serdik'],
+                              _selectedSerdikNosis,
                               opt,
                             );
                       }

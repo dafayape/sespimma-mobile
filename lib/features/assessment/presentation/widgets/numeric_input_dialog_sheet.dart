@@ -148,7 +148,15 @@ class _NumericInputDialogSheetState extends State<NumericInputDialogSheet> {
 
   void _setupCategory(String cat) {
     localCategory = cat;
-    localTahap = widget.currentRole == 'Korsis' ? 'Samapta' : 'Semua';
+    final validOptions = AssessmentSubCategories.getTahapOptions(cat, widget.currentRole);
+    if (widget.currentRole == 'Korsis' && cat == 'Jasmani') {
+      localTahap = 'Samapta';
+    } else {
+      localTahap = 'Semua';
+    }
+    if (!validOptions.contains(localTahap)) {
+      localTahap = validOptions.isNotEmpty ? validOptions.first : 'Semua';
+    }
     for (final c in _inputControllers) {
       c.text = '';
     }
@@ -300,40 +308,47 @@ class _NumericInputDialogSheetState extends State<NumericInputDialogSheet> {
                 children: [
                   const SizedBox(height: AppDimensions.lg),
                   _buildSheetHandle(),
-                  const SizedBox(height: AppDimensions.xxl),
-                  _buildSheetHeader(widget.serdik),
-                  const SizedBox(height: AppDimensions.lg),
-                  _buildCategoryDropdown(localCategory, availableCategories, (
-                    val,
-                  ) {
-                    setState(() {
-                      _setupCategory(val);
-                      _calculateAverage();
-                    });
-                  }),
-                  _buildTahapDropdown(
-                    localTahap,
-                    tahapOptions,
-                    (val) => setState(() => localTahap = val),
-                  ),
-                  const SizedBox(height: AppDimensions.lg),
-                  const Divider(
-                    thickness: AppDimensions.dividerHeight,
-                    height: AppDimensions.dividerHeight,
-                  ),
                   Expanded(
-                    child: _isLoading
-                        ? const Center(
-                            child: CircularProgressIndicator(
-                              color: AppColors.primaryNavy,
+                    child: ListView(
+                      controller: scrollController,
+                      padding: EdgeInsets.zero,
+                      children: [
+                        const SizedBox(height: AppDimensions.xxl),
+                        _buildSheetHeader(widget.serdik),
+                        const SizedBox(height: AppDimensions.lg),
+                        _buildCategoryDropdown(localCategory, availableCategories, (
+                          val,
+                        ) {
+                          setState(() {
+                            _setupCategory(val);
+                            _calculateAverage();
+                          });
+                        }),
+                        _buildTahapDropdown(
+                          localTahap,
+                          tahapOptions,
+                          (val) => setState(() => localTahap = val),
+                        ),
+                        const SizedBox(height: AppDimensions.lg),
+                        const Divider(
+                          thickness: AppDimensions.dividerHeight,
+                          height: AppDimensions.dividerHeight,
+                        ),
+                        if (_isLoading)
+                          const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(AppDimensions.xxl),
+                              child: CircularProgressIndicator(
+                                color: AppColors.primaryNavy,
+                              ),
                             ),
                           )
-                        : _buildInputList(
-                            filteredSubCategories,
-                            scrollController,
-                          ),
+                        else
+                          ..._buildInputItems(filteredSubCategories),
+                        if (averageScore > 90.0) _buildJustificationSection(),
+                      ],
+                    ),
                   ),
-                  if (averageScore > 90.0) _buildJustificationSection(),
                   _buildFooter(),
                 ],
               ),
@@ -472,71 +487,69 @@ class _NumericInputDialogSheetState extends State<NumericInputDialogSheet> {
     );
   }
 
-  Widget _buildInputList(
-    List<Map<String, dynamic>> items,
-    ScrollController scrollController,
-  ) {
-    return ListView.separated(
-      controller: scrollController,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppDimensions.xxl,
-        vertical: AppDimensions.lg,
-      ),
-      itemCount: items.length,
-      separatorBuilder: (_, _) => const SizedBox(height: AppDimensions.lg),
-      itemBuilder: (context, index) {
-        final sub = items[index];
-        final ctrlIndex = sub['index'] as int;
-        final bool isSociometri = sub['tahap'].toString().contains(
-          'Sosiometri',
-        );
-        final bool isSamapta = sub['tahap'] == 'Samapta';
-        final bool isReadOnly = isSociometri || isSamapta;
+  List<Widget> _buildInputItems(List<Map<String, dynamic>> items) {
+    final List<Widget> widgets = [];
+    for (int index = 0; index < items.length; index++) {
+      final sub = items[index];
+      final ctrlIndex = sub['index'] as int;
+      final bool isSociometri = sub['tahap'].toString().contains(
+        'Sosiometri',
+      );
+      final bool isSamapta = sub['tahap'] == 'Samapta';
+      final bool isReadOnly = isSociometri || isSamapta;
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  sub['icon'],
-                  size: AppDimensions.iconMd,
-                  color: AppColors.primaryNavy,
-                ),
-                const SizedBox(width: AppDimensions.sm),
-                Expanded(
-                  child: Text(
-                    sub['name'],
-                    style: const TextStyle(
-                      fontSize: AppDimensions.fontDefault,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primaryNavy,
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppDimensions.xxl,
+            vertical: AppDimensions.sm,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    sub['icon'],
+                    size: AppDimensions.iconMd,
+                    color: AppColors.primaryNavy,
+                  ),
+                  const SizedBox(width: AppDimensions.sm),
+                  Expanded(
+                    child: Text(
+                      sub['name'],
+                      style: const TextStyle(
+                        fontSize: AppDimensions.fontDefault,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primaryNavy,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppDimensions.sm),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildScoreTextField(
-                    ctrlIndex,
-                    isReadOnly,
-                    isSociometri,
-                    isSamapta,
-                  ),
-                ),
-                if (isSamapta) ...[
-                  const SizedBox(width: AppDimensions.md),
-                  _buildCalcButton(ctrlIndex, sub['name']),
                 ],
-              ],
-            ),
-          ],
-        );
-      },
-    );
+              ),
+              const SizedBox(height: AppDimensions.sm),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildScoreTextField(
+                      ctrlIndex,
+                      isReadOnly,
+                      isSociometri,
+                      isSamapta,
+                    ),
+                  ),
+                  if (isSamapta) ...[
+                    const SizedBox(width: AppDimensions.md),
+                    _buildCalcButton(ctrlIndex, sub['name']),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    return widgets;
   }
 
   Widget _buildScoreTextField(

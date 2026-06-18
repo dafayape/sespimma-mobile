@@ -97,7 +97,8 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen>
   }
 
   String _formatTime(DateTime target) {
-    return '${target.hour.toString().padLeft(2, '0')}.${target.minute.toString().padLeft(2, '0')}';
+    final localTarget = target.toLocal();
+    return '${localTarget.hour.toString().padLeft(2, '0')}.${localTarget.minute.toString().padLeft(2, '0')}';
   }
 
   List<Map<String, dynamic>> _getAttendances() {

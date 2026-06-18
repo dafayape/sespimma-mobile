@@ -10,6 +10,7 @@ import 'package:sespimma/features/assessment/presentation/pages/operator_jasmani
 import '../../features/assessment/presentation/pages/patun_physical_monitoring_screen.dart';
 import '../../features/assessment/presentation/pages/korsis_inbox_screen.dart';
 import '../../features/assessment/presentation/pages/korsis_mental_monitoring_screen.dart';
+import '../../features/assessment/presentation/pages/patun_mental_monitoring_screen.dart';
 import '../../features/assessment/presentation/pages/gadik_assessment_screen.dart';
 
 import '../../features/leadership_dashboard/presentation/pages/pimpinan_home_screen.dart';
@@ -75,7 +76,7 @@ List<NavItem> getNavItemsByRole(String roleId) {
           label: 'Mental',
           icon: AppIcons.shieldCheck,
           activeIcon: AppIcons.shieldCheckFill,
-          screen: GadikAssessmentScreen(),
+          screen: PatunMentalMonitoringScreen(),
         ),
         NavItem(
           label: 'Jasmani',
@@ -125,7 +126,12 @@ List<NavItem> getNavItemsByRole(String roleId) {
           activeIcon: AppIcons.shieldCheckFill,
           screen: KorsisMentalMonitoringScreen(),
         ),
-
+        NavItem(
+          label: 'Jasmani',
+          icon: AppIcons.barbellFill,
+          activeIcon: AppIcons.barbellFill,
+          screen: PatunPhysicalMonitoringScreen(),
+        ),
         NavItem(
           label: 'Zona',
           icon: AppIcons.mapPin,

@@ -8,9 +8,9 @@ import 'package:sespimma/features/assessment/data/datasources/assessment_remote_
 import 'package:sespimma/injection_container.dart';
 import 'package:sespimma/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:sespimma/features/auth/presentation/bloc/auth_state.dart';
-
-import 'package:sespimma/core/utils/avatar_helper.dart';
 import 'package:sespimma/features/leadership_report/domain/services/score_calculator_service.dart';
+import 'package:sespimma/features/report/presentation/pages/report_screen.dart';
+import 'package:sespimma/features/auth/domain/entities/user_entity.dart';
 
 class PatunPhysicalMonitoringScreen extends StatefulWidget {
   const PatunPhysicalMonitoringScreen({super.key});
@@ -95,12 +95,18 @@ class _PatunPhysicalMonitoringScreenState
               }
               final user = state.user;
               final userPokjar = user.pokjar;
+              final userRole = user.roleId.toLowerCase();
 
-              final baseList = _students
-                  .where((r) =>
-                      _normalizePokjar(r['group_name'] ?? r['kelompok_kelas'] ?? '') ==
-                      _normalizePokjar(userPokjar))
-                  .toList();
+              final List<Map<String, dynamic>> baseList;
+              if (userRole == 'korsis' || userRole == 'pimpinan' || userRole == 'admin' || userRole == 'superadmin') {
+                baseList = _students;
+              } else {
+                baseList = _students
+                    .where((r) =>
+                        _normalizePokjar(r['group_name'] ?? r['kelompok_kelas'] ?? '') ==
+                        _normalizePokjar(userPokjar))
+                    .toList();
+              }
 
               final listWithEWS = baseList.map((student) {
                 final serdik = Map<String, dynamic>.from(student);
@@ -144,15 +150,15 @@ class _PatunPhysicalMonitoringScreenState
               }
 
               filteredList.sort((a, b) {
-                final scoreA = (a['_mock_score'] as double?) ?? 100.0;
-                final scoreB = (b['_mock_score'] as double?) ?? 100.0;
-                return scoreA.compareTo(scoreB);
+                final nameA = (a['name'] ?? a['nama_lengkap'] ?? '').toString().toUpperCase();
+                final nameB = (b['name'] ?? b['nama_lengkap'] ?? '').toString().toUpperCase();
+                return nameA.compareTo(nameB);
               });
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _buildHeaderBlock(userPokjar, baseList.length),
+                  _buildHeaderBlock(userRole, userPokjar, baseList.length),
                   Divider(
                     height: AppDimensions.dividerHeight,
                     color: Colors.grey.shade200,
@@ -165,7 +171,7 @@ class _PatunPhysicalMonitoringScreenState
                             children: [
                               SizedBox(
                                 height: MediaQuery.of(context).size.height * 0.6,
-                                child: _buildEmptyState(userPokjar),
+                                child: _buildEmptyState(userRole, userPokjar),
                               ),
                             ],
                           )
@@ -183,7 +189,7 @@ class _PatunPhysicalMonitoringScreenState
     );
   }
 
-  Widget _buildHeaderBlock(String pokjar, int totalSerdik) {
+  Widget _buildHeaderBlock(String role, String pokjar, int totalSerdik) {
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.symmetric(
@@ -248,7 +254,9 @@ class _PatunPhysicalMonitoringScreenState
                   borderRadius: BorderRadius.circular(AppDimensions.radiusXl),
                 ),
                 child: Text(
-                  pokjar.toUpperCase(),
+                  (role == 'korsis' || role == 'pimpinan' || role == 'admin' || role == 'superadmin')
+                      ? 'SEMUA POKJAR'
+                      : pokjar.toUpperCase(),
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w700,
@@ -289,7 +297,7 @@ class _PatunPhysicalMonitoringScreenState
     );
   }
 
-  Widget _buildEmptyState(String pokjar) {
+  Widget _buildEmptyState(String role, String pokjar) {
     final isFiltered = _selectedFilter != 'Semua';
     final isSearching = _searchQuery.isNotEmpty;
 
@@ -328,8 +336,8 @@ class _PatunPhysicalMonitoringScreenState
               isSearching
                   ? 'Tidak ada Serdik yang cocok dengan kata kunci "$_searchQuery".'
                   : isFiltered
-                  ? 'Tidak ada Serdik dengan status "$_selectedFilter" di Pokjar Anda.'
-                  : 'Belum ada data Serdik untuk Pokjar Anda.',
+                  ? 'Tidak ada Serdik dengan status "$_selectedFilter".'
+                  : 'Belum ada data Serdik.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: AppDimensions.fontLg,
@@ -436,6 +444,46 @@ class _PatunPhysicalMonitoringScreenState
           borderRadius: BorderRadius.circular(AppDimensions.radiusXl),
           onTap: () {
             HapticFeedback.selectionClick();
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ReportScreen(
+                  targetUser: UserEntity(
+                    userId: (serdik['id'] ?? '').toString(),
+                    name: name,
+                    roleId: 'serdik',
+                    pokjar: (serdik['group_name'] ?? serdik['pokjar'] ?? serdik['kelompok_kelas'] ?? '').toString(),
+                    nrp: noSerdik,
+                    nosis: noSerdik,
+                    pangkat: pangkat,
+                    angkatan: (serdik['angkatan'] ?? '').toString(),
+                    agama: (serdik['agama'] ?? '').toString(),
+                    jenisKelamin: (serdik['jenis_kelamin'] ?? serdik['jenisKelamin'] ?? 'Laki-laki').toString(),
+                    jabatan: (serdik['jabatan'] ?? '').toString(),
+                    noSerdik: noSerdik,
+                    nik: (serdik['nik'] ?? '').toString(),
+                    jabatanSenat: (serdik['jabatan_senat'] ?? '').toString(),
+                    tempatLahir: (serdik['tempat_lahir'] ?? '').toString(),
+                    noHandphone: (serdik['no_handphone'] ?? '').toString(),
+                    pendidikanTerakhir: (serdik['pendidikan_terakhir'] ?? '').toString(),
+                    alamatLengkap: (serdik['alamat_lengkap'] ?? '').toString(),
+                    email: (serdik['email'] ?? '').toString(),
+                    noTelepon: (serdik['no_telepon'] ?? '').toString(),
+                    kelompok: (serdik['kelompok'] ?? '').toString(),
+                    diktukAwal: (serdik['diktuk_awal'] ?? '').toString(),
+                    tahunDiktuk: (serdik['tahun_diktuk'] ?? '').toString(),
+                    personel: (serdik['personel'] ?? '').toString(),
+                    satker: (serdik['satker'] ?? '').toString(),
+                    eselon: (serdik['eselon'] ?? '').toString(),
+                    golongan: (serdik['golongan'] ?? '').toString(),
+                    nilaiAkademik: 0.0,
+                    nilaiMental: 0.0,
+                    nilaiJasmani: 0.0,
+                    serdikId: (serdik['id'] ?? '').toString(),
+                  ),
+                ),
+              ),
+            );
           },
           child: Padding(
             padding: const EdgeInsets.all(AppDimensions.lg),
@@ -610,7 +658,7 @@ class _PatunPhysicalMonitoringScreenState
       child: CircleAvatar(
         radius: 24,
         backgroundColor: Colors.blueGrey.shade50,
-        child: const Icon(
+        child: Icon(
           Icons.person_rounded,
           color: Colors.blueGrey.shade300,
           size: 28,

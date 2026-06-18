@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:latlong2/latlong.dart';
@@ -9,6 +10,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:sespimma/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:sespimma/features/auth/presentation/bloc/auth_state.dart';
+import 'package:sespimma/injection_container.dart';
 
 class KorsisZoneFormSheet extends StatefulWidget {
   final LatLng? centerPoint;
@@ -183,13 +185,44 @@ class _KorsisZoneFormSheetState extends State<KorsisZoneFormSheet> {
       routineEndDate: _isRoutine ? _routineEndDate : null,
     );
 
-    if (widget.existingZone != null) {
-      AttendanceZones.updateZone(zone);
-    } else {
-      AttendanceZones.addZone(zone);
-    }
+    final Map<String, dynamic> requestData = {
+      'id': zone.id,
+      'name': zone.name,
+      'latitude': zone.latitude,
+      'longitude': zone.longitude,
+      'radius_meters': zone.radiusMeters,
+      'polygon_points': zone.polygonPoints?.map((p) => {
+        'latitude': p.latitude,
+        'longitude': p.longitude,
+      }).toList(),
+      'activity_name': zone.activityName,
+      'start_time': zone.startTime.toUtc().toIso8601String(),
+      'end_time': zone.endTime.toUtc().toIso8601String(),
+      'deadline': zone.deadline.toUtc().toIso8601String(),
+      'cutoff_time': zone.cutoffTime.toUtc().toIso8601String(),
+      'is_routine': zone.isRoutine,
+      'is_training': zone.isTraining,
+      'routine_start_date': zone.routineStartDate?.toIso8601String().split('T')[0],
+      'routine_end_date': zone.routineEndDate?.toIso8601String().split('T')[0],
+    };
 
-    if (mounted) Navigator.pop(context, true);
+    try {
+      final dio = sl<Dio>();
+      if (widget.existingZone != null) {
+        await dio.put('/attendance/zones/${zone.id}', data: requestData);
+        AttendanceZones.updateZone(zone);
+      } else {
+        await dio.post('/attendance/zones', data: requestData);
+        AttendanceZones.addZone(zone);
+      }
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal menyimpan zona: $e')),
+        );
+      }
+    }
   }
 
   @override

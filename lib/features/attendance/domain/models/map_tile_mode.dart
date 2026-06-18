@@ -100,10 +100,12 @@ class AttendanceZone {
   });
 
   String get timeString {
+    final startLocal = startTime.toLocal();
+    final endLocal = endTime.toLocal();
     final startStr =
-        '${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}';
+        '${startLocal.hour.toString().padLeft(2, '0')}:${startLocal.minute.toString().padLeft(2, '0')}';
     final endStr =
-        '${endTime.hour.toString().padLeft(2, '0')}:${endTime.minute.toString().padLeft(2, '0')}';
+        '${endLocal.hour.toString().padLeft(2, '0')}:${endLocal.minute.toString().padLeft(2, '0')}';
     return '$startStr - $endStr WIB';
   }
 }

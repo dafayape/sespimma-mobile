@@ -72,7 +72,9 @@ class KegiatanRemoteDataSource {
       }
 
       return [];
-    } catch (e) {
+    } catch (e, stack) {
+      print('ERROR in fetchActiveZones: $e');
+      print(stack);
       // Return empty list on error - the UI will show "no zones" state
       return [];
     }

@@ -7,13 +7,15 @@ import 'package:sespimma/core/constants/app_dimensions.dart';
 import 'package:sespimma/core/theme/app_colors.dart';
 import 'package:sespimma/core/utils/icon_mapper.dart';
 import 'package:sespimma/features/assessment/presentation/widgets/status_filter_button_widget.dart';
-import 'package:sespimma/features/auth/data/datasources/serdik_real_data.dart';
 import 'package:sespimma/features/assessment/presentation/pages/korsis_generate_mental_report_screen.dart';
 import 'package:sespimma/features/assessment/presentation/pages/korsis_mental_form_screen.dart';
 import 'package:sespimma/features/assessment/presentation/pages/gadik_assessment_screen.dart';
 import 'package:sespimma/core/utils/avatar_helper.dart';
 import 'package:sespimma/features/assessment/data/models/korsis_inbox_mock_data.dart';
-import 'package:sespimma/features/leadership_report/domain/services/score_calculator_service.dart';
+import 'package:sespimma/features/assessment/data/datasources/assessment_remote_data_source.dart';
+import 'package:sespimma/features/assessment/data/datasources/inbox_remote_data_source.dart';
+import 'package:sespimma/injection_container.dart';
+import 'package:sespimma/core/constants/reward_punishment_data.dart';
 
 class KorsisMentalMonitoringScreen extends StatefulWidget {
   const KorsisMentalMonitoringScreen({super.key});
@@ -51,15 +53,15 @@ class _KorsisMentalMonitoringScreenState
   String _mapRomanToArabic(String roman) {
     switch (roman) {
       case 'POKJAR I':
-        return 'POKJAR I';
+        return 'POKJAR 1';
       case 'POKJAR II':
-        return 'POKJAR II';
+        return 'POKJAR 2';
       case 'POKJAR III':
-        return 'POKJAR III';
+        return 'POKJAR 3';
       case 'POKJAR IV':
-        return 'POKJAR IV';
+        return 'POKJAR 4';
       case 'POKJAR V':
-        return 'POKJAR V';
+        return 'POKJAR 5';
       default:
         return roman;
     }
@@ -67,14 +69,19 @@ class _KorsisMentalMonitoringScreenState
 
   String _mapArabicToRoman(String arabic) {
     switch (arabic) {
+      case 'POKJAR 1':
       case 'POKJAR I':
         return 'POKJAR I';
+      case 'POKJAR 2':
       case 'POKJAR II':
         return 'POKJAR II';
+      case 'POKJAR 3':
       case 'POKJAR III':
         return 'POKJAR III';
+      case 'POKJAR 4':
       case 'POKJAR IV':
         return 'POKJAR IV';
+      case 'POKJAR 5':
       case 'POKJAR V':
         return 'POKJAR V';
       default:
@@ -82,31 +89,166 @@ class _KorsisMentalMonitoringScreenState
     }
   }
 
+  bool _isLoading = false;
+  List<Map<String, dynamic>> _allSerdikScores = [];
+  List<InboxItem> _inboxItems = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchData();
+  }
+
+  Future<void> _fetchData() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+    try {
+      final assessmentSource = sl<AssessmentRemoteDataSource>();
+      final inboxSource = sl<InboxRemoteDataSource>();
+
+      final scores = await assessmentSource.getAllMentalScores();
+      final inbox = await inboxSource.getInbox(status: 'all');
+
+      if (mounted) {
+        setState(() {
+          _allSerdikScores = scores;
+          _inboxItems = inbox;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal sinkronisasi data: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   List<Map<String, dynamic>> _getProcessedSerdik() {
-    final allReports = ScoreCalculatorService.generateRealReports();
     List<Map<String, dynamic>> allSerdik = [];
 
-    for (var report in allReports) {
-      final original = SerdikRealData.records.firstWhere(
-        (r) => r['no_serdik'] == report.nosis,
-        orElse: () => {},
-      );
+    final inboxItemsForAspects = _inboxItems.where((item) {
+      final bool isDirectOrApproved =
+          item.status == 'approved' ||
+          item.status == 'disetujui' ||
+          item.senderName.toLowerCase().contains('korsis') ||
+          item.senderName.toLowerCase().contains('sistem');
+      return isDirectOrApproved && !item.isIzin;
+    }).toList();
 
+    for (var original in _allSerdikScores) {
       if (_selectedPokjar != 'Semua Pokjar') {
         final targetPokjar = _mapRomanToArabic(_selectedPokjar);
-        if (original['kelompok_kelas'] != targetPokjar) continue;
+        final pokjarVal = (original['kelompok_kelas'] ?? original['pokjar'] ?? '').toString();
+        if (pokjarVal != targetPokjar) continue;
       }
 
       final Map<String, dynamic> serdik = Map<String, dynamic>.from(original);
+      final String noSerdik = (serdik['no_serdik'] ?? serdik['nip'] ?? '').toString();
 
-      serdik['moral'] = report.rawScores['moral'] ?? 0.0;
-      serdik['disiplin'] = report.rawScores['disiplin'] ?? 0.0;
-      serdik['kepemimpinan'] = report.rawScores['kepemimpinan'] ?? 0.0;
-      serdik['pengendalian_diri'] =
-          report.rawScores['pengendalian_diri'] ?? 0.0;
-      serdik['penampilan'] = report.rawScores['penampilan'] ?? 0.0;
-      serdik['sosiometri'] = report.rawScores['NS'] ?? 0.0;
-      serdik['nilai'] = report.mentalScore;
+      double moral = (serdik['moral'] as num?)?.toDouble() ?? 80.0;
+      double disiplin = (serdik['disiplin'] as num?)?.toDouble() ?? 80.0;
+      double kepemimpinan = (serdik['kepemimpinan'] as num?)?.toDouble() ?? 80.0;
+      double pengendalianDiri = (serdik['pengendalian_diri'] as num?)?.toDouble() ?? 80.0;
+      double penampilan = (serdik['penampilan'] as num?)?.toDouble() ?? 80.0;
+      double sosiometriAwal = (serdik['sosiometri_awal'] as num?)?.toDouble() ?? 0.0;
+      double sosiometriAkhir = (serdik['sosiometri_akhir'] as num?)?.toDouble() ?? 0.0;
+
+      double dynamicReward = 0.0;
+      double dynamicPunishment = 0.0;
+      bool hasAppliedAspect = false;
+
+      for (var item in inboxItemsForAspects) {
+        if (item.nosis == noSerdik) {
+          bool appliedToAspect = false;
+
+          if (item.rewardPunishmentId != null) {
+            try {
+              final rule = RewardPunishmentData.rules.firstWhere(
+                (r) => r.id == item.rewardPunishmentId || r.description.trim().toLowerCase() == item.rewardPunishmentName.trim().toLowerCase(),
+              );
+
+              final double pointValue = item.isReward
+                  ? item.points
+                  : -item.points.abs();
+
+              switch (rule.aspect.toUpperCase()) {
+                case 'MORAL':
+                  moral += pointValue;
+                  appliedToAspect = true;
+                  hasAppliedAspect = true;
+                  break;
+                case 'DISIPLIN':
+                  disiplin += pointValue;
+                  appliedToAspect = true;
+                  hasAppliedAspect = true;
+                  break;
+                case 'KEPEMIMPINAN':
+                  kepemimpinan += pointValue;
+                  appliedToAspect = true;
+                  hasAppliedAspect = true;
+                  break;
+                case 'PENGENDALIAN DIRI':
+                  pengendalianDiri += pointValue;
+                  appliedToAspect = true;
+                  hasAppliedAspect = true;
+                  break;
+                case 'PENAMPILAN':
+                  penampilan += pointValue;
+                  appliedToAspect = true;
+                  hasAppliedAspect = true;
+                  break;
+              }
+            } catch (e) {
+              appliedToAspect = false;
+            }
+          }
+
+          if (!appliedToAspect) {
+            if (item.isReward) {
+              dynamicReward += item.points;
+            } else {
+              dynamicPunishment += item.points.abs();
+            }
+          }
+        }
+      }
+
+      double nku = ((moral * 20) +
+          (disiplin * 15) +
+          (kepemimpinan * 20) +
+          (pengendalianDiri * 15) +
+          (penampilan * 15)) / 85;
+
+      double nilaiPengamatan = nku + dynamicReward - dynamicPunishment;
+
+      double ns = 0.0;
+      if (sosiometriAwal > 0 || sosiometriAkhir > 0) {
+        ns = (sosiometriAwal + sosiometriAkhir) / 2;
+      }
+
+      double nk = 0.0;
+      if (nilaiPengamatan > 0 || ns > 0) {
+        nk = ((nilaiPengamatan * 7) + (ns * 3)) / 10;
+      }
+
+      bool isGraded = serdik['is_graded'] as bool? ?? false;
+      if (dynamicReward > 0 || dynamicPunishment > 0 || hasAppliedAspect) {
+        isGraded = true;
+      }
+
+      serdik['moral'] = isGraded ? moral : 0.0;
+      serdik['disiplin'] = isGraded ? disiplin : 0.0;
+      serdik['kepemimpinan'] = isGraded ? kepemimpinan : 0.0;
+      serdik['pengendalian_diri'] = isGraded ? pengendalianDiri : 0.0;
+      serdik['penampilan'] = isGraded ? penampilan : 0.0;
+      serdik['sosiometri'] = isGraded ? ns : 0.0;
+      serdik['nilai'] = isGraded ? nk : 0.0;
 
       allSerdik.add(serdik);
     }
@@ -131,17 +273,17 @@ class _KorsisMentalMonitoringScreenState
     return 'Kurang (K)';
   }
 
-  void _showInputBottomSheet(BuildContext context) {
+  void _showInputBottomSheet(BuildContext parentContext) {
     HapticFeedback.mediumImpact();
     showModalBottomSheet(
-      context: context,
+      context: parentContext,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _InputTypeSheet(
+      builder: (modalContext) => _InputTypeSheet(
         onReward: () async {
-          Navigator.pop(context);
+          Navigator.pop(modalContext);
           await Navigator.push(
-            context,
+            parentContext,
             MaterialPageRoute(
               builder: (_) => const KorsisMentalFormScreen(isReward: true),
             ),
@@ -149,9 +291,9 @@ class _KorsisMentalMonitoringScreenState
           if (mounted) setState(() {});
         },
         onPunishment: () async {
-          Navigator.pop(context);
+          Navigator.pop(modalContext);
           await Navigator.push(
-            context,
+            parentContext,
             MaterialPageRoute(
               builder: (_) => const KorsisMentalFormScreen(isReward: false),
             ),
@@ -159,9 +301,9 @@ class _KorsisMentalMonitoringScreenState
           if (mounted) setState(() {});
         },
         onNumeric: () async {
-          Navigator.pop(context);
+          Navigator.pop(modalContext);
           await Navigator.push(
-            context,
+            parentContext,
             MaterialPageRoute(
               builder: (_) => const GadikAssessmentScreen(
                 categoryOverride: 'Mental Kepribadian',
@@ -224,31 +366,34 @@ class _KorsisMentalMonitoringScreenState
         ),
       ),
       body: RefreshIndicator(
-        onRefresh: () async {
-          setState(() {});
-          await Future.delayed(const Duration(milliseconds: 500));
-        },
+        onRefresh: _fetchData,
         color: _primaryNavy,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppDimensions.xl,
-              vertical: AppDimensions.lg,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildNilaiMentalSection(),
-                const SizedBox(height: AppDimensions.xxl),
-                _buildProgressSerdikSection(),
-                const SizedBox(height: AppDimensions.xxl),
-                _buildRankingSerdikSection(),
-                const SizedBox(height: AppDimensions.xxl),
-              ],
-            ),
-          ),
-        ),
+        child: _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(
+                  color: _primaryNavy,
+                ),
+              )
+            : SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppDimensions.xl,
+                    vertical: AppDimensions.lg,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildNilaiMentalSection(),
+                      const SizedBox(height: AppDimensions.xxl),
+                      _buildProgressSerdikSection(),
+                      const SizedBox(height: AppDimensions.xxl),
+                      _buildRankingSerdikSection(),
+                      const SizedBox(height: AppDimensions.xxl),
+                    ],
+                  ),
+                ),
+              ),
       ),
     );
   }
@@ -256,12 +401,13 @@ class _KorsisMentalMonitoringScreenState
   Widget _buildNilaiMentalSection() {
     final serdikList = _getProcessedSerdik();
     double getAvg(String key) {
-      if (serdikList.isEmpty) return 0.0;
+      final gradedList = serdikList.where((s) => s['is_graded'] as bool? ?? false).toList();
+      if (gradedList.isEmpty) return 0.0;
       double sum = 0;
-      for (var s in serdikList) {
+      for (var s in gradedList) {
         sum += (s[key] as double);
       }
-      return sum / serdikList.length;
+      return sum / gradedList.length;
     }
 
     final avgNilai = getAvg('nilai');
@@ -457,7 +603,7 @@ class _KorsisMentalMonitoringScreenState
     List<double> rewardSums = [0, 0, 0, 0];
     List<double> punishSums = [0, 0, 0, 0];
 
-    for (var item in KorsisInboxMockData.items) {
+    for (var item in _inboxItems) {
       if ((item.status == 'approved' ||
               item.status == 'disetujui' ||
               item.senderName.toLowerCase().contains('korsis') ||
@@ -478,7 +624,7 @@ class _KorsisMentalMonitoringScreenState
       if (rewardSums[i] > maxVal) maxVal = rewardSums[i];
       if (punishSums[i] > maxVal) maxVal = punishSums[i];
     }
-    double maxY = maxVal > 40 ? maxVal + 10 : 40;
+    double maxY = maxVal > 5 ? maxVal + (maxVal * 0.2) : 5;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -760,10 +906,11 @@ class _KorsisMentalMonitoringScreenState
         break;
     }
 
-    allSerdik.sort(
+    final gradedSerdik = allSerdik.where((s) => s['is_graded'] as bool? ?? false).toList();
+    gradedSerdik.sort(
       (a, b) => (b[sortKey] as double).compareTo(a[sortKey] as double),
     );
-    final top5 = allSerdik.take(5).toList();
+    final top5 = gradedSerdik.take(5).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1059,15 +1206,6 @@ class _InputTypeSheet extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: AppDimensions.xxl),
-              _SheetOptionCard(
-                title: 'Nilai Rutin (Angka)',
-                subtitle: 'Input Nilai Moral, Disiplin, Kepemimpinan, dll.',
-                icon: Icons.edit_note_rounded,
-                color: const Color(0xFF0D47A1),
-                bgColor: const Color(0xFFE3F2FD),
-                onTap: onNumeric,
-              ),
-              const SizedBox(height: AppDimensions.lg),
               Row(
                 children: [
                   Expanded(

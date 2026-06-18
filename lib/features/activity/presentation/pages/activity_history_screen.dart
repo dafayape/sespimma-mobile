@@ -53,8 +53,9 @@ class _ActivityHistoryScreenState extends State<ActivityHistoryScreen>
   }
 
   String _formatDynamicTime(DateTime target) {
-    final hourStr = target.hour.toString().padLeft(2, '0');
-    final minStr = target.minute.toString().padLeft(2, '0');
+    final localTarget = target.toLocal();
+    final hourStr = localTarget.hour.toString().padLeft(2, '0');
+    final minStr = localTarget.minute.toString().padLeft(2, '0');
     return '$hourStr.$minStr';
   }
 

@@ -13,6 +13,8 @@ import 'package:sespimma/core/utils/app_notifier.dart';
 import 'package:sespimma/features/assessment/utils/reward_punishment_eligibility.dart';
 import 'package:sespimma/features/assessment/data/models/korsis_inbox_mock_data.dart';
 import 'package:sespimma/core/utils/avatar_helper.dart';
+import 'package:sespimma/features/assessment/data/datasources/assessment_remote_data_source.dart';
+import 'package:sespimma/injection_container.dart';
 
 class KorsisMentalFormScreen extends StatefulWidget {
   final bool isReward;
@@ -33,6 +35,31 @@ class _KorsisMentalFormScreenState extends State<KorsisMentalFormScreen> {
   final TextEditingController _justificationController =
       TextEditingController();
 
+  String get _selectedSerdikName {
+    if (_selectedSerdik == null) return '';
+    return (_selectedSerdik!['nama_lengkap'] ?? _selectedSerdik!['name'] ?? '-').toString();
+  }
+
+  String get _selectedSerdikNosis {
+    if (_selectedSerdik == null) return '';
+    return (_selectedSerdik!['no_serdik'] ?? _selectedSerdik!['nip'] ?? _selectedSerdik!['nrp'] ?? '-').toString();
+  }
+
+  String get _selectedSerdikPokjar {
+    if (_selectedSerdik == null) return '';
+    return (_selectedSerdik!['kelompok_kelas'] ?? _selectedSerdik!['group_name'] ?? '-').toString();
+  }
+
+  String get _selectedSerdikPangkat {
+    if (_selectedSerdik == null) return '';
+    return (_selectedSerdik!['pangkat'] ?? '-').toString();
+  }
+
+  String? get _selectedSerdikPhoto {
+    if (_selectedSerdik == null) return null;
+    return (_selectedSerdik!['profile_photo'] ?? _selectedSerdik!['profilePhoto'])?.toString();
+  }
+
   final List<Map<String, dynamic>> _serdikList = SerdikRealData.records;
   String _serdikSearchQuery = '';
   String _indicatorSearchQuery = '';
@@ -46,6 +73,26 @@ class _KorsisMentalFormScreenState extends State<KorsisMentalFormScreen> {
     'POKJAR IV',
     'POKJAR V',
   ];
+
+  bool _isLoadingIndicators = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadIndicators();
+  }
+
+  Future<void> _loadIndicators() async {
+    try {
+      final ds = sl<AssessmentRemoteDataSource>();
+      await RewardPunishmentData.loadFromApi(ds);
+    } catch (_) {}
+    if (mounted) {
+      setState(() {
+        _isLoadingIndicators = false;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -101,7 +148,7 @@ class _KorsisMentalFormScreenState extends State<KorsisMentalFormScreen> {
     if (_selectedSerdik != null) {
       double dynamicPoints = 0.0;
       for (var item in KorsisInboxMockData.items) {
-        if (item.nosis == _selectedSerdik!['no_serdik'] &&
+        if (item.nosis == _selectedSerdikNosis &&
             item.status == 'disetujui') {
           dynamicPoints += item.isReward ? item.points : -item.points;
         }
@@ -239,6 +286,90 @@ class _KorsisMentalFormScreenState extends State<KorsisMentalFormScreen> {
     );
   }
 
+  Future<void> _submitForm() async {
+    if (_selectedSerdik == null || _selectedCategory == null || _selectedPhoto == null) return;
+    HapticFeedback.heavyImpact();
+
+    String dynamicSender = 'Korsis';
+    final authState = context.read<AuthBloc>().state;
+    if (authState is AuthSuccess) {
+      dynamicSender = '${authState.user.pangkat} ${authState.user.name}';
+    }
+
+    final newItem = InboxItem(
+      id: 'mock_inbox_${DateTime.now().millisecondsSinceEpoch}',
+      serdikName: _selectedSerdikName,
+      pangkat: _selectedSerdikPangkat,
+      nosis: _selectedSerdikNosis,
+      pokjar: _selectedSerdikPokjar,
+      isReward: widget.isReward,
+      senderName: dynamicSender,
+      timestamp: DateTime.now(),
+      points: _selectedCategory!.point,
+      description: _justificationController.text.isNotEmpty
+          ? _justificationController.text
+          : 'Telah dilakukan observasi dan pencatatan oleh Korsis.',
+      rewardPunishmentName: _selectedCategory!.description,
+      status: 'disetujui',
+      rewardPunishmentId: _selectedCategory!.id,
+      photoPath: _selectedPhoto?.path,
+    );
+
+    KorsisInboxMockData.addRecord(newItem);
+
+    try {
+      final dataSource = sl<AssessmentRemoteDataSource>();
+      
+      int itemId = 1;
+      try {
+         itemId = int.parse(_selectedCategory!.id);
+      } catch (_) {}
+
+      final int studentId = int.tryParse((_selectedSerdik!['user_id'] ?? _selectedSerdik!['id'] ?? '').toString()) ?? 1;
+
+      if (widget.isReward) {
+        await dataSource.submitUserReward({
+          'user_id': studentId,
+          'reward_item_id': itemId,
+          'point': _selectedCategory!.point,
+          'qty': 1,
+          'reward_date': DateTime.now().toUtc().toIso8601String(),
+          'notes': _justificationController.text.isNotEmpty
+              ? _justificationController.text
+              : 'Telah dilakukan observasi dan pencatatan oleh Korsis.',
+          'status': 'approved',
+        });
+      } else {
+        await dataSource.submitPunishmentLog({
+          'user_id': studentId,
+          'punishment_item_id': itemId,
+          'point': _selectedCategory!.point.abs(),
+          'qty': 1,
+          'violation_date': DateTime.now().toUtc().toIso8601String(),
+          'notes': _justificationController.text.isNotEmpty
+              ? _justificationController.text
+              : 'Telah dilakukan observasi dan pencatatan oleh Korsis.',
+          'status': 'approved',
+        });
+      }
+
+      if (mounted) {
+        AppNotifier.showSuccess(
+          context,
+          'Catatan berhasil ditambahkan ke sistem!',
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        AppNotifier.showError(
+          context,
+          'Gagal mengirim ke server: $e',
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final String title = widget.isReward ? 'Input Reward' : 'Input Punishment';
@@ -326,42 +457,7 @@ class _KorsisMentalFormScreenState extends State<KorsisMentalFormScreen> {
                   (_selectedSerdik != null &&
                       _selectedCategory != null &&
                       _selectedPhoto != null)
-                  ? () {
-                      HapticFeedback.heavyImpact();
-
-                      String dynamicSender = 'Kombes Pol. Ahmad Setiawan';
-                      final authState = context.read<AuthBloc>().state;
-                      if (authState is AuthSuccess) {
-                        dynamicSender =
-                            '${authState.user.pangkat} ${authState.user.name}';
-                      }
-
-                      final newItem = InboxItem(
-                        id: DateTime.now().millisecondsSinceEpoch.toString(),
-                        serdikName: _selectedSerdik!['nama_lengkap'],
-                        pangkat: _selectedSerdik!['pangkat'],
-                        nosis: _selectedSerdik!['no_serdik'],
-                        pokjar: _selectedSerdik!['kelompok_kelas'],
-                        isReward: widget.isReward,
-                        senderName: dynamicSender,
-                        timestamp: DateTime.now(),
-                        points: _selectedCategory!.point,
-                        description: _justificationController.text.isNotEmpty
-                            ? _justificationController.text
-                            : 'Telah dilakukan observasi dan pencatatan oleh Korsis.',
-                        rewardPunishmentName: _selectedCategory!.description,
-                        status: 'disetujui',
-                        photoPath: _selectedPhoto?.path,
-                        rewardPunishmentId: _selectedCategory!.id,
-                      );
-                      KorsisInboxMockData.addRecord(newItem);
-
-                      Navigator.pop(context);
-                      AppNotifier.showSuccess(
-                        context,
-                        'Catatan berhasil ditambahkan ke sistem!',
-                      );
-                    }
+                  ? _submitForm
                   : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: pointColor,
@@ -432,7 +528,7 @@ class _KorsisMentalFormScreenState extends State<KorsisMentalFormScreen> {
         child: Row(
           children: [
             if (isSelected)
-              _buildAvatar(_selectedSerdik!['profile_photo'])
+              _buildAvatar(_selectedSerdikPhoto)
             else
               Container(
                 width: 50,
@@ -455,7 +551,7 @@ class _KorsisMentalFormScreenState extends State<KorsisMentalFormScreen> {
                 children: [
                   Text(
                     isSelected
-                        ? _selectedSerdik!['nama_lengkap']
+                        ? _selectedSerdikName
                         : 'Pilih Target Serdik',
                     style: TextStyle(
                       fontSize: AppDimensions.fontLg,
@@ -468,7 +564,7 @@ class _KorsisMentalFormScreenState extends State<KorsisMentalFormScreen> {
                   const SizedBox(height: 4),
                   Text(
                     isSelected
-                        ? '${_selectedSerdik!['pangkat']} • No. ${_selectedSerdik!['no_serdik']}'
+                        ? '$_selectedSerdikPangkat • No. $_selectedSerdikNosis'
                         : 'Tekan untuk mencari Serdik',
                     style: TextStyle(
                       fontSize: AppDimensions.fontMd,
@@ -496,7 +592,7 @@ class _KorsisMentalFormScreenState extends State<KorsisMentalFormScreen> {
     final bool isSelected = _selectedCategory != null;
 
     return InkWell(
-      onTap: _showIndicatorLookup,
+      onTap: _isLoadingIndicators ? null : _showIndicatorLookup,
       borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
       child: Container(
         decoration: BoxDecoration(
@@ -540,103 +636,128 @@ class _KorsisMentalFormScreenState extends State<KorsisMentalFormScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    isSelected
-                        ? _selectedCategory!.description
-                        : 'Pilih Indikator',
-                    style: TextStyle(
-                      fontSize: AppDimensions.fontLg,
-                      fontWeight: FontWeight.w800,
-                      color: isSelected
-                          ? _primaryNavy
-                          : Colors.blueGrey.shade400,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  if (isSelected && _selectedCategory!.note != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.shade100,
-                        borderRadius: BorderRadius.circular(
-                          AppDimensions.radiusSm,
+                  if (_isLoadingIndicators)
+                    Row(
+                      children: [
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: pointColor,
+                          ),
                         ),
-                      ),
-                      child: Text(
-                        _selectedCategory!.note!,
-                        style: TextStyle(
-                          fontSize: AppDimensions.fontXs,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.orange.shade800,
+                        const SizedBox(width: 8),
+                        Text(
+                          'Memuat data...',
+                          style: TextStyle(
+                            fontSize: AppDimensions.fontLg,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.blueGrey.shade400,
+                          ),
                         ),
-                      ),
+                      ],
                     )
-                  else if (isSelected)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.blueGrey.shade50,
-                        borderRadius: BorderRadius.circular(
-                          AppDimensions.radiusSm,
-                        ),
-                      ),
-                      child: Text(
-                        _selectedCategory!.aspect.toUpperCase(),
-                        style: TextStyle(
-                          fontSize: AppDimensions.fontXs,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.blueGrey.shade600,
-                        ),
-                      ),
-                    )
-                  else
+                  else ...[
                     Text(
-                      widget.isReward
-                          ? 'Pilih jenis indikator prestasi'
-                          : 'Pilih jenis indikator pelanggaran',
+                      isSelected
+                          ? _selectedCategory!.description
+                          : 'Pilih Indikator',
                       style: TextStyle(
-                        fontSize: AppDimensions.fontMd,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey.shade400,
+                        fontSize: AppDimensions.fontLg,
+                        fontWeight: FontWeight.w800,
+                        color: isSelected
+                            ? _primaryNavy
+                            : Colors.blueGrey.shade400,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
+                    const SizedBox(height: 4),
+                    if (isSelected && _selectedCategory!.note != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade100,
+                          borderRadius: BorderRadius.circular(
+                            AppDimensions.radiusSm,
+                          ),
+                        ),
+                        child: Text(
+                          _selectedCategory!.note!,
+                          style: TextStyle(
+                            fontSize: AppDimensions.fontXs,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.orange.shade800,
+                          ),
+                        ),
+                      )
+                    else if (isSelected)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.blueGrey.shade50,
+                          borderRadius: BorderRadius.circular(
+                            AppDimensions.radiusSm,
+                          ),
+                        ),
+                        child: Text(
+                          _selectedCategory!.aspect.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: AppDimensions.fontXs,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.blueGrey.shade600,
+                          ),
+                        ),
+                      )
+                    else
+                      Text(
+                        widget.isReward
+                            ? 'Pilih jenis indikator prestasi'
+                            : 'Pilih jenis indikator pelanggaran',
+                        style: TextStyle(
+                          fontSize: AppDimensions.fontMd,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade400,
+                        ),
+                      ),
+                  ],
                 ],
               ),
             ),
-            if (isSelected)
-              Container(
-                margin: const EdgeInsets.only(left: AppDimensions.sm),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: pointColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-                ),
-                child: Text(
-                  '${_selectedCategory!.point > 0 ? "+" : ""}${_selectedCategory!.point}',
-                  style: TextStyle(
-                    fontSize: AppDimensions.fontLg,
-                    fontWeight: FontWeight.w900,
-                    color: pointColor,
+            if (!_isLoadingIndicators)
+              if (isSelected)
+                Container(
+                  margin: const EdgeInsets.only(left: AppDimensions.sm),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
                   ),
+                  decoration: BoxDecoration(
+                    color: pointColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+                  ),
+                  child: Text(
+                    '${_selectedCategory!.point > 0 ? "+" : ""}${_selectedCategory!.point}',
+                    style: TextStyle(
+                      fontSize: AppDimensions.fontLg,
+                      fontWeight: FontWeight.w900,
+                      color: pointColor,
+                    ),
+                  ),
+                )
+              else
+                Icon(
+                  AppIcons.caretDown,
+                  color: Colors.grey.shade400,
+                  size: AppDimensions.iconLg,
                 ),
-              )
-            else
-              Icon(
-                AppIcons.caretDown,
-                color: Colors.grey.shade400,
-                size: AppDimensions.iconLg,
-              ),
           ],
         ),
       ),
@@ -1197,11 +1318,10 @@ class _KorsisMentalFormScreenState extends State<KorsisMentalFormScreen> {
                       final opt = filteredList[index];
 
                       EligibilityStatus eligibility = EligibilityStatus(true);
-                      if (_selectedSerdik != null &&
-                          _selectedSerdik!['no_serdik'] != null) {
+                      if (_selectedSerdik != null && _selectedSerdikNosis != '-') {
                         eligibility =
                             RewardPunishmentEligibility.checkEligibility(
-                              _selectedSerdik!['no_serdik'],
+                              _selectedSerdikNosis,
                               opt,
                             );
                       }

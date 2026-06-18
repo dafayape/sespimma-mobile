@@ -10,6 +10,7 @@ class AssessmentActionSheet extends StatelessWidget {
   final VoidCallback onInputMedis;
   final VoidCallback onReward;
   final VoidCallback onPunishment;
+  final VoidCallback? onViewReport;
 
   const AssessmentActionSheet({
     super.key,
@@ -19,29 +20,42 @@ class AssessmentActionSheet extends StatelessWidget {
     required this.onInputMedis,
     required this.onReward,
     required this.onPunishment,
+    this.onViewReport,
   });
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          vertical: AppDimensions.xl,
-          horizontal: AppDimensions.xxl,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHandle(),
-            const SizedBox(height: AppDimensions.xxl),
-            _buildTitle(),
-            if (serdik['status'] == 'Sudah Dinilai') _buildWarningBanner(),
-            const SizedBox(height: AppDimensions.xxl),
-            _buildInputAction(),
-            const SizedBox(height: AppDimensions.md),
-            ..._buildRoleActions(context),
-          ],
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            vertical: AppDimensions.xl,
+            horizontal: AppDimensions.xxl,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHandle(),
+              const SizedBox(height: AppDimensions.xxl),
+              _buildTitle(),
+              if (serdik['status'] == 'Sudah Dinilai') _buildWarningBanner(),
+              const SizedBox(height: AppDimensions.xxl),
+              if (onViewReport != null) ...[
+                ActionTileWidget(
+                  icon: Icons.analytics_rounded,
+                  title: 'Lihat Rapor & Perkembangan',
+                  subtitle: 'Pantau riwayat nilai akademik, mental, & jasmani',
+                  color: AppColors.primaryNavy,
+                  onTap: onViewReport!,
+                ),
+                const SizedBox(height: AppDimensions.md),
+              ],
+              _buildInputAction(),
+              const SizedBox(height: AppDimensions.md),
+              ..._buildRoleActions(context),
+            ],
+          ),
         ),
       ),
     );
@@ -125,6 +139,10 @@ class AssessmentActionSheet extends StatelessWidget {
     final String subtitle = currentRole == 'Tim Medis'
         ? 'Masukkan skor murni (0-100) hasil rikes riil'
         : 'Masukkan skor murni (0-100) untuk evaluasi';
+
+    if (currentRole == 'Patun') {
+      return const SizedBox.shrink();
+    }
 
     return ActionTileWidget(
       icon: Icons.edit_note_rounded,
