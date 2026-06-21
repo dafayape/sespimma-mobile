@@ -1,15 +1,18 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:sespimma/core/constants/app_dimensions.dart';
 import 'package:sespimma/core/theme/app_colors.dart';
 import 'package:sespimma/features/assessment/presentation/widgets/assessment_search_bar_widget.dart';
 import 'package:sespimma/features/assessment/presentation/widgets/status_filter_button_widget.dart';
-import 'package:sespimma/features/auth/data/datasources/serdik_real_data.dart';
 import 'package:sespimma/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:sespimma/features/auth/presentation/bloc/auth_state.dart';
 import 'package:sespimma/features/assessment/data/models/jasmani_grading_data.dart';
 import 'package:sespimma/features/assessment/data/datasources/jasmani_lookup_tables.dart';
 import 'package:sespimma/features/assessment/presentation/widgets/jasmani_grading_bottom_sheet.dart';
+import 'package:sespimma/features/assessment/data/datasources/assessment_remote_data_source.dart';
+import 'package:sespimma/injection_container.dart';
+import 'package:sespimma/core/utils/app_notifier.dart';
 
 import 'package:sespimma/core/utils/avatar_helper.dart';
 
@@ -23,6 +26,10 @@ class OperatorJasmaniScreen extends StatefulWidget {
 class _OperatorJasmaniScreenState extends State<OperatorJasmaniScreen> {
   static const Color _primaryNavy = Color(0xFF000B1D);
   static const Color _lightGrey = Color(0xFFF8F9FA);
+
+  List<Map<String, dynamic>> _students = [];
+  Map<String, Map<String, dynamic>> _physicalDataMap = {};
+  bool _isLoading = true;
 
   String _searchQuery = '';
   String _selectedFilter = 'Semua';
@@ -50,9 +57,55 @@ class _OperatorJasmaniScreenState extends State<OperatorJasmaniScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _fetchData();
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchData() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final dataSource = sl<AssessmentRemoteDataSource>();
+      final studentList = await dataSource.getStudents();
+      final Map<String, Map<String, dynamic>> tempPhysicalMap = {};
+
+      await Future.wait(studentList.map((student) async {
+        final noSerdik = (student['nip'] ?? student['nrp'] ?? student['no_serdik'] ?? '').toString();
+        if (noSerdik.isNotEmpty) {
+          try {
+            final physical = await dataSource.getPhysical(noSerdik);
+            tempPhysicalMap[noSerdik] = physical;
+          } catch (_) {
+            tempPhysicalMap[noSerdik] = {};
+          }
+        }
+      }));
+
+      if (mounted) {
+        setState(() {
+          _students = studentList;
+          _physicalDataMap = tempPhysicalMap;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        AppNotifier.showError(context, 'Gagal memuat data jasmani: $e');
+      }
+    }
   }
 
   Color _getScoreColor(double score) {
@@ -63,10 +116,6 @@ class _OperatorJasmaniScreenState extends State<OperatorJasmaniScreen> {
     if (score >= 75.01) return Colors.orange.shade700;
     if (score >= 70.00) return Colors.amber.shade700;
     return Colors.red.shade700;
-  }
-
-  void _refreshData() {
-    setState(() {});
   }
 
   @override
@@ -87,113 +136,110 @@ class _OperatorJasmaniScreenState extends State<OperatorJasmaniScreen> {
           ),
         ),
       ),
-      body: BlocBuilder<AuthBloc, AuthState>(
-        builder: (context, state) {
-          if (state is AuthSuccess) {
-            final baseList = SerdikRealData.records.toList();
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: _primaryNavy),
+            )
+          : BlocBuilder<AuthBloc, AuthState>(
+              builder: (context, state) {
+                if (state is AuthSuccess) {
+                  final baseList = _students;
 
-            var filteredList = baseList.where((serdik) {
-              final name = (serdik['nama_lengkap'] ?? '')
-                  .toString()
-                  .toLowerCase();
-              final noSerdik = (serdik['no_serdik'] ?? '')
-                  .toString()
-                  .toLowerCase();
-              final query = _searchQuery.toLowerCase();
-              if (!(name.contains(query) || noSerdik.contains(query))) {
-                return false;
-              }
+                  var filteredList = baseList.where((serdik) {
+                    final name = (serdik['name'] ?? serdik['nama_lengkap'] ?? '')
+                        .toString()
+                        .toLowerCase();
+                    final noSerdik = (serdik['nip'] ?? serdik['nrp'] ?? serdik['no_serdik'] ?? '')
+                        .toString()
+                        .toLowerCase();
+                    final query = _searchQuery.toLowerCase();
+                    if (!(name.contains(query) || noSerdik.contains(query))) {
+                      return false;
+                    }
 
-              if (_selectedFilter != 'Semua') {
-                final Map<String, String> romanToArab = {
-                  'POKJAR I': 'POKJAR I',
-                  'POKJAR II': 'POKJAR II',
-                  'POKJAR III': 'POKJAR III',
-                  'POKJAR IV': 'POKJAR IV',
-                  'POKJAR V': 'POKJAR V',
-                };
-                final mappedFilter =
-                    romanToArab[_selectedFilter] ?? _selectedFilter;
-                if (serdik['kelompok_kelas'] != mappedFilter) {
-                  return false;
+                    if (_selectedFilter != 'Semua') {
+                      final pokjar = (serdik['group_name'] ?? serdik['kelompok_kelas'] ?? '').toString().toUpperCase();
+                      if (pokjar != _selectedFilter) {
+                        return false;
+                      }
+                    }
+
+                    final tanggalLahir = (serdik['tanggal_lahir'] ?? '-').toString();
+                    final golongan = JasmaniLookupTables.getGolongan(tanggalLahir);
+
+                    if (_selectedGolongan != 'Semua') {
+                      if (golongan != _selectedGolongan) return false;
+                    }
+
+                    if (_selectedGender != 'Semua') {
+                      final gender = (serdik['gender'] ?? serdik['jenis_kelamin'] ?? 'Pria').toString();
+                      final isPria =
+                          gender.toLowerCase() == 'laki-laki' ||
+                          gender.toLowerCase() == 'pria';
+                      if (_selectedGender == 'Pria' && !isPria) return false;
+                      if (_selectedGender == 'Wanita' && isPria) return false;
+                    }
+
+                    if (_selectedStatusPenilaian != 'Semua') {
+                      final phys = _physicalDataMap[noSerdik] ?? {};
+                      final data = JasmaniGradingData(
+                        noSerdik: noSerdik,
+                        nilaiA: (phys['nga'] as num?)?.toDouble(),
+                        nilaiB1: (phys['pullup'] as num?)?.toDouble(),
+                        nilaiB2: (phys['situp'] as num?)?.toDouble(),
+                        nilaiB3: (phys['pushup'] as num?)?.toDouble(),
+                        nilaiB4: (phys['shuttle'] as num?)?.toDouble(),
+                      );
+
+                      final bool isSamaptaA = data.nilaiA != null;
+                      final bool isSamaptaB = data.isSamaptaBComplete;
+                      final bool isFullyGraded =
+                          isSamaptaA && (golongan == 'GOL IV' ? true : isSamaptaB);
+
+                      if (_selectedStatusPenilaian == 'Sudah Dinilai' &&
+                          !isFullyGraded) {
+                        return false;
+                      }
+                      if (_selectedStatusPenilaian == 'Belum Dinilai' &&
+                          isFullyGraded) {
+                        return false;
+                      }
+                    }
+
+                    return true;
+                  }).toList();
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildHeaderBlock(filteredList.length),
+                      Divider(
+                        height: AppDimensions.dividerHeight,
+                        color: Colors.grey.shade200,
+                        thickness: AppDimensions.dividerHeight,
+                      ),
+                      Expanded(
+                        child: RefreshIndicator(
+                          onRefresh: _fetchData,
+                          color: _primaryNavy,
+                          child: filteredList.isEmpty
+                              ? CustomScrollView(
+                                  physics: const AlwaysScrollableScrollPhysics(),
+                                  slivers: [
+                                    SliverFillRemaining(child: _buildEmptyState()),
+                                  ],
+                                )
+                              : _buildSerdikList(filteredList),
+                        ),
+                      ),
+                    ],
+                  );
                 }
-              }
-
-              if (_selectedGolongan != 'Semua') {
-                final tanggalLahir = (serdik['tanggal_lahir'] ?? '-')
-                    .toString();
-                final gol = JasmaniLookupTables.getGolongan(tanggalLahir);
-                if (gol != _selectedGolongan) return false;
-              }
-
-              if (_selectedGender != 'Semua') {
-                final gender = (serdik['jenis_kelamin'] ?? 'Pria').toString();
-                final isPria =
-                    gender.toLowerCase() == 'laki-laki' ||
-                    gender.toLowerCase() == 'pria';
-                if (_selectedGender == 'Pria' && !isPria) return false;
-                if (_selectedGender == 'Wanita' && isPria) return false;
-              }
-
-              if (_selectedStatusPenilaian != 'Semua') {
-                final tanggalLahir = (serdik['tanggal_lahir'] ?? '-')
-                    .toString();
-                final golongan = JasmaniLookupTables.getGolongan(tanggalLahir);
-                final nosis = (serdik['no_serdik'] ?? '-').toString();
-                final data = JasmaniGradingData.getJasmaniData(nosis);
-
-                final bool isSamaptaA = data.nilaiA != null;
-                final bool isSamaptaB = data.isSamaptaBComplete;
-                final bool isFullyGraded =
-                    isSamaptaA && (golongan == 'GOL IV' ? true : isSamaptaB);
-
-                if (_selectedStatusPenilaian == 'Sudah Dinilai' &&
-                    !isFullyGraded) {
-                  return false;
-                }
-                if (_selectedStatusPenilaian == 'Belum Dinilai' &&
-                    isFullyGraded) {
-                  return false;
-                }
-              }
-
-              return true;
-            }).toList();
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildHeaderBlock(filteredList.length),
-                Divider(
-                  height: AppDimensions.dividerHeight,
-                  color: Colors.grey.shade200,
-                  thickness: AppDimensions.dividerHeight,
-                ),
-                Expanded(
-                  child: RefreshIndicator(
-                    onRefresh: () async {
-                      _refreshData();
-                      await Future.delayed(const Duration(milliseconds: 500));
-                    },
-                    color: _primaryNavy,
-                    child: filteredList.isEmpty
-                        ? CustomScrollView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            slivers: [
-                              SliverFillRemaining(child: _buildEmptyState()),
-                            ],
-                          )
-                        : _buildSerdikList(filteredList),
-                  ),
-                ),
-              ],
-            );
-          }
-          return const Center(
-            child: CircularProgressIndicator(color: _primaryNavy),
-          );
-        },
-      ),
+                return const Center(
+                  child: CircularProgressIndicator(color: _primaryNavy),
+                );
+              },
+            ),
     );
   }
 
@@ -413,16 +459,25 @@ class _OperatorJasmaniScreenState extends State<OperatorJasmaniScreen> {
   }
 
   Widget _buildSerdikCard(Map<String, dynamic> serdik) {
-    final name = (serdik['nama_lengkap'] ?? '-').toString();
-    final noSerdik = (serdik['no_serdik'] ?? '-').toString();
+    final name = (serdik['name'] ?? serdik['nama_lengkap'] ?? '-').toString();
+    final noSerdik = (serdik['nip'] ?? serdik['nrp'] ?? serdik['no_serdik'] ?? '').toString();
     final pangkat = (serdik['pangkat'] ?? '-').toString();
-    final gender = (serdik['jenis_kelamin'] ?? 'Pria').toString();
+    final gender = (serdik['gender'] ?? serdik['jenis_kelamin'] ?? 'Pria').toString();
     final tanggalLahir = (serdik['tanggal_lahir'] ?? '-').toString();
 
     final String? senatRole = serdik['jabatan_senat'] as String?;
 
     final golongan = JasmaniLookupTables.getGolongan(tanggalLahir);
-    final data = JasmaniGradingData.getJasmaniData(noSerdik);
+    
+    final phys = _physicalDataMap[noSerdik] ?? {};
+    final data = JasmaniGradingData(
+      noSerdik: noSerdik,
+      nilaiA: (phys['nga'] as num?)?.toDouble(),
+      nilaiB1: (phys['pullup'] as num?)?.toDouble(),
+      nilaiB2: (phys['situp'] as num?)?.toDouble(),
+      nilaiB3: (phys['pushup'] as num?)?.toDouble(),
+      nilaiB4: (phys['shuttle'] as num?)?.toDouble(),
+    );
 
     final bool isSamaptaA = data.nilaiA != null;
     final bool isSamaptaB = data.isSamaptaBComplete;
@@ -436,6 +491,16 @@ class _OperatorJasmaniScreenState extends State<OperatorJasmaniScreen> {
     final Color scoreColor = isPartiallyGraded
         ? _getScoreColor(finalScore)
         : Colors.grey;
+
+    final normalizedSerdik = {
+      'id': serdik['id']?.toString() ?? '',
+      'no_serdik': noSerdik,
+      'nama_lengkap': name,
+      'pangkat': pangkat,
+      'kelompok_kelas': (serdik['group_name'] ?? serdik['kelompok_kelas'] ?? '-').toString(),
+      'jenis_kelamin': gender,
+      'profile_photo': serdik['profile_photo'] ?? serdik['profilePhoto'],
+    };
 
     return Container(
       decoration: BoxDecoration(
@@ -544,7 +609,7 @@ class _OperatorJasmaniScreenState extends State<OperatorJasmaniScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (senatRole != null) ...[
+                    if (senatRole != null && senatRole.isNotEmpty) ...[
                       const SizedBox(height: AppDimensions.xs),
                       Row(
                         children: [
@@ -563,7 +628,7 @@ class _OperatorJasmaniScreenState extends State<OperatorJasmaniScreen> {
                               border: Border.all(
                                 color: const Color(
                                   0xFF1A237E,
-                                ).withValues(alpha: 0.2),
+                                  ).withValues(alpha: 0.2),
                               ),
                             ),
                             child: Row(
@@ -642,7 +707,7 @@ class _OperatorJasmaniScreenState extends State<OperatorJasmaniScreen> {
                     onPressed: () {
                       _showGradingOptions(
                         context,
-                        serdik,
+                        normalizedSerdik,
                         data,
                         golongan,
                         gender,
@@ -703,14 +768,13 @@ class _OperatorJasmaniScreenState extends State<OperatorJasmaniScreen> {
         gradingData: data,
         golongan: golongan,
         gender: gender,
-        onGradingComplete: _refreshData,
+        onGradingComplete: _fetchData,
       ),
     );
   }
 
   Widget _buildAvatar(Map<String, dynamic> serdik) {
-    final hasPhoto =
-        serdik['foto'] != null && serdik['foto'].toString().isNotEmpty;
+    final String? profilePhoto = serdik['profile_photo'] ?? serdik['profilePhoto'];
 
     return Container(
       width: 64,
@@ -727,8 +791,8 @@ class _OperatorJasmaniScreenState extends State<OperatorJasmaniScreen> {
           ),
         ],
         image: DecorationImage(
-          image: hasPhoto
-              ? NetworkImage(serdik['foto'].toString()) as ImageProvider
+          image: (profilePhoto != null && profilePhoto.isNotEmpty)
+              ? FileImage(File(profilePhoto)) as ImageProvider
               : AvatarHelper.getAvatar(null),
           fit: BoxFit.cover,
         ),

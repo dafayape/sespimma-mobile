@@ -97,8 +97,7 @@ class _NumericInputDialogSheetState extends State<NumericInputDialogSheet> {
           2: 'kepemimpinan',
           3: 'pengendalian_diri',
           4: 'penampilan',
-          5: 'sosiometri_awal',
-          6: 'sosiometri_akhir',
+          5: 'sosiometri',
         },
         'Jasmani': {
           0: 'tes_awal',
@@ -188,10 +187,7 @@ class _NumericInputDialogSheetState extends State<NumericInputDialogSheet> {
       final int ctrlIndex = subCategories[i]['index'] as int;
       if (cat == 'Mental Kepribadian') {
         if (ctrlIndex == 5) {
-          _inputControllers[ctrlIndex].text = serdik['sosiometriAwal'] ?? '0.0';
-        } else if (ctrlIndex == 6) {
-          _inputControllers[ctrlIndex].text =
-              serdik['sosiometriAkhir'] ?? '0.0';
+          _inputControllers[ctrlIndex].text = serdik['sosiometri'] ?? '0.0';
         } else {
           _inputControllers[ctrlIndex].text = _getDefaultValue(
             cat,

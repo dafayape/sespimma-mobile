@@ -894,10 +894,10 @@ class PatunMentalDetailScreen extends StatelessWidget {
           0,
           100,
         );
-    final double sosiometriAwal = (scores['sosiometri_awal'] as num).toDouble();
-    final double sosiometriAkhir = (scores['sosiometri_akhir'] as num)
-        .toDouble();
-    final double sosiometri = (sosiometriAwal + sosiometriAkhir) / 2;
+    final double sosiometri = (scores['sosiometri'] as num?)?.toDouble() ??
+        (((scores['sosiometri_awal'] as num?)?.toDouble() ?? 0.0) +
+            ((scores['sosiometri_akhir'] as num?)?.toDouble() ?? 0.0)) /
+            2;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -949,10 +949,7 @@ class PatunMentalDetailScreen extends StatelessWidget {
           const SizedBox(height: AppDimensions.sm),
           _buildScoreGroup('Penampilan', '15%', penampilan, []),
           const SizedBox(height: AppDimensions.sm),
-          _buildScoreGroup('Sosiometri', '15%', sosiometri, [
-            _buildSubScoreItem('Sosiometri Awal', sosiometriAwal),
-            _buildSubScoreItem('Sosiometri Akhir', sosiometriAkhir),
-          ]),
+          _buildScoreGroup('Sosiometri', '15%', sosiometri, []),
           const SizedBox(height: AppDimensions.lg),
           _buildRecommendationCard(baseScore, status),
           const SizedBox(height: AppDimensions.xxl),

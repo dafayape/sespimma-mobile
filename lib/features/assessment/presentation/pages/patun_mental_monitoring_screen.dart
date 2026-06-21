@@ -123,8 +123,7 @@ class _PatunMentalMonitoringScreenState
           2: 'kepemimpinan',
           3: 'pengendalian_diri',
           4: 'penampilan',
-          5: 'sosiometri_awal',
-          6: 'sosiometri_akhir',
+          5: 'sosiometri',
         },
         'Jasmani': {
           0: 'tes_awal',
@@ -406,8 +405,7 @@ class _PatunMentalMonitoringScreenState
                                     'status': status,
                                     'jenisKelamin': (student['jenis_kelamin'] ?? 'Laki-laki').toString(),
                                     'tanggalLahir': (student['tanggal_lahir'] ?? '').toString(),
-                                    'sosiometriAwal': (student['sosiometri_awal'] ?? '0.00').toString(),
-                                    'sosiometriAkhir': (student['sosiometri_akhir'] ?? '0.00').toString(),
+                                    'sosiometri': (student['sosiometri'] ?? '0.00').toString(),
                                   };
 
                                   _showAssessmentActionSheet(parentContext, serdikMap);

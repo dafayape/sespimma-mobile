@@ -356,15 +356,14 @@ abstract final class SamaptaScoringService {
     double Function(int) getVal,
     double lookupPoints,
   ) {
-    double avg5 =
-        (getVal(0) * 20 +
+    return ((getVal(0) * 20 +
             getVal(1) * 15 +
             getVal(2) * 20 +
             getVal(3) * 15 +
-            getVal(4) * 15) /
-        85;
-    double sosiometriAvg = (getVal(5) + getVal(6)) / 2;
-    return ((avg5 * 7 + sosiometriAvg * 3) / 10) + lookupPoints;
+            getVal(4) * 15 +
+            getVal(5) * 15) /
+        100) +
+        lookupPoints;
   }
 
   static double calculateJasmaniScore(

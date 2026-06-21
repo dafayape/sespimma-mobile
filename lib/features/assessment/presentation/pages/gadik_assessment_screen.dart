@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:sespimma/core/utils/app_notifier.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -18,6 +19,7 @@ import 'package:sespimma/features/auth/presentation/bloc/auth_state.dart';
 import 'package:sespimma/injection_container.dart';
 import 'package:sespimma/features/report/presentation/pages/report_screen.dart';
 import 'package:sespimma/features/auth/domain/entities/user_entity.dart';
+import 'package:sespimma/features/assessment/presentation/pages/patun_mental_form_screen.dart';
 
 class GadikAssessmentScreen extends StatefulWidget {
   final String? categoryOverride;
@@ -92,7 +94,7 @@ class _GadikAssessmentScreenState extends State<GadikAssessmentScreen>
       final role = _getCurrentRole(context);
       String category = widget.categoryOverride ?? 'Akademik';
       if (widget.categoryOverride == null) {
-        if (role == 'Patun') {
+        if (role == 'Patun' || role == 'Gadik') {
           category = 'Mental Kepribadian';
         } else if (role == 'Tim Medis' || role == 'Korsis') {
           category = 'Jasmani';
@@ -108,19 +110,21 @@ class _GadikAssessmentScreenState extends State<GadikAssessmentScreen>
       for (final student in students) {
         final int id = student['id'] ?? 0;
         final bool sudahDinilai = gradedSet.contains(id);
+        final String nosisVal = (student['nip'] ?? student['no_serdik'] ?? student['nosis'] ?? '').toString();
 
         list.add({
           'id': id.toString(),
-          'name': student['name'] ?? '',
-          'nrp': student['nrp'] ?? '',
-          'nosis': student['no_serdik'] ?? '',
+          'user_id': (student['user_id'] ?? '').toString(),
+          'name': (student['name'] ?? student['nama_lengkap'] ?? '').toString(),
+          'nrp': (student['nrp'] ?? '').toString(),
+          'nosis': nosisVal,
           'pokjar': (student['group_name'] ?? student['pokjar'] ?? student['kelompok_kelas'] ?? '').toString().toUpperCase(),
           'status': sudahDinilai ? 'Sudah Dinilai' : 'Belum Dinilai',
-          'jenisKelamin': student['jenis_kelamin'] ?? 'Laki-laki',
-          'tanggalLahir': student['tanggal_lahir'] ?? '',
+          'jenisKelamin': (student['jenis_kelamin'] ?? student['gender'] ?? 'Laki-laki').toString(),
+          'tanggalLahir': (student['tanggal_lahir'] ?? student['birth_date'] ?? '').toString(),
+          'profile_photo': (student['profile_photo'] ?? '').toString(),
           'sanksiKesehatan': '0',
-          'sosiometriAwal': '0.00',
-          'sosiometriAkhir': '0.00',
+          'sosiometri': '0.00',
         });
       }
 
@@ -177,19 +181,53 @@ class _GadikAssessmentScreenState extends State<GadikAssessmentScreen>
         },
         onReward: () {
           Navigator.pop(context);
-          Navigator.pushNamed(
+          Navigator.push(
             context,
-            '/lookup-selection',
-            arguments: {'type': 'reward', 'serdik': serdik},
-          );
+            MaterialPageRoute(
+              builder: (context) => PatunMentalFormScreen(
+                isReward: true,
+                initialSerdik: {
+                  'id': int.tryParse(serdik['id'] ?? '0'),
+                  'user_id': int.tryParse(serdik['user_id'] ?? '0'),
+                  'no_serdik': serdik['nosis'] ?? '',
+                  'nip': serdik['nosis'] ?? '',
+                  'nrp': serdik['nrp'] ?? '',
+                  'nama_lengkap': serdik['name'] ?? '',
+                  'name': serdik['name'] ?? '',
+                  'pangkat': serdik['pangkat'] ?? '',
+                  'kelompok_kelas': serdik['pokjar'] ?? '',
+                  'pokjar': serdik['pokjar'] ?? '',
+                  'jenis_kelamin': serdik['jenisKelamin'] ?? '',
+                  'profile_photo': serdik['profile_photo'] ?? '',
+                },
+              ),
+            ),
+          ).then((_) => _fetchData());
         },
         onPunishment: () {
           Navigator.pop(context);
-          Navigator.pushNamed(
+          Navigator.push(
             context,
-            '/lookup-selection',
-            arguments: {'type': 'punishment', 'serdik': serdik},
-          );
+            MaterialPageRoute(
+              builder: (context) => PatunMentalFormScreen(
+                isReward: false,
+                initialSerdik: {
+                  'id': int.tryParse(serdik['id'] ?? '0'),
+                  'user_id': int.tryParse(serdik['user_id'] ?? '0'),
+                  'no_serdik': serdik['nosis'] ?? '',
+                  'nip': serdik['nosis'] ?? '',
+                  'nrp': serdik['nrp'] ?? '',
+                  'nama_lengkap': serdik['name'] ?? '',
+                  'name': serdik['name'] ?? '',
+                  'pangkat': serdik['pangkat'] ?? '',
+                  'kelompok_kelas': serdik['pokjar'] ?? '',
+                  'pokjar': serdik['pokjar'] ?? '',
+                  'jenis_kelamin': serdik['jenisKelamin'] ?? '',
+                  'profile_photo': serdik['profile_photo'] ?? '',
+                },
+              ),
+            ),
+          ).then((_) => _fetchData());
         },
         onViewReport: _getCurrentRole(context) == 'Patun'
             ? null
@@ -324,8 +362,7 @@ class _GadikAssessmentScreenState extends State<GadikAssessmentScreen>
           2: 'kepemimpinan',
           3: 'pengendalian_diri',
           4: 'penampilan',
-          5: 'sosiometri_awal',
-          6: 'sosiometri_akhir',
+          5: 'sosiometri',
         },
         'Jasmani': {
           0: 'tes_awal',
@@ -414,8 +451,148 @@ class _GadikAssessmentScreenState extends State<GadikAssessmentScreen>
     return pokjar;
   }
 
+  void _showStudentLookupBottomSheet(BuildContext parentContext) {
+    String localSearchQuery = '';
+    showModalBottomSheet(
+      context: parentContext,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (stateContext, setModalState) {
+            final filteredList = _serdikList.where((student) {
+              final name = (student['name'] ?? '').toLowerCase();
+              final noSerdik = (student['nrp'] ?? student['nosis'] ?? '').toLowerCase();
+              final query = localSearchQuery.toLowerCase();
+              return name.contains(query) || noSerdik.contains(query);
+            }).toList();
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.85,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppDimensions.xl,
+                      vertical: AppDimensions.lg,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                      border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Cari Serdik',
+                          style: TextStyle(
+                            fontSize: AppDimensions.fontXl,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.primaryNavy,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded),
+                          onPressed: () => Navigator.pop(stateContext),
+                          color: Colors.grey.shade600,
+                          splashRadius: 24,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(AppDimensions.lg),
+                    child: TextField(
+                      onChanged: (val) => setModalState(() => localSearchQuery = val),
+                      decoration: InputDecoration(
+                        hintText: 'Cari nama atau nomor serdik...',
+                        prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                        filled: true,
+                        fillColor: const Color(0xFFF8F9FA),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: filteredList.isEmpty
+                        ? Center(
+                            child: Text(
+                              'Serdik tidak ditemukan',
+                              style: TextStyle(
+                                fontSize: AppDimensions.fontLg,
+                                color: Colors.blueGrey.shade400,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          )
+                        : ListView.builder(
+                            physics: const BouncingScrollPhysics(),
+                            itemCount: filteredList.length,
+                            itemBuilder: (listContext, index) {
+                              final student = filteredList[index];
+                              final String name = student['name'] ?? '-';
+                              final String noSerdik = student['nrp'] ?? student['nosis'] ?? '-';
+                              final String pokjar = student['pokjar'] ?? '-';
+
+                              return ListTile(
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: AppDimensions.xl,
+                                  vertical: 4,
+                                ),
+                                leading: CircleAvatar(
+                                  radius: 20,
+                                  backgroundColor: Colors.blueGrey.shade50,
+                                  backgroundImage: (student['profile_photo'] != null && student['profile_photo']!.isNotEmpty)
+                                      ? FileImage(File(student['profile_photo']!)) as ImageProvider
+                                      : null,
+                                  child: (student['profile_photo'] == null || student['profile_photo']!.isEmpty)
+                                      ? Icon(Icons.person_rounded, color: Colors.blueGrey.shade300)
+                                      : null,
+                                ),
+                                title: Text(
+                                  name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.primaryNavy,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  '$pokjar • $noSerdik',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.blueGrey.shade400,
+                                  ),
+                                ),
+                                onTap: () {
+                                  Navigator.pop(stateContext); // Close lookup sheet
+                                  _showAssessmentActionSheet(parentContext, student);
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final role = _getCurrentRole(context);
+
     final filteredList = _serdikList.where((serdik) {
       final q = _searchQuery.toLowerCase();
       final matchSearch =
@@ -450,11 +627,13 @@ class _GadikAssessmentScreenState extends State<GadikAssessmentScreen>
               )
             : null,
         title: Text(
-          widget.categoryOverride == 'Mental Kepribadian'
-              ? 'Penilaian Mental'
-              : widget.categoryOverride == 'Jasmani'
-                  ? 'Penilaian Jasmani'
-                  : 'Penilaian Akademik',
+          role == 'Gadik'
+              ? 'Penilaian Serdik'
+              : widget.categoryOverride == 'Mental Kepribadian'
+                  ? 'Penilaian Mental'
+                  : widget.categoryOverride == 'Jasmani'
+                      ? 'Penilaian Jasmani'
+                      : 'Penilaian Akademik',
           style: const TextStyle(
             color: AppColors.textOnPrimary,
             fontWeight: FontWeight.w700,
@@ -462,6 +641,23 @@ class _GadikAssessmentScreenState extends State<GadikAssessmentScreen>
           ),
         ),
       ),
+      floatingActionButton: role == 'Gadik'
+          ? FloatingActionButton.extended(
+              heroTag: 'gadik_input_nilai_fab',
+              onPressed: () => _showStudentLookupBottomSheet(context),
+              backgroundColor: AppColors.primaryNavy,
+              elevation: 6,
+              icon: const Icon(Icons.add_rounded, color: Colors.white, size: 22),
+              label: const Text(
+                'Input Nilai',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: AppDimensions.fontMd,
+                ),
+              ),
+            )
+          : null,
       body: Column(
         children: [
           Container(

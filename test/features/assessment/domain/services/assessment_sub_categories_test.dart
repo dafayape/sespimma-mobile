@@ -18,12 +18,12 @@ void main() {
     });
 
     group('getMentalKepribadian', () {
-      test('mengembalikan 7 sub-kategori', () {
+      test('mengembalikan 6 sub-kategori', () {
         final items = AssessmentSubCategories.getMentalKepribadian();
-        expect(items.length, 7);
+        expect(items.length, 6);
       });
 
-      test('mencakup Sosiometri Awal dan Akhir', () {
+      test('mencakup Sosiometri', () {
         final items = AssessmentSubCategories.getMentalKepribadian();
         final tahaps = items.map((e) => e['tahap'] as String).toSet();
 
@@ -31,8 +31,7 @@ void main() {
           tahaps,
           containsAll([
             'Observasi Harian',
-            'Sosiometri Awal',
-            'Sosiometri Akhir',
+            'Sosiometri',
           ]),
         );
       });

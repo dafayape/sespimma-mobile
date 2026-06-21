@@ -156,9 +156,13 @@ class ScoreCalculatorService {
     double ns = _getDouble(raw, 'NS');
 
     double nk = ScoringCalculator.hitungNK(
-      nilaiPengamatan: nilaiPengamatan,
-      nilaiSosiometri: ns,
-    );
+      moral: moral,
+      disiplin: disiplin,
+      kepemimpinan: kepemimpinan,
+      pengendalianDiri: pengendalianDiri,
+      penampilan: penampilan,
+      sosiometri: ns,
+    ) + reward - punishment;
 
     double kesA = _getDouble(raw, 'kes_awal');
     double kesB = _getDouble(raw, 'kes_akhir');

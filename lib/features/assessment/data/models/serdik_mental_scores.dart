@@ -9,8 +9,7 @@ class SerdikMentalScores {
         'kepemimpinan': 80.0,
         'pengendalian_diri': 80.0,
         'penampilan': 80.0,
-        'sosiometri_awal': 0.0,
-        'sosiometri_akhir': 0.0,
+        'sosiometri': 80.0,
         'nilai': 0.0,
       };
     }
@@ -22,32 +21,22 @@ class SerdikMentalScores {
     double kepemimpinan = data['kepemimpinan'] ?? 80.0;
     double pengendalian = data['pengendalian_diri'] ?? 80.0;
     double penampilan = data['penampilan'] ?? 80.0;
-    double sosiometriAwal = data['sosiometri_awal'] ?? 0.0;
-    double sosiometriAkhir = data['sosiometri_akhir'] ?? 0.0;
+    double sosiometri = data['sosiometri'] ?? 80.0;
 
-    double pengamatan = 0.0;
+    double nk = 0.0;
     if (moral > 0 ||
         disiplin > 0 ||
         kepemimpinan > 0 ||
         pengendalian > 0 ||
-        penampilan > 0) {
-      pengamatan =
-          ((moral * 20) +
+        penampilan > 0 ||
+        sosiometri > 0) {
+      nk = ((moral * 20) +
               (disiplin * 15) +
               (kepemimpinan * 20) +
               (pengendalian * 15) +
-              (penampilan * 15)) /
-          85;
-    }
-
-    double ns = 0.0;
-    if (sosiometriAwal > 0 || sosiometriAkhir > 0) {
-      ns = (sosiometriAwal + sosiometriAkhir) / 2;
-    }
-
-    double nk = 0.0;
-    if (pengamatan > 0 || ns > 0) {
-      nk = ((pengamatan * 7) + (ns * 3)) / 10;
+              (penampilan * 15) +
+              (sosiometri * 15)) /
+          100;
     }
 
     data['nilai'] = nk;

@@ -6,6 +6,8 @@ import 'package:sespimma/features/assessment/data/models/jasmani_grading_data.da
 import 'package:sespimma/features/assessment/data/datasources/jasmani_lookup_tables.dart';
 import 'package:sespimma/features/assessment/presentation/widgets/serdik_info_header_widget.dart';
 import 'package:sespimma/core/utils/app_notifier.dart';
+import 'package:sespimma/features/assessment/data/datasources/assessment_remote_data_source.dart';
+import 'package:sespimma/injection_container.dart';
 
 class SamaptaAScreen extends StatefulWidget {
   final Map<String, dynamic> serdik;
@@ -28,6 +30,7 @@ class SamaptaAScreen extends StatefulWidget {
 class _SamaptaAScreenState extends State<SamaptaAScreen> {
   final TextEditingController _distanceController = TextEditingController();
   double _ngaScore = 0.0;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -63,19 +66,33 @@ class _SamaptaAScreenState extends State<SamaptaAScreen> {
     }
   }
 
-  void _saveData() {
+  void _saveData() async {
     FocusScope.of(context).unfocus();
     if (_ngaScore == 0) {
       AppNotifier.showError(context, 'Jarak belum diisi atau tidak valid');
       return;
     }
 
-    widget.gradingData.nilaiA = _ngaScore;
-    JasmaniGradingData.saveJasmaniData(widget.gradingData);
+    setState(() => _isLoading = true);
 
-    AppNotifier.showSuccess(context, 'Nilai Samapta A berhasil disimpan');
+    try {
+      final dataSource = sl<AssessmentRemoteDataSource>();
+      final String noSerdik = (widget.serdik['nip'] ?? widget.serdik['nrp'] ?? widget.serdik['no_serdik'] ?? '').toString();
+      await dataSource.updatePhysical(noSerdik, {'nga': _ngaScore});
 
-    Navigator.pop(context);
+      widget.gradingData.nilaiA = _ngaScore;
+      JasmaniGradingData.saveJasmaniData(widget.gradingData);
+
+      if (mounted) {
+        AppNotifier.showSuccess(context, 'Nilai Samapta A berhasil disimpan');
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        AppNotifier.showError(context, 'Gagal menyimpan nilai Samapta A: $e');
+      }
+    }
   }
 
   Color _getScoreBgColor(double score) {
@@ -242,7 +259,7 @@ class _SamaptaAScreenState extends State<SamaptaAScreen> {
 
             const SizedBox(height: AppDimensions.xxxl),
             ElevatedButton(
-              onPressed: _saveData,
+              onPressed: _isLoading ? null : _saveData,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryNavy,
                 padding: const EdgeInsets.symmetric(vertical: 16),
@@ -250,14 +267,23 @@ class _SamaptaAScreenState extends State<SamaptaAScreen> {
                   borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
                 ),
               ),
-              child: const Text(
-                'SIMPAN NILAI',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: AppDimensions.fontMd,
-                ),
-              ),
+              child: _isLoading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Text(
+                      'SIMPAN NILAI',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: AppDimensions.fontMd,
+                      ),
+                    ),
             ),
           ],
         ),

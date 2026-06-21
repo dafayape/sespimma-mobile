@@ -41,7 +41,7 @@ class AssessmentActionSheet extends StatelessWidget {
               _buildTitle(),
               if (serdik['status'] == 'Sudah Dinilai') _buildWarningBanner(),
               const SizedBox(height: AppDimensions.xxl),
-              if (onViewReport != null) ...[
+              if (onViewReport != null && currentRole != 'Gadik') ...[
                 ActionTileWidget(
                   icon: Icons.analytics_rounded,
                   title: 'Lihat Rapor & Perkembangan',
@@ -140,7 +140,7 @@ class AssessmentActionSheet extends StatelessWidget {
         ? 'Masukkan skor murni (0-100) hasil rikes riil'
         : 'Masukkan skor murni (0-100) untuk evaluasi';
 
-    if (currentRole == 'Patun') {
+    if (currentRole == 'Patun' || currentRole == 'Gadik') {
       return const SizedBox.shrink();
     }
 

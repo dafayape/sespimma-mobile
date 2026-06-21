@@ -68,10 +68,20 @@ class ScoringCalculator {
   }
 
   static double hitungNK({
-    required double nilaiPengamatan,
-    required double nilaiSosiometri,
+    required double moral,
+    required double disiplin,
+    required double kepemimpinan,
+    required double pengendalianDiri,
+    required double penampilan,
+    required double sosiometri,
   }) {
-    return ((nilaiPengamatan * 7) + (nilaiSosiometri * 3)) / 10;
+    return ((moral * 20) +
+            (disiplin * 15) +
+            (kepemimpinan * 20) +
+            (pengendalianDiri * 15) +
+            (penampilan * 15) +
+            (sosiometri * 15)) /
+        100;
   }
 
   static double hitungNKes({

@@ -219,22 +219,22 @@ class _KorsisMentalMonitoringScreenState
         }
       }
 
-      double nku = ((moral * 20) +
-          (disiplin * 15) +
-          (kepemimpinan * 20) +
-          (pengendalianDiri * 15) +
-          (penampilan * 15)) / 85;
-
-      double nilaiPengamatan = nku + dynamicReward - dynamicPunishment;
-
       double ns = 0.0;
-      if (sosiometriAwal > 0 || sosiometriAkhir > 0) {
+      if (serdik['sosiometri'] != null) {
+        ns = (serdik['sosiometri'] as num).toDouble();
+      } else if (sosiometriAwal > 0 || sosiometriAkhir > 0) {
         ns = (sosiometriAwal + sosiometriAkhir) / 2;
       }
 
       double nk = 0.0;
-      if (nilaiPengamatan > 0 || ns > 0) {
-        nk = ((nilaiPengamatan * 7) + (ns * 3)) / 10;
+      if (moral > 0 || disiplin > 0 || kepemimpinan > 0 || pengendalianDiri > 0 || penampilan > 0 || ns > 0) {
+        nk = ((moral * 20) +
+            (disiplin * 15) +
+            (kepemimpinan * 20) +
+            (pengendalianDiri * 15) +
+            (penampilan * 15) +
+            (ns * 15)) / 100;
+        nk = nk + dynamicReward - dynamicPunishment;
       }
 
       bool isGraded = serdik['is_graded'] as bool? ?? false;

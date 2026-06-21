@@ -47,22 +47,10 @@ class DetailedCompetencies extends StatelessWidget {
       double penampilan = _getScore(actualScores, 'penampilan');
       double ns = _getScore(actualScores, 'SOSIOMETRI') > 0 ? _getScore(actualScores, 'SOSIOMETRI') : _getScore(actualScores, 'NS');
 
-      double pengamatan = _getScore(actualScores, 'NilaiPengamatan');
-      if (pengamatan == 0.0) {
-        pengamatan = ScoringCalculator.hitungNKU(
-          moral: moral,
-          disiplin: disiplin,
-          kepemimpinan: kepemimpinan,
-          pengendalianDiri: pengendalian,
-          penampilan: penampilan,
-        );
-      }
-
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: AppDimensions.sm),
-          _SectionTitle(title: 'Komponen Utama (70%)', score: pengamatan),
           _CompetencyItem(title: 'Moral (20%)', score: moral),
           _CompetencyItem(title: 'Disiplin (15%)', score: disiplin),
           _CompetencyItem(title: 'Kepemimpinan (20%)', score: kepemimpinan),
@@ -71,10 +59,7 @@ class DetailedCompetencies extends StatelessWidget {
             score: pengendalian,
           ),
           _CompetencyItem(title: 'Penampilan (15%)', score: penampilan),
-
-          const SizedBox(height: AppDimensions.lg),
-          _SectionTitle(title: 'Sosiometri (30%)', score: ns),
-          _CompetencyItem(title: 'Sosiometri', score: ns),
+          _CompetencyItem(title: 'Sosiometri (15%)', score: ns),
         ],
       );
     } else if (category == 'Akademik') {

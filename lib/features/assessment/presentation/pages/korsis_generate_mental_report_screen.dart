@@ -130,9 +130,7 @@ class _KorsisGenerateMentalReportScreenState
       s['kepemimpinan'] = mentalData['kepemimpinan'] ?? 0.0;
       s['pengendalian_diri'] = mentalData['pengendalian_diri'] ?? 0.0;
       s['penampilan'] = mentalData['penampilan'] ?? 0.0;
-      final socA = mentalData['sosiometri_awal'] ?? 0.0;
-      final socB = mentalData['sosiometri_akhir'] ?? 0.0;
-      s['sosiometri'] = (socA + socB) / 2;
+      s['sosiometri'] = mentalData['sosiometri'] ?? 0.0;
       s['nilai'] = mentalData['nilai'] ?? 0.0;
       s['ket'] = s['jabatan_senat'] ?? '';
     }

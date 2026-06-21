@@ -137,7 +137,7 @@ class _ActivityHistoryScreenState extends State<ActivityHistoryScreen>
           final typeStr = isReward ? 'reward' : 'punishment';
           final pointStr = isReward
               ? '+${inbox.points.toStringAsFixed(2)}'
-              : inbox.points.toStringAsFixed(2);
+              : '-${inbox.points.abs().toStringAsFixed(2)}';
           list.add({
             'id': inbox.id,
             'title': inbox.rewardPunishmentName,

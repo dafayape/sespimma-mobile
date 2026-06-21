@@ -97,15 +97,9 @@ abstract final class AssessmentSubCategories {
     },
     {
       'index': 5,
-      'name': 'Sosiometri Awal (Bobot 30%)',
+      'name': 'Sosiometri (15%)',
       'icon': Icons.groups_rounded,
-      'tahap': 'Sosiometri Awal',
-    },
-    {
-      'index': 6,
-      'name': 'Sosiometri Akhir (Bobot 30%)',
-      'icon': Icons.groups_rounded,
-      'tahap': 'Sosiometri Akhir',
+      'tahap': 'Sosiometri',
     },
   ];
 
@@ -190,8 +184,7 @@ abstract final class AssessmentSubCategories {
       return [
         'Semua',
         'Observasi Harian',
-        'Sosiometri Awal',
-        'Sosiometri Akhir',
+        'Sosiometri',
       ];
     }
     if (currentRole == 'Tim Medis') {

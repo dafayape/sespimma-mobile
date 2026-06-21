@@ -718,7 +718,9 @@ class _GadikMentalMonitoringScreenState
   }
 
   Widget _buildScoreBadge(InboxItem item, Color statusColor) {
-    final pointStr = item.points > 0 ? '+${item.points}' : '${item.points}';
+    final pointStr = item.isReward
+        ? '+${item.points.toStringAsFixed(2)}'
+        : '-${item.points.abs().toStringAsFixed(2)}';
 
     IconData statusIconData = item.status == 'approved'
         ? Icons.check_circle_rounded

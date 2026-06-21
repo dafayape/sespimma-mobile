@@ -522,9 +522,9 @@ class _AnimatedMentalActivityTile extends StatelessWidget {
         : const Color(0xFFFFEBEE);
 
     final iconData = isReward ? AppIcons.thumbUp : AppIcons.thumbDown;
-    final pointsStr = point > 0
+    final pointsStr = isReward
         ? '+${point.toStringAsFixed(2)}'
-        : point.toStringAsFixed(2);
+        : '-${point.abs().toStringAsFixed(2)}';
     final subtitle = 'Diberikan oleh $sender';
 
     return FadeTransition(

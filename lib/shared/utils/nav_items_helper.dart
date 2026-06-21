@@ -8,6 +8,7 @@ import '../../features/dashboard/presentation/pages/home_screen.dart';
 import 'package:sespimma/features/assessment/presentation/pages/medis_health_monitoring_screen.dart';
 import 'package:sespimma/features/assessment/presentation/pages/operator_jasmani_screen.dart';
 import '../../features/assessment/presentation/pages/patun_physical_monitoring_screen.dart';
+import 'package:sespimma/features/assessment/presentation/pages/operator_sociometry_screen.dart';
 import '../../features/assessment/presentation/pages/korsis_inbox_screen.dart';
 import '../../features/assessment/presentation/pages/korsis_mental_monitoring_screen.dart';
 import '../../features/assessment/presentation/pages/patun_mental_monitoring_screen.dart';
@@ -158,6 +159,12 @@ List<NavItem> getNavItemsByRole(String roleId) {
           icon: Icons.monitor_heart_outlined,
           activeIcon: Icons.monitor_heart,
           screen: MedisHealthMonitoringScreen(),
+        ),
+        NavItem(
+          label: 'Sosiometri',
+          icon: Icons.people_outline,
+          activeIcon: Icons.people,
+          screen: OperatorSociometryScreen(),
         ),
         NavItem(
           label: 'Zona',

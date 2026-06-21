@@ -5,15 +5,21 @@ import 'package:sespimma/core/constants/app_dimensions.dart';
 import 'package:sespimma/core/theme/app_colors.dart';
 import 'package:sespimma/core/utils/icon_mapper.dart';
 import 'package:sespimma/core/utils/app_notifier.dart';
-import 'package:sespimma/features/assessment/data/models/korsis_inbox_mock_data.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:sespimma/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:sespimma/features/auth/presentation/bloc/auth_state.dart';
+import 'package:sespimma/features/attendance/data/datasources/absensi_remote_data_source.dart';
+import 'package:sespimma/injection_container.dart';
 
 class LeaveFormSheet extends StatefulWidget {
+  final String kegiatanId;
   final VoidCallback onSuccess;
 
-  const LeaveFormSheet({super.key, required this.onSuccess});
+  const LeaveFormSheet({
+    super.key,
+    required this.kegiatanId,
+    required this.onSuccess,
+  });
 
   @override
   State<LeaveFormSheet> createState() => _LeaveFormSheetState();
@@ -21,7 +27,9 @@ class LeaveFormSheet extends StatefulWidget {
 
 class _LeaveFormSheetState extends State<LeaveFormSheet> {
   String? attachedFileName;
+  String? attachedFilePath;
   bool isAttaching = false;
+  bool _isLoading = false;
   late final TextEditingController reasonCtrl;
   final formKey = GlobalKey<FormState>();
 
@@ -91,9 +99,11 @@ class _LeaveFormSheetState extends State<LeaveFormSheet> {
   Widget build(BuildContext context) {
     final bool isReady =
         attachedFileName != null &&
+        attachedFilePath != null &&
         _startTime != null &&
         _endTime != null &&
-        reasonCtrl.text.trim().isNotEmpty;
+        reasonCtrl.text.trim().isNotEmpty &&
+        !_isLoading;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -163,7 +173,7 @@ class _LeaveFormSheetState extends State<LeaveFormSheet> {
             ),
             const SizedBox(height: AppDimensions.xl),
             InkWell(
-              onTap: isAttaching
+              onTap: isAttaching || _isLoading
                   ? null
                   : () async {
                       setState(() => isAttaching = true);
@@ -181,6 +191,7 @@ class _LeaveFormSheetState extends State<LeaveFormSheet> {
                         if (result != null) {
                           setState(() {
                             attachedFileName = result.files.single.name;
+                            attachedFilePath = result.files.single.path;
                           });
                         }
                       } catch (_) {}
@@ -233,81 +244,79 @@ class _LeaveFormSheetState extends State<LeaveFormSheet> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  if (_startTime == null || _endTime == null) {
-                    AppNotifier.showError(
-                      context,
-                      'Harap isi waktu mulai dan berakhir izin!',
-                    );
-                    return;
-                  }
-                  if (attachedFileName == null) {
-                    AppNotifier.showError(
-                      context,
-                      'Harap lampirkan dokumen bukti izin',
-                    );
-                    return;
-                  }
-                  if (formKey.currentState!.validate()) {
-                    Navigator.pop(context);
-                    HapticFeedback.heavyImpact();
+                onPressed: !isReady || _isLoading
+                    ? null
+                    : () async {
+                        if (_startTime == null || _endTime == null) {
+                          AppNotifier.showError(
+                            context,
+                            'Harap isi waktu mulai dan berakhir izin!',
+                          );
+                          return;
+                        }
+                        if (attachedFilePath == null) {
+                          AppNotifier.showError(
+                            context,
+                            'Harap lampirkan dokumen bukti izin',
+                          );
+                          return;
+                        }
+                        if (formKey.currentState!.validate()) {
+                          HapticFeedback.heavyImpact();
 
-                    final now = DateTime.now();
-                    final startDt = DateTime(
-                      now.year,
-                      now.month,
-                      now.day,
-                      _startTime!.hour,
-                      _startTime!.minute,
-                    );
-                    final endDt = DateTime(
-                      now.year,
-                      now.month,
-                      now.day,
-                      _endTime!.hour,
-                      _endTime!.minute,
-                    );
+                          final now = DateTime.now();
+                          final startDt = DateTime(
+                            now.year,
+                            now.month,
+                            now.day,
+                            _startTime!.hour,
+                            _startTime!.minute,
+                          );
+                          final endDt = DateTime(
+                            now.year,
+                            now.month,
+                            now.day,
+                            _endTime!.hour,
+                            _endTime!.minute,
+                          );
 
-                    String sName = 'Dummy User';
-                    String sPangkat = 'AKP';
-                    String sNosis = '000000';
-                    String sPokjar = 'POKJAR I';
+                          String sSerdikId = '';
+                          final authState = context.read<AuthBloc>().state;
+                          if (authState is AuthSuccess) {
+                            sSerdikId = authState.user.serdikId ?? '';
+                          }
 
-                    final authState = context.read<AuthBloc>().state;
-                    if (authState is AuthSuccess) {
-                      sName = authState.user.name;
-                      sPangkat = authState.user.pangkat;
-                      sNosis = authState.user.noSerdik.isNotEmpty
-                          ? authState.user.noSerdik
-                          : authState.user.nrp;
-                      sPokjar = authState.user.pokjar.isNotEmpty
-                          ? authState.user.pokjar
-                          : 'POKJAR I';
-                    }
+                          setState(() => _isLoading = true);
 
-                    KorsisInboxMockData.addRecord(
-                      InboxItem(
-                        id: 'izin_${now.millisecondsSinceEpoch}',
-                        serdikName: sName,
-                        pangkat: sPangkat,
-                        nosis: sNosis,
-                        pokjar: sPokjar,
-                        isReward: false,
-                        senderName: sName,
-                        timestamp: now,
-                        points: 0,
-                        description: reasonCtrl.text.trim(),
-                        rewardPunishmentName: 'Pengajuan Izin Khusus',
-                        isIzin: true,
-                        izinStartTime: startDt,
-                        izinEndTime: endDt,
-                        attachmentPath: attachedFileName,
-                      ),
-                    );
+                          try {
+                            final absensiSource = sl<AbsensiRemoteDataSource>();
+                            await absensiSource.submitIzin(
+                              kegiatanId: widget.kegiatanId,
+                              serdikId: sSerdikId,
+                              startTime: startDt,
+                              endTime: endDt,
+                              description: reasonCtrl.text.trim(),
+                              filePath: attachedFilePath!,
+                            );
 
-                    widget.onSuccess();
-                  }
-                },
+                            if (mounted) {
+                              Navigator.pop(context);
+                              widget.onSuccess();
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              AppNotifier.showError(
+                                context,
+                                'Gagal mengajukan izin: $e',
+                              );
+                            }
+                          } finally {
+                            if (mounted) {
+                              setState(() => _isLoading = false);
+                            }
+                          }
+                        }
+                      },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: isReady
                       ? AppColors.primaryNavy
@@ -320,13 +329,22 @@ class _LeaveFormSheetState extends State<LeaveFormSheet> {
                     borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
                   ),
                 ),
-                child: const Text(
-                  'KIRIM PERMOHONAN',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5,
-                  ),
-                ),
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        'KIRIM PERMOHONAN',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
               ),
             ),
           ],

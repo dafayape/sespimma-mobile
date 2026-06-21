@@ -207,7 +207,7 @@ class _HomeScreenState extends State<HomeScreen>
           final typeStr = isReward ? 'reward' : 'punishment';
           final pointStr = isReward
               ? '+${inbox.points.toStringAsFixed(2)}'
-              : inbox.points.toStringAsFixed(2);
+              : '-${inbox.points.abs().toStringAsFixed(2)}';
           list.add({
             'id': inbox.id,
             'title': inbox.rewardPunishmentName,
@@ -555,7 +555,7 @@ class _HomeScreenState extends State<HomeScreen>
                     context,
                     title: 'Punishment',
                     points: _getPunishmentPoints(user) != 0
-                        ? _getPunishmentPoints(user).toStringAsFixed(2)
+                        ? _getPunishmentPoints(user).abs().toStringAsFixed(2)
                         : '0',
                     icon: AppIcons.thumbDown,
                     color: _dangerRed,

@@ -60,7 +60,7 @@ class _KorsisMentalFormScreenState extends State<KorsisMentalFormScreen> {
     return (_selectedSerdik!['profile_photo'] ?? _selectedSerdik!['profilePhoto'])?.toString();
   }
 
-  final List<Map<String, dynamic>> _serdikList = SerdikRealData.records;
+  List<Map<String, dynamic>> _serdikList = [];
   String _serdikSearchQuery = '';
   String _indicatorSearchQuery = '';
   String _selectedFilterPokjar = 'Semua';
@@ -86,11 +86,47 @@ class _KorsisMentalFormScreenState extends State<KorsisMentalFormScreen> {
     try {
       final ds = sl<AssessmentRemoteDataSource>();
       await RewardPunishmentData.loadFromApi(ds);
-    } catch (_) {}
+      final fetchedStudents = await ds.getAllMentalScores();
+      if (mounted) {
+        setState(() {
+          _serdikList = fetchedStudents;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _serdikList = SerdikRealData.records;
+        });
+      }
+    }
     if (mounted) {
       setState(() {
         _isLoadingIndicators = false;
       });
+    }
+  }
+
+  Future<void> _fetchSelectedSerdikScores(String noSerdik) async {
+    try {
+      final ds = sl<AssessmentRemoteDataSource>();
+      final scores = await ds.getMental(noSerdik);
+      if (mounted && _selectedSerdik != null) {
+        final currentNosis = (_selectedSerdik!['no_serdik'] ?? _selectedSerdik!['nip'] ?? _selectedSerdik!['nrp'] ?? '').toString();
+        if (currentNosis == noSerdik) {
+          setState(() {
+            final updatedSerdik = Map<String, dynamic>.from(_selectedSerdik!);
+            updatedSerdik['moral'] = scores['moral'] ?? 80.0;
+            updatedSerdik['disiplin'] = scores['disiplin'] ?? 80.0;
+            updatedSerdik['kepemimpinan'] = scores['kepemimpinan'] ?? 80.0;
+            updatedSerdik['pengendalian_diri'] = scores['pengendalian_diri'] ?? 80.0;
+            updatedSerdik['penampilan'] = scores['penampilan'] ?? 80.0;
+            updatedSerdik['sosiometri'] = scores['sosiometri'] ?? 80.0;
+            _selectedSerdik = updatedSerdik;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching serdik scores: $e');
     }
   }
 
@@ -146,14 +182,17 @@ class _KorsisMentalFormScreenState extends State<KorsisMentalFormScreen> {
 
   double get _currentBaseScore {
     if (_selectedSerdik != null) {
-      double dynamicPoints = 0.0;
-      for (var item in KorsisInboxMockData.items) {
-        if (item.nosis == _selectedSerdikNosis &&
-            item.status == 'disetujui') {
-          dynamicPoints += item.isReward ? item.points : -item.points;
-        }
+      if (_selectedCategory != null) {
+        final aspectKey = _selectedCategory!.aspect.toLowerCase().replaceAll(' ', '_');
+        final currentScore = _selectedSerdik![aspectKey] ?? _selectedSerdik![_selectedCategory!.aspect] ?? 80.0;
+        return (currentScore as num).toDouble();
       }
-      return 80.0 + dynamicPoints;
+      final double moral = (_selectedSerdik!['moral'] as num?)?.toDouble() ?? 80.0;
+      final double disiplin = (_selectedSerdik!['disiplin'] as num?)?.toDouble() ?? 80.0;
+      final double kepemimpinan = (_selectedSerdik!['kepemimpinan'] as num?)?.toDouble() ?? 80.0;
+      final double pengendalian = (_selectedSerdik!['pengendalian_diri'] as num?)?.toDouble() ?? 80.0;
+      final double penampilan = (_selectedSerdik!['penampilan'] as num?)?.toDouble() ?? 80.0;
+      return (moral + disiplin + kepemimpinan + pengendalian + penampilan) / 5.0;
     }
     return 80.0;
   }
@@ -948,7 +987,9 @@ class _KorsisMentalFormScreenState extends State<KorsisMentalFormScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Nilai Saat Ini',
+                            _selectedCategory != null
+                                ? 'Nilai Saat Ini (${_selectedCategory!.aspect})'
+                                : 'Nilai Saat Ini',
                             style: TextStyle(
                               fontSize: AppDimensions.fontMd,
                               color: Colors.blueGrey.shade600,
@@ -981,7 +1022,7 @@ class _KorsisMentalFormScreenState extends State<KorsisMentalFormScreen> {
                       ),
                       if (_selectedCategory != null) ...[
                         const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 8.0),
+                           padding: EdgeInsets.symmetric(vertical: 8.0),
                           child: Divider(height: 1, thickness: 1),
                         ),
                         Row(
@@ -1026,9 +1067,11 @@ class _KorsisMentalFormScreenState extends State<KorsisMentalFormScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Estimasi Nilai Baru',
-                  style: TextStyle(
+                Text(
+                  _selectedCategory != null
+                      ? 'Estimasi Nilai Baru (${_selectedCategory!.aspect})'
+                      : 'Estimasi Nilai Baru',
+                  style: const TextStyle(
                     fontSize: AppDimensions.fontLg,
                     color: _primaryNavy,
                     fontWeight: FontWeight.w800,
@@ -1087,13 +1130,13 @@ class _KorsisMentalFormScreenState extends State<KorsisMentalFormScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) {
           final filteredList = _serdikList.where((serdik) {
-            final name = (serdik['nama_lengkap'] ?? '')
+            final name = (serdik['nama_lengkap'] ?? serdik['name'] ?? '')
                 .toString()
                 .toLowerCase();
-            final noSerdik = (serdik['no_serdik'] ?? '')
+            final noSerdik = (serdik['no_serdik'] ?? serdik['nip'] ?? serdik['nrp'] ?? '')
                 .toString()
                 .toLowerCase();
-            final pokjar = (serdik['kelompok_kelas'] ?? '').toString();
+            final pokjar = (serdik['kelompok_kelas'] ?? serdik['group_name'] ?? '').toString();
 
             final query = _serdikSearchQuery.toLowerCase();
             final matchQuery = name.contains(query) || noSerdik.contains(query);
@@ -1190,6 +1233,7 @@ class _KorsisMentalFormScreenState extends State<KorsisMentalFormScreen> {
                     itemCount: filteredList.length,
                     itemBuilder: (context, index) {
                       final serdik = filteredList[index];
+                      final photoVal = serdik['profile_photo'] ?? serdik['profilePhoto'];
                       return Material(
                         color: Colors.transparent,
                         child: ListTile(
@@ -1197,16 +1241,16 @@ class _KorsisMentalFormScreenState extends State<KorsisMentalFormScreen> {
                             horizontal: AppDimensions.xl,
                             vertical: 4,
                           ),
-                          leading: _buildAvatar(serdik['profile_photo']),
+                          leading: _buildAvatar(photoVal != null ? photoVal.toString() : null),
                           title: Text(
-                            serdik['nama_lengkap'] ?? '-',
+                            (serdik['nama_lengkap'] ?? serdik['name'] ?? '-').toString(),
                             style: const TextStyle(
                               fontWeight: FontWeight.w800,
                               color: _primaryNavy,
                             ),
                           ),
                           subtitle: Text(
-                            '${serdik['pangkat']} • ${serdik['no_serdik']}',
+                            '${serdik['pangkat'] ?? serdik['grade'] ?? '-'} • ${serdik['no_serdik'] ?? serdik['nip'] ?? serdik['nrp'] ?? '-'}',
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
                               color: Colors.blueGrey.shade400,
@@ -1225,7 +1269,7 @@ class _KorsisMentalFormScreenState extends State<KorsisMentalFormScreen> {
                             ),
                             child: Text(
                               _mapArabicToRoman(
-                                serdik['kelompok_kelas']?.toString() ?? '-',
+                                (serdik['kelompok_kelas'] ?? serdik['group_name'] ?? '-').toString(),
                               ),
                               style: TextStyle(
                                 fontSize: 11,
@@ -1237,6 +1281,10 @@ class _KorsisMentalFormScreenState extends State<KorsisMentalFormScreen> {
                           onTap: () {
                             setState(() => _selectedSerdik = serdik);
                             Navigator.pop(context);
+                            final noSerdik = (serdik['no_serdik'] ?? serdik['nip'] ?? serdik['nrp'] ?? '').toString();
+                            if (noSerdik.isNotEmpty) {
+                              _fetchSelectedSerdikScores(noSerdik);
+                            }
                           },
                         ),
                       );

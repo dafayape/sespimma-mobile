@@ -107,7 +107,7 @@ class PatunSociometryDetailScreen extends StatelessWidget {
     }
 
     final finalScoreStr = isPhaseAwal ? 'sosiometri_awal' : 'sosiometri_akhir';
-    final double baseFinalScore = mentalData[finalScoreStr] ?? defaultScore;
+    final double baseFinalScore = mentalData[finalScoreStr] ?? mentalData['sosiometri'] ?? defaultScore;
 
     final double finalScore =
         (baseFinalScore * filled) / (totalSerdik > 0 ? totalSerdik : 1);

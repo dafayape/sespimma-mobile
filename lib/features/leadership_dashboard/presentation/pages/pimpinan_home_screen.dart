@@ -4,14 +4,14 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:sespimma/core/utils/icon_mapper.dart';
+import 'package:dio/dio.dart';
+import 'package:sespimma/injection_container.dart';
+import 'package:flutter/services.dart';
 
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
 
-import '../../data/datasources/pimpinan_mock_data.dart';
-
 import '../../../auth/domain/entities/user_entity.dart';
-import '../../../auth/data/datasources/serdik_real_data.dart';
 import 'package:sespimma/core/utils/avatar_helper.dart';
 
 class PimpinanHomeScreen extends StatefulWidget {
@@ -34,24 +34,68 @@ class _PimpinanHomeScreenState extends State<PimpinanHomeScreen>
   static const Color _dangerRed = Color(0xFFEF4444);
   static const Color _successGreen = Color(0xFF2E7D32);
 
-  List<Map<String, dynamic>> get _pokjarDetailData {
-    final list = PimpinanMockData.getPokjarAveragesDetail();
+  int _totalSerdik = 0;
+  int _totalPokjar = 0;
+  double _averageAcademic = 0.0;
+  double _averageMental = 0.0;
+  double _averageJasmani = 0.0;
+  List<Map<String, dynamic>> _pokjarDetailData = [];
+  bool _isLoading = true;
 
-    int getPokjarNum(String name) {
-      if (name.contains('IV')) return 4;
-      if (name.contains('III')) return 3;
-      if (name.contains('II')) return 2;
-      if (name.contains('V')) return 5;
-      if (name.contains('I')) return 1;
-      return 0;
+  Future<void> _fetchPimpinanDashboard() async {
+    try {
+      final dio = sl<Dio>();
+      final response = await dio.get('/leadership/dashboard');
+      if (response.statusCode == 200 && response.data != null) {
+        final data = response.data;
+        if (mounted) {
+          setState(() {
+            _totalSerdik = (data['total_serdik'] as num?)?.toInt() ?? 0;
+            _totalPokjar = (data['total_pokjar'] as num?)?.toInt() ?? 0;
+            _averageAcademic = (data['average_academic'] as num?)?.toDouble() ?? 0.0;
+            _averageMental = (data['average_mental'] as num?)?.toDouble() ?? 0.0;
+            _averageJasmani = (data['average_jasmani'] as num?)?.toDouble() ?? 0.0;
+            
+            final rawBreakdown = data['pokjar_breakdown'] as List<dynamic>?;
+            if (rawBreakdown != null) {
+              final list = rawBreakdown.map((item) {
+                final m = Map<String, dynamic>.from(item);
+                return {
+                  'name': m['name'] as String,
+                  'averageMental': (m['averageMental'] as num?)?.toDouble() ?? 0.0,
+                  'averageJasmani': (m['averageJasmani'] as num?)?.toDouble() ?? 0.0,
+                };
+              }).toList();
+              
+              int getPokjarNum(String name) {
+                if (name.contains('IV')) return 4;
+                if (name.contains('III')) return 3;
+                if (name.contains('II')) return 2;
+                if (name.contains('V')) return 5;
+                if (name.contains('I')) return 1;
+                return 0;
+              }
+
+              list.sort(
+                (a, b) => getPokjarNum(
+                  a['name'] as String,
+                ).compareTo(getPokjarNum(b['name'] as String)),
+              );
+              
+              _pokjarDetailData = list;
+            }
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching pimpinan dashboard: $e");
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
-
-    list.sort(
-      (a, b) => getPokjarNum(
-        a['name'] as String,
-      ).compareTo(getPokjarNum(b['name'] as String)),
-    );
-    return list;
   }
 
   @override
@@ -63,6 +107,7 @@ class _PimpinanHomeScreenState extends State<PimpinanHomeScreen>
     );
     _animController?.forward();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchPimpinanDashboard();
       if (mounted) {
         setState(() {
           _animateBars = true;
@@ -127,8 +172,10 @@ class _PimpinanHomeScreenState extends State<PimpinanHomeScreen>
             return SafeArea(
               top: false,
               child: RefreshIndicator(
-                onRefresh: () async =>
-                    await Future.delayed(const Duration(seconds: 1)),
+                onRefresh: () async {
+                  HapticFeedback.mediumImpact();
+                  await _fetchPimpinanDashboard();
+                },
                 color: _primaryNavy,
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
@@ -140,52 +187,61 @@ class _PimpinanHomeScreenState extends State<PimpinanHomeScreen>
                         beginInterval: 0.0,
                         endInterval: 0.3,
                       ),
-                      Transform.translate(
-                        offset: const Offset(0, -30),
-                        child: Column(
-                          children: [
-                            _buildAnimatedSection(
-                              child: _buildGeneralStats(context),
-                              beginInterval: 0.1,
-                              endInterval: 0.4,
-                            ),
-                            const SizedBox(height: AppDimensions.md),
-                            _buildAnimatedSection(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
+                      _isLoading
+                          ? const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 80),
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  color: _primaryNavy,
                                 ),
-                                child: _buildPieChartSection(),
                               ),
-                              beginInterval: 0.2,
-                              endInterval: 0.5,
-                            ),
-                            const SizedBox(height: AppDimensions.md),
-                            _buildAnimatedSection(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                ),
-                                child: _buildBarChartSection(),
+                            )
+                          : Transform.translate(
+                              offset: const Offset(0, -30),
+                              child: Column(
+                                children: [
+                                  _buildAnimatedSection(
+                                    child: _buildGeneralStats(context),
+                                    beginInterval: 0.1,
+                                    endInterval: 0.4,
+                                  ),
+                                  const SizedBox(height: AppDimensions.md),
+                                  _buildAnimatedSection(
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 20,
+                                      ),
+                                      child: _buildPieChartSection(),
+                                    ),
+                                    beginInterval: 0.2,
+                                    endInterval: 0.5,
+                                  ),
+                                  const SizedBox(height: AppDimensions.md),
+                                  _buildAnimatedSection(
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 20,
+                                      ),
+                                      child: _buildBarChartSection(),
+                                    ),
+                                    beginInterval: 0.3,
+                                    endInterval: 0.6,
+                                  ),
+                                  const SizedBox(height: AppDimensions.md),
+                                  _buildAnimatedSection(
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 20,
+                                      ),
+                                      child: _buildAiRecommendation(),
+                                    ),
+                                    beginInterval: 0.4,
+                                    endInterval: 0.7,
+                                  ),
+                                  const SizedBox(height: AppDimensions.xl),
+                                ],
                               ),
-                              beginInterval: 0.3,
-                              endInterval: 0.6,
                             ),
-                            const SizedBox(height: AppDimensions.md),
-                            _buildAnimatedSection(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                ),
-                                child: _buildAiRecommendation(),
-                              ),
-                              beginInterval: 0.4,
-                              endInterval: 0.7,
-                            ),
-                            const SizedBox(height: AppDimensions.xl),
-                          ],
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -280,10 +336,9 @@ class _PimpinanHomeScreenState extends State<PimpinanHomeScreen>
   }
 
   Widget _buildGeneralStats(BuildContext context) {
-    final compAverages = PimpinanMockData.getGlobalComponentAverages();
-    final double mental = compAverages['mental']!;
-    final double jasmani = compAverages['jasmani']!;
-    final int totalSerdik = SerdikRealData.records.length;
+    final double mental = _averageMental;
+    final double jasmani = _averageJasmani;
+    final int totalSerdik = _totalSerdik;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -332,7 +387,7 @@ class _PimpinanHomeScreenState extends State<PimpinanHomeScreen>
                 const SizedBox(height: 8),
                 _buildColumnStatTile(
                   'Total Pokjar',
-                  '5',
+                  _totalPokjar.toString(),
                   AppIcons.treeStructureFill,
                   _mentalOrange,
                 ),
@@ -414,10 +469,9 @@ class _PimpinanHomeScreenState extends State<PimpinanHomeScreen>
   }
 
   Widget _buildPieChartSection() {
-    final compAverages = PimpinanMockData.getGlobalComponentAverages();
-    final double akademik = compAverages['akademik'] ?? 0.0;
-    final double mental = compAverages['mental'] ?? 0.0;
-    final double jasmani = compAverages['jasmani'] ?? 0.0;
+    final double akademik = _averageAcademic;
+    final double mental = _averageMental;
+    final double jasmani = _averageJasmani;
 
     final double nakScore =
         (akademik * 0.70) + (mental * 0.20) + (jasmani * 0.10);
@@ -696,9 +750,8 @@ class _PimpinanHomeScreenState extends State<PimpinanHomeScreen>
   }
 
   Widget _buildAiRecommendation() {
-    final compAverages = PimpinanMockData.getGlobalComponentAverages();
-    final double mental = compAverages['mental'] ?? 0.0;
-    final double jasmani = compAverages['jasmani'] ?? 0.0;
+    final double mental = _averageMental;
+    final double jasmani = _averageJasmani;
 
     return Container(
       padding: const EdgeInsets.all(AppDimensions.lg),

@@ -155,6 +155,7 @@ abstract final class AppNotifier {
     if (messenger == null) return;
 
     Future.microtask(() {
+      if (!context.mounted) return;
       messenger.hideCurrentSnackBar();
       messenger.showSnackBar(snackBar);
     });

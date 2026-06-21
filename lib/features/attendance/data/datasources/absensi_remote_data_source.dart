@@ -24,4 +24,35 @@ class AbsensiRemoteDataSource {
 
     return Map<String, dynamic>.from(response.data);
   }
+
+  /// Submits student leave request (izin) to the backend.
+  /// Throws on error.
+  Future<void> submitIzin({
+    required String kegiatanId,
+    required String serdikId,
+    required DateTime startTime,
+    required DateTime endTime,
+    required String description,
+    required String filePath,
+  }) async {
+    final formData = FormData.fromMap({
+      'kegiatan_id': kegiatanId,
+      'serdik_id': serdikId,
+      'start_time': startTime.toIso8601String(),
+      'end_time': endTime.toIso8601String(),
+      'description': description,
+      'file': await MultipartFile.fromFile(
+        filePath,
+        filename: filePath.split('/').last,
+      ),
+    });
+
+    await dio.post(
+      '/izin',
+      data: formData,
+      options: Options(
+        contentType: 'multipart/form-data',
+      ),
+    );
+  }
 }

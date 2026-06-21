@@ -362,7 +362,7 @@ class _AttendanceScreenState extends State<AttendanceScreen>
         zone: zoneToShow,
         onLeaveRequest: () {
           Navigator.pop(sheetCtx);
-          _showLeaveForm(context);
+          _showLeaveForm(context, zoneToShow);
         },
         onToggleMakerindo: _onToggleMakerindo,
       ),
@@ -384,7 +384,7 @@ class _AttendanceScreenState extends State<AttendanceScreen>
     }
   }
 
-  void _showLeaveForm(BuildContext context) {
+  void _showLeaveForm(BuildContext context, AttendanceZone zone) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -395,6 +395,7 @@ class _AttendanceScreenState extends State<AttendanceScreen>
         ),
       ),
       builder: (ctx) => LeaveFormSheet(
+        kegiatanId: zone.id,
         onSuccess: () {
           AppNotifier.showSuccess(
             context,

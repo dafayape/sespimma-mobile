@@ -6,6 +6,8 @@ import 'package:sespimma/features/assessment/data/models/jasmani_grading_data.da
 import 'package:sespimma/features/assessment/data/datasources/jasmani_lookup_tables.dart';
 import 'package:sespimma/features/assessment/presentation/widgets/serdik_info_header_widget.dart';
 import 'package:sespimma/core/utils/app_notifier.dart';
+import 'package:sespimma/features/assessment/data/datasources/assessment_remote_data_source.dart';
+import 'package:sespimma/injection_container.dart';
 
 class SamaptaBScreen extends StatefulWidget {
   final Map<String, dynamic> serdik;
@@ -35,6 +37,7 @@ class _SamaptaBScreenState extends State<SamaptaBScreen> {
   double _ngb2 = 0.0;
   double _ngb3 = 0.0;
   double _ngb4 = 0.0;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -124,21 +127,40 @@ class _SamaptaBScreenState extends State<SamaptaBScreen> {
     }
   }
 
-  void _saveData() {
+  void _saveData() async {
     if (_ngb1 == 0 || _ngb2 == 0 || _ngb3 == 0 || _ngb4 == 0) {
       AppNotifier.showError(context, 'Harap isi semua nilai Samapta B');
       return;
     }
 
-    widget.gradingData.nilaiB1 = _ngb1;
-    widget.gradingData.nilaiB2 = _ngb2;
-    widget.gradingData.nilaiB3 = _ngb3;
-    widget.gradingData.nilaiB4 = _ngb4;
-    JasmaniGradingData.saveJasmaniData(widget.gradingData);
+    setState(() => _isLoading = true);
 
-    AppNotifier.showSuccess(context, 'Nilai Samapta B berhasil disimpan');
+    try {
+      final dataSource = sl<AssessmentRemoteDataSource>();
+      final String noSerdik = (widget.serdik['nip'] ?? widget.serdik['nrp'] ?? widget.serdik['no_serdik'] ?? '').toString();
+      await dataSource.updatePhysical(noSerdik, {
+        'pullup': _ngb1,
+        'situp': _ngb2,
+        'pushup': _ngb3,
+        'shuttle': _ngb4,
+      });
 
-    Navigator.pop(context);
+      widget.gradingData.nilaiB1 = _ngb1;
+      widget.gradingData.nilaiB2 = _ngb2;
+      widget.gradingData.nilaiB3 = _ngb3;
+      widget.gradingData.nilaiB4 = _ngb4;
+      JasmaniGradingData.saveJasmaniData(widget.gradingData);
+
+      if (mounted) {
+        AppNotifier.showSuccess(context, 'Nilai Samapta B berhasil disimpan');
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        AppNotifier.showError(context, 'Gagal menyimpan nilai Samapta B: $e');
+      }
+    }
   }
 
   bool get _isPria =>
@@ -291,7 +313,7 @@ class _SamaptaBScreenState extends State<SamaptaBScreen> {
             const SizedBox(height: AppDimensions.xxxl),
 
             ElevatedButton(
-              onPressed: _saveData,
+              onPressed: _isLoading ? null : _saveData,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryNavy,
                 padding: const EdgeInsets.symmetric(vertical: 16),
@@ -299,14 +321,23 @@ class _SamaptaBScreenState extends State<SamaptaBScreen> {
                   borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
                 ),
               ),
-              child: const Text(
-                'SIMPAN NILAI',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: AppDimensions.fontMd,
-                ),
-              ),
+              child: _isLoading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Text(
+                      'SIMPAN NILAI',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: AppDimensions.fontMd,
+                      ),
+                    ),
             ),
           ],
         ),

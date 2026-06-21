@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:sespimma/core/constants/app_dimensions.dart';
 import 'package:sespimma/core/theme/app_colors.dart';
@@ -53,6 +54,7 @@ class SerdikCardWidget extends StatelessWidget {
   }
 
   Widget _buildAvatar() {
+    final String? profilePhoto = serdik['profile_photo'];
     return Container(
       padding: const EdgeInsets.all(AppDimensions.xs / 2),
       decoration: BoxDecoration(
@@ -65,7 +67,12 @@ class SerdikCardWidget extends StatelessWidget {
       child: CircleAvatar(
         radius: AppDimensions.avatarSm,
         backgroundColor: Colors.blueGrey.shade50,
-        child: Icon(Icons.person_rounded, color: Colors.blueGrey.shade300),
+        backgroundImage: (profilePhoto != null && profilePhoto.isNotEmpty)
+            ? FileImage(File(profilePhoto)) as ImageProvider
+            : null,
+        child: (profilePhoto == null || profilePhoto.isEmpty)
+            ? Icon(Icons.person_rounded, color: Colors.blueGrey.shade300)
+            : null,
       ),
     );
   }
