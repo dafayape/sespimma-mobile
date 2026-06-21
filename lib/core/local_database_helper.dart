@@ -12,9 +12,7 @@ class LocalDatabaseHelper {
       LocalDatabaseHelper._privateConstructor();
 
   static dynamic _database;
-  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
-  );
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
   static const String _dbName = 'sespimma_local.db';
   static const String _keyDbSecret = 'db_encryption_key';

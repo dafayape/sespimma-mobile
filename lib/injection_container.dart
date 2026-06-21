@@ -33,9 +33,7 @@ Future<void> init() async {
 
 Future<void> _initExternal() async {
   sl.registerLazySingleton<FlutterSecureStorage>(
-    () => const FlutterSecureStorage(
-      aOptions: AndroidOptions(encryptedSharedPreferences: true),
-    ),
+    () => const FlutterSecureStorage(),
   );
 
   sl.registerLazySingleton<Dio>(() {
