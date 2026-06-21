@@ -67,13 +67,30 @@ class LocalDatabaseHelper {
 
     final encryptionKey = await _getOrGenerateKey();
 
-    return await sqlcipher.openDatabase(
-      path,
-      password: encryptionKey,
-      version: _dbVersion,
-      onCreate: (db, version) => _createTables(db),
-      onUpgrade: (db, oldVersion, newVersion) async {},
-    );
+    try {
+      return await sqlcipher.openDatabase(
+        path,
+        password: encryptionKey,
+        version: _dbVersion,
+        onCreate: (db, version) => _createTables(db),
+        onUpgrade: (db, oldVersion, newVersion) async {},
+      );
+    } catch (e) {
+      // Delete corrupted/un-decryptable database file and recreate it
+      try {
+        final file = File(path);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      } catch (_) {}
+      return await sqlcipher.openDatabase(
+        path,
+        password: encryptionKey,
+        version: _dbVersion,
+        onCreate: (db, version) => _createTables(db),
+        onUpgrade: (db, oldVersion, newVersion) async {},
+      );
+    }
   }
 
   Future<String> _getOrGenerateKey() async {
