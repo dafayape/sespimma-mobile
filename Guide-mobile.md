@@ -16,6 +16,12 @@ Aplikasi mobile SESPIMMA memiliki 5 peran (Role) utama yang memiliki akses dan f
 ## 1. Role: Serdik (Peserta Didik / Siswa)
 Serdik adalah objek utama penilaian. Peran ini berfokus pada pemantauan nilai pribadi, kehadiran, dan aktivitas harian.
 
+* **Akun Uji Coba**:
+  * **NRP (Username)**: `77110075`
+  * **Password**: `Password123!`
+  * **Nama Lengkap**: ABD AZIS, S.Sos. (POKJAR 1)
+
+
 ### Fitur & Menu Utama:
 * **Dashboard Utama (Beranda)**:
   * **Akumulasi Penilaian**: Memantau grafik nilai akhir untuk 3 pilar: Akademik, Mental Kepribadian, dan Jasmani secara realtime.
@@ -37,6 +43,12 @@ Serdik adalah objek utama penilaian. Peran ini berfokus pada pemantauan nilai pr
 ## 2. Role: Patun (Perwira Penuntun)
 Patun bertanggung jawab langsung atas pembinaan mental kepribadian Serdik di Pokjar (Kelompok Belajar) asuhannya.
 
+* **Akun Uji Coba**:
+  * **NRP (Username)**: `69100449`
+  * **Password**: `password123`
+  * **Nama Lengkap**: Drs. Sabri Manullang, M.Pd. (POKJAR 1)
+
+
 ### Fitur & Menu Utama:
 * **Daftar Serdik Asuhan**:
   * Menampilkan daftar Serdik terbatas hanya pada kelompok kelas (Pokjar) yang diasuhnya.
@@ -54,6 +66,12 @@ Patun bertanggung jawab langsung atas pembinaan mental kepribadian Serdik di Pok
 ## 3. Role: Gadik (Tenaga Pendidik / Dosen)
 Gadik bertanggung jawab atas pilar penilaian Akademik melalui pengajaran dan tugas kelas.
 
+* **Akun Uji Coba**:
+  * **NRP (Username)**: `71080519`
+  * **Password**: `password123`
+  * **Nama Lengkap**: Tommy Bambang Irawan, S.I.K., M.H.
+
+
 ### Fitur & Menu Utama:
 * **Daftar Penilaian Pokjar**:
   * Memilih kelas (Pokjar) untuk melihat performa akademik Serdik pada mata kuliah yang diampu.
@@ -66,6 +84,12 @@ Gadik bertanggung jawab atas pilar penilaian Akademik melalui pengajaran dan tug
 
 ## 4. Role: Korsis (Koordinator Siswa)
 Korsis adalah validator utama alur penilaian harian dan pengelola presensi di lapangan.
+
+* **Akun Uji Coba**:
+  * **NRP (Username)**: `70012128`
+  * **Password**: `password123`
+  * **Nama Lengkap**: Suprayitno, S.H., S.I.K.
+
 
 ### Fitur & Menu Utama:
 * **Inbox Approval (Persetujuan)**:
@@ -83,6 +107,12 @@ Korsis adalah validator utama alur penilaian harian dan pengelola presensi di la
 
 ## 5. Role: Operator
 Operator memiliki hak akses luas lintas pokjar untuk melakukan input data teknis penunjang di lapangan.
+
+* **Akun Uji Coba**:
+  * **Username (Email)**: `admin@sespima.com` (atau NRP: `99999999`)
+  * **Password**: `Superadmin123!`
+  * **Nama Lengkap**: Super Admin Utama
+
 
 ### Fitur & Menu Utama:
 * **Input Data Samapta (Jasmani)**:
