@@ -14,4 +14,6 @@ abstract class AuthRepository {
   Future<void> updateProfilePhoto(String photoPath);
 
   Future<void> changePassword(String currentPassword, String newPassword, String confirmPassword);
+
+  Future<UserEntity?> getSavedUser();
 }

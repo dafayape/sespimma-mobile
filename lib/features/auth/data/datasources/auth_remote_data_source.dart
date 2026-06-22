@@ -5,6 +5,7 @@ import '../models/login_response.dart';
 
 abstract class AuthRemoteDataSource {
   Future<LoginResponse> login(LoginRequest request);
+  Future<void> logout();
   Future<void> updateProfilePhoto(String photoPath);
   Future<void> changePassword(String currentPassword, String newPassword, String confirmPassword);
 }
@@ -42,6 +43,21 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         throw Exception('Connection timeout');
       }
 
+      throw Exception(e.message ?? 'Network error');
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
+  @override
+  Future<void> logout() async {
+    try {
+      await dio.post('/auth/logout');
+    } on DioException catch (e) {
+      if (e.response != null && e.response?.data is Map) {
+        final data = e.response!.data as Map;
+        throw Exception(data['error'] ?? data['message'] ?? 'Server error');
+      }
       throw Exception(e.message ?? 'Network error');
     } catch (e) {
       throw Exception(e.toString());

@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:sespimma/core/utils/icon_mapper.dart';
+import 'package:sespimma/injection_container.dart' as di;
+import 'package:sespimma/features/auth/domain/repositories/auth_repository.dart';
 
 import '../../domain/entities/user_entity.dart';
 import '../bloc/auth_bloc.dart';
@@ -725,11 +727,13 @@ class _ProfileScreenState extends State<ProfileScreen>
                   const SizedBox(width: AppDimensions.md),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
                         HapticFeedback.heavyImpact();
-                        Navigator.pop(context);
-                        Navigator.pushNamedAndRemoveUntil(
-                          context,
+                        final navigator = Navigator.of(context);
+                        try {
+                          await di.sl<AuthRepository>().logout();
+                        } catch (_) {}
+                        navigator.pushNamedAndRemoveUntil(
                           '/login',
                           (route) => false,
                         );

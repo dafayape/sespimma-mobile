@@ -11,6 +11,10 @@ abstract class AuthLocalDataSource {
   Future<String?> getRefreshToken();
 
   Future<void> clearTokens();
+
+  Future<void> saveUserJson(String userJson);
+
+  Future<String?> getUserJson();
 }
 
 class AuthLocalDataSourceImpl implements AuthLocalDataSource {
@@ -20,6 +24,7 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
 
   static const String _accessTokenKey = 'ACCESS_TOKEN';
   static const String _refreshTokenKey = 'REFRESH_TOKEN';
+  static const String _userJsonKey = 'USER_JSON';
 
   @override
   Future<void> saveTokens({
@@ -35,8 +40,11 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   @override
   Future<String?> getAccessToken() async {
     try {
-      return await secureStorage.read(key: _accessTokenKey);
+      final res = await secureStorage.read(key: _accessTokenKey);
+      print('AuthLocalDataSource getAccessToken read: ${res != null ? "success (len: ${res.length})" : "null"}');
+      return res;
     } catch (e) {
+      print('AuthLocalDataSource getAccessToken exception: $e');
       await secureStorage.deleteAll();
       return null;
     }
@@ -57,6 +65,21 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
     await Future.wait([
       secureStorage.delete(key: _accessTokenKey),
       secureStorage.delete(key: _refreshTokenKey),
+      secureStorage.delete(key: _userJsonKey),
     ]);
+  }
+
+  @override
+  Future<void> saveUserJson(String userJson) async {
+    await secureStorage.write(key: _userJsonKey, value: userJson);
+  }
+
+  @override
+  Future<String?> getUserJson() async {
+    try {
+      return await secureStorage.read(key: _userJsonKey);
+    } catch (_) {
+      return null;
+    }
   }
 }

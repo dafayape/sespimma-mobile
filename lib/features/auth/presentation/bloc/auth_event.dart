@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../domain/entities/user_entity.dart';
 
 abstract class AuthEvent extends Equatable {
   const AuthEvent();
@@ -61,4 +62,13 @@ class VerifyNrpRequested extends AuthEvent {
 
   @override
   List<Object> get props => [nrp];
+}
+
+class AutoLoginRequested extends AuthEvent {
+  final UserEntity user;
+
+  const AutoLoginRequested(this.user);
+
+  @override
+  List<Object> get props => [user];
 }

@@ -11,6 +11,11 @@ import 'pimpinan_real_data.dart';
 
 class AuthRemoteDataSourceMock implements AuthRemoteDataSource {
   @override
+  Future<void> logout() async {
+    await Future.delayed(const Duration(milliseconds: 100));
+  }
+
+  @override
   Future<LoginResponse> login(LoginRequest request) async {
     await Future.delayed(const Duration(seconds: 2));
 

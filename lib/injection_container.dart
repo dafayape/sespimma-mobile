@@ -49,13 +49,18 @@ Future<void> _initExternal() async {
     dio.interceptors.add(
       QueuedInterceptorsWrapper(
         onRequest: (options, handler) async {
+          print('onRequest interceptor: path=${options.path}');
           if (!options.path.contains('/auth/login') &&
               !options.path.contains('/auth/refresh-token')) {
             final authLocalDataSource = sl<AuthLocalDataSource>();
-            final token = await authLocalDataSource.getAccessToken();
-
-            if (token != null) {
-              options.headers['Authorization'] = 'Bearer $token';
+            try {
+              final token = await authLocalDataSource.getAccessToken();
+              print('onRequest token resolved: ${token != null ? "YES" : "NO"}');
+              if (token != null) {
+                options.headers['Authorization'] = 'Bearer $token';
+              }
+            } catch (e) {
+              print('onRequest error reading token: $e');
             }
           }
 

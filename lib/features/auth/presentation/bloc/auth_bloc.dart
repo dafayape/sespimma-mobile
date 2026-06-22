@@ -22,6 +22,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<ChangePasswordRequested>(_onChangePasswordRequested);
     on<ResetPasswordRequested>(_onResetPasswordRequested);
     on<VerifyNrpRequested>(_onVerifyNrpRequested);
+    on<AutoLoginRequested>(_onAutoLoginRequested);
+  }
+
+  void _onAutoLoginRequested(
+    AutoLoginRequested event,
+    Emitter<AuthState> emit,
+  ) {
+    emit(AuthSuccess(event.user));
   }
 
   Future<void> _onLoginSubmitted(

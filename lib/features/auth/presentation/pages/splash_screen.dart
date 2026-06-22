@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:sespimma/injection_container.dart' as di;
+import 'package:sespimma/features/auth/domain/repositories/auth_repository.dart';
+import 'package:sespimma/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:sespimma/features/auth/presentation/bloc/auth_event.dart';
 
 import 'login_screen.dart';
 
@@ -51,7 +56,25 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller.forward();
 
-    Future.delayed(const Duration(milliseconds: 2200), () {
+    Future.delayed(const Duration(milliseconds: 2200), () async {
+      if (!mounted) return;
+
+      try {
+        final authRepository = di.sl<AuthRepository>();
+        final isLoggedIn = await authRepository.isLoggedIn();
+
+        if (isLoggedIn) {
+          final savedUser = await authRepository.getSavedUser();
+          if (savedUser != null && mounted) {
+            context.read<AuthBloc>().add(AutoLoginRequested(savedUser));
+            Navigator.of(context).pushReplacementNamed('/main');
+            return;
+          }
+        }
+      } catch (e) {
+        debugPrint('Auto login error: $e');
+      }
+
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
