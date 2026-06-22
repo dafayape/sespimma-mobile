@@ -739,9 +739,12 @@ class _KorsisMentalMonitoringScreenState
                       leftTitles: AxisTitles(
                         sideTitles: SideTitles(
                           showTitles: true,
-                          interval: 10,
+                          interval: maxY > 10 ? (maxY / 5).ceilToDouble() : 1,
                           reservedSize: 28,
                           getTitlesWidget: (value, meta) {
+                            if (value % 1 != 0) {
+                              return const SizedBox.shrink();
+                            }
                             return Text(
                               value.toInt().toString(),
                               style: TextStyle(
