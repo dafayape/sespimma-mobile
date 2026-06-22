@@ -110,8 +110,7 @@ class UserEntity extends Equatable {
         }
         if (age <= 30) return 'GOL I';
         if (age <= 40) return 'GOL II';
-        if (age <= 50) return 'GOL III';
-        return 'GOL IV';
+        return 'GOL III';
       } catch (_) {
         return '-';
       }

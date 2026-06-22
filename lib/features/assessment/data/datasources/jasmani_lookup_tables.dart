@@ -1,4 +1,4 @@
-import 'package:intl/intl.dart';
+
 
 class JasmaniLookupTables {
   static String getGolongan(String tanggalLahir, [DateTime? testDate]) {
@@ -20,10 +20,7 @@ class JasmaniLookupTables {
       if (age <= 40) {
         return 'GOL II';
       }
-      if (age <= 50) {
-        return 'GOL III';
-      }
-      return 'GOL IV';
+      return 'GOL III';
     } catch (e) {
       return 'GOL II';
     }
