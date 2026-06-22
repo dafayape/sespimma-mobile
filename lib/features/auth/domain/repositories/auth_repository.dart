@@ -10,4 +10,8 @@ abstract class AuthRepository {
   Future<bool> isLoggedIn();
 
   Future<void> logout();
+
+  Future<void> updateProfilePhoto(String photoPath);
+
+  Future<void> changePassword(String currentPassword, String newPassword, String confirmPassword);
 }

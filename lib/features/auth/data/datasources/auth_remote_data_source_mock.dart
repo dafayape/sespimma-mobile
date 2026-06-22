@@ -481,4 +481,17 @@ class AuthRemoteDataSourceMock implements AuthRemoteDataSource {
 
     throw Exception('NRP tidak ada di dalam database sistem');
   }
+
+  @override
+  Future<void> updateProfilePhoto(String photoPath) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+  }
+
+  @override
+  Future<void> changePassword(String currentPassword, String newPassword, String confirmPassword) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (currentPassword != 'password123') {
+      throw Exception('Kata sandi saat ini salah (mock)');
+    }
+  }
 }

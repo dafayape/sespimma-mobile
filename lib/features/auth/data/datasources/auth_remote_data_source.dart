@@ -5,6 +5,8 @@ import '../models/login_response.dart';
 
 abstract class AuthRemoteDataSource {
   Future<LoginResponse> login(LoginRequest request);
+  Future<void> updateProfilePhoto(String photoPath);
+  Future<void> changePassword(String currentPassword, String newPassword, String confirmPassword);
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -40,6 +42,44 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         throw Exception('Connection timeout');
       }
 
+      throw Exception(e.message ?? 'Network error');
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
+  @override
+  Future<void> updateProfilePhoto(String photoPath) async {
+    try {
+      final formData = FormData.fromMap({
+        'photo': await MultipartFile.fromFile(photoPath),
+        'label': 'Foto Profil',
+      });
+      await dio.post('/profile/foto', data: formData);
+    } on DioException catch (e) {
+      if (e.response != null && e.response?.data is Map) {
+        final data = e.response!.data as Map;
+        throw Exception(data['error'] ?? data['message'] ?? 'Gagal mengunggah foto profil');
+      }
+      throw Exception(e.message ?? 'Network error');
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
+  @override
+  Future<void> changePassword(String currentPassword, String newPassword, String confirmPassword) async {
+    try {
+      await dio.patch('/profile/password', data: {
+        'current_password': currentPassword,
+        'new_password': newPassword,
+        'new_password_confirmation': confirmPassword,
+      });
+    } on DioException catch (e) {
+      if (e.response != null && e.response?.data is Map) {
+        final data = e.response!.data as Map;
+        throw Exception(data['error'] ?? data['message'] ?? 'Gagal mengubah kata sandi');
+      }
       throw Exception(e.message ?? 'Network error');
     } catch (e) {
       throw Exception(e.toString());

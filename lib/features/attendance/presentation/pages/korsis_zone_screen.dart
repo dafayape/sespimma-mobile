@@ -165,10 +165,12 @@ class _KorsisZoneScreenState extends State<KorsisZoneScreen> {
           try {
             final dio = sl<Dio>();
             await dio.delete('/attendance/zones/${zone.id}');
+            if (!context.mounted) return;
             AttendanceZones.removeZone(zone.id);
             _loadZones();
             AppNotifier.showSuccess(context, 'Zona berhasil dihapus.');
           } catch (e) {
+            if (!context.mounted) return;
             AppNotifier.showError(context, 'Gagal menghapus zona dari server: $e');
           }
         },

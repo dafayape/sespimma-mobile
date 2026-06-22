@@ -138,7 +138,10 @@ void _initFeatures() {
 }
 
 void _initAuthFeature() {
-  sl.registerFactory<AuthBloc>(() => AuthBloc(loginUseCase: sl()));
+  sl.registerFactory<AuthBloc>(() => AuthBloc(
+    loginUseCase: sl(),
+    authRepository: sl(),
+  ));
 
   sl.registerLazySingleton<LoginUseCase>(() => LoginUseCase(sl()));
 

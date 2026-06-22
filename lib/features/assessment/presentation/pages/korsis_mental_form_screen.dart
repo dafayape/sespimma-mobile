@@ -1,8 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:sespimma/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:sespimma/features/auth/presentation/bloc/auth_state.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:sespimma/core/constants/app_dimensions.dart';
@@ -11,7 +8,7 @@ import 'package:sespimma/features/auth/data/datasources/serdik_real_data.dart';
 import 'package:sespimma/core/utils/icon_mapper.dart';
 import 'package:sespimma/core/utils/app_notifier.dart';
 import 'package:sespimma/features/assessment/utils/reward_punishment_eligibility.dart';
-import 'package:sespimma/features/assessment/data/models/korsis_inbox_mock_data.dart';
+
 import 'package:sespimma/core/utils/avatar_helper.dart';
 import 'package:sespimma/features/assessment/data/datasources/assessment_remote_data_source.dart';
 import 'package:sespimma/injection_container.dart';
@@ -45,10 +42,6 @@ class _KorsisMentalFormScreenState extends State<KorsisMentalFormScreen> {
     return (_selectedSerdik!['no_serdik'] ?? _selectedSerdik!['nip'] ?? _selectedSerdik!['nrp'] ?? '-').toString();
   }
 
-  String get _selectedSerdikPokjar {
-    if (_selectedSerdik == null) return '';
-    return (_selectedSerdik!['kelompok_kelas'] ?? _selectedSerdik!['group_name'] ?? '-').toString();
-  }
 
   String get _selectedSerdikPangkat {
     if (_selectedSerdik == null) return '';
@@ -329,32 +322,7 @@ class _KorsisMentalFormScreenState extends State<KorsisMentalFormScreen> {
     if (_selectedSerdik == null || _selectedCategory == null || _selectedPhoto == null) return;
     HapticFeedback.heavyImpact();
 
-    String dynamicSender = 'Korsis';
-    final authState = context.read<AuthBloc>().state;
-    if (authState is AuthSuccess) {
-      dynamicSender = '${authState.user.pangkat} ${authState.user.name}';
-    }
 
-    final newItem = InboxItem(
-      id: 'mock_inbox_${DateTime.now().millisecondsSinceEpoch}',
-      serdikName: _selectedSerdikName,
-      pangkat: _selectedSerdikPangkat,
-      nosis: _selectedSerdikNosis,
-      pokjar: _selectedSerdikPokjar,
-      isReward: widget.isReward,
-      senderName: dynamicSender,
-      timestamp: DateTime.now(),
-      points: _selectedCategory!.point,
-      description: _justificationController.text.isNotEmpty
-          ? _justificationController.text
-          : 'Telah dilakukan observasi dan pencatatan oleh Korsis.',
-      rewardPunishmentName: _selectedCategory!.description,
-      status: 'disetujui',
-      rewardPunishmentId: _selectedCategory!.id,
-      photoPath: _selectedPhoto?.path,
-    );
-
-    KorsisInboxMockData.addRecord(newItem);
 
     try {
       final dataSource = sl<AssessmentRemoteDataSource>();
@@ -1241,7 +1209,7 @@ class _KorsisMentalFormScreenState extends State<KorsisMentalFormScreen> {
                             horizontal: AppDimensions.xl,
                             vertical: 4,
                           ),
-                          leading: _buildAvatar(photoVal != null ? photoVal.toString() : null),
+                          leading: _buildAvatar(photoVal?.toString()),
                           title: Text(
                             (serdik['nama_lengkap'] ?? serdik['name'] ?? '-').toString(),
                             style: const TextStyle(

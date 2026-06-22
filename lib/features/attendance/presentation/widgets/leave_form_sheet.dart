@@ -299,12 +299,12 @@ class _LeaveFormSheetState extends State<LeaveFormSheet> {
                               filePath: attachedFilePath!,
                             );
 
-                            if (mounted) {
+                            if (context.mounted) {
                               Navigator.pop(context);
                               widget.onSuccess();
                             }
                           } catch (e) {
-                            if (mounted) {
+                            if (context.mounted) {
                               AppNotifier.showError(
                                 context,
                                 'Gagal mengajukan izin: $e',

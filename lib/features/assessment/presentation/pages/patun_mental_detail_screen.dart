@@ -6,29 +6,57 @@ import 'package:sespimma/features/assessment/presentation/pages/patun_mental_act
 import 'package:sespimma/core/utils/icon_mapper.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:sespimma/shared/widgets/evidence_bottom_sheet.dart';
+import 'package:sespimma/features/assessment/data/datasources/inbox_remote_data_source.dart';
 import 'package:sespimma/features/assessment/data/models/korsis_inbox_mock_data.dart';
 import 'package:sespimma/core/constants/reward_punishment_data.dart';
 import 'package:sespimma/core/utils/avatar_helper.dart';
+import 'package:sespimma/injection_container.dart';
 
-class PatunMentalDetailScreen extends StatelessWidget {
+class PatunMentalDetailScreen extends StatefulWidget {
   final Map<String, dynamic> serdik;
 
   const PatunMentalDetailScreen({super.key, required this.serdik});
 
+  @override
+  State<PatunMentalDetailScreen> createState() => _PatunMentalDetailScreenState();
+}
+
+class _PatunMentalDetailScreenState extends State<PatunMentalDetailScreen> {
   static const Color _primaryNavy = Color(0xFF000B1D);
   static const Color _lightGrey = Color(0xFFF8F9FA);
 
+  List<InboxItem> _approvedItems = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchHistory();
+  }
+
+  Future<void> _fetchHistory() async {
+    try {
+      final items = await sl<InboxRemoteDataSource>().getInbox(status: 'approved');
+      final String noSerdik = (widget.serdik['no_serdik'] as String?) ?? '-';
+      if (mounted) {
+        setState(() {
+          _approvedItems = items.where((item) => item.nosis == noSerdik).toList();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+
+
   List<Map<String, dynamic>> _getDynamicActivities() {
-    final String noSerdik = (serdik['no_serdik'] as String?) ?? '-';
-
-    final approvedItems = KorsisInboxMockData.items
-        .where(
-          (item) =>
-              (item.status == 'Setuju' || item.status == 'approved') &&
-              item.nosis == noSerdik,
-        )
-        .toList();
-
+    final approvedItems = List<InboxItem>.from(_approvedItems);
     approvedItems.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
     String fmt(DateTime dt) =>
@@ -72,15 +100,15 @@ class PatunMentalDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String name = (serdik['nama_lengkap'] as String?) ?? '-';
-    final String noSerdik = (serdik['no_serdik'] as String?) ?? '-';
-    final String pangkat = (serdik['pangkat'] as String?) ?? '-';
+    final String name = (widget.serdik['nama_lengkap'] as String?) ?? '-';
+    final String noSerdik = (widget.serdik['no_serdik'] as String?) ?? '-';
+    final String pangkat = (widget.serdik['pangkat'] as String?) ?? '-';
     final String? profilePhoto =
-        serdik['profile_photo'] ?? serdik['profilePhoto'];
+        widget.serdik['profile_photo'] ?? widget.serdik['profilePhoto'];
 
     final double baseScore = SerdikMentalScores.getNilai(
       noSerdik,
-      (serdik['_mock_score'] as num?)?.toDouble() ?? 80.0,
+      (widget.serdik['_mock_score'] as num?)?.toDouble() ?? 80.0,
     );
 
     final dynamicActivities = _getDynamicActivities();
@@ -123,30 +151,32 @@ class PatunMentalDetailScreen extends StatelessWidget {
         ),
       ),
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 680),
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildProfileHeader(
-                    name,
-                    pangkat,
-                    noSerdik,
-                    status,
-                    score,
-                    profilePhoto,
+        child: _isLoading 
+          ? const Center(child: CircularProgressIndicator())
+          : Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 680),
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildProfileHeader(
+                        name,
+                        pangkat,
+                        noSerdik,
+                        status,
+                        score,
+                        profilePhoto,
+                      ),
+                      _buildMentalTrendChart(),
+                      _buildActivityHistory(context),
+                      _buildMentalScores(noSerdik, score, status),
+                    ],
                   ),
-                  _buildMentalTrendChart(),
-                  _buildActivityHistory(context),
-                  _buildMentalScores(noSerdik, score, status),
-                ],
+                ),
               ),
             ),
-          ),
-        ),
       ),
     );
   }
@@ -161,7 +191,7 @@ class PatunMentalDetailScreen extends StatelessWidget {
   ) {
     final Color statusColor;
     final IconData statusIcon;
-    final String? senatRole = serdik['jabatan_senat'] as String?;
+    final String? senatRole = widget.serdik['jabatan_senat'] as String?;
     if (status == 'Aman') {
       statusColor = const Color(0xFF2E7D32);
       statusIcon = Icons.check_circle_rounded;
@@ -341,7 +371,7 @@ class PatunMentalDetailScreen extends StatelessWidget {
   }
 
   Widget _buildMentalTrendChart() {
-    final double score = (serdik['_mock_score'] as num?)?.toDouble() ?? 80.0;
+    final double score = (widget.serdik['_mock_score'] as num?)?.toDouble() ?? 80.0;
 
     List<FlSpot> chartSpots;
 
@@ -841,11 +871,7 @@ class PatunMentalDetailScreen extends StatelessWidget {
     double pdPoints = 0.0;
     double penampilanPoints = 0.0;
 
-    final approvedItems = KorsisInboxMockData.items.where(
-      (item) =>
-          (item.status == 'Setuju' || item.status == 'approved') &&
-          item.nosis == noSerdik,
-    );
+    final approvedItems = List<InboxItem>.from(_approvedItems);
 
     for (var item in approvedItems) {
       if (item.rewardPunishmentId != null) {
@@ -1076,52 +1102,7 @@ class PatunMentalDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSubScoreItem(String title, double score) {
-    final scoreColor = _getScoreColor(score);
-    return Padding(
-      padding: const EdgeInsets.only(
-        bottom: AppDimensions.xs,
-        left: AppDimensions.xs,
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Icon(Icons.circle, size: 5, color: Colors.blueGrey.shade400),
-          const SizedBox(width: AppDimensions.sm),
-          Expanded(
-            child: Text(
-              title,
-              style: TextStyle(
-                fontSize: AppDimensions.fontSm,
-                fontWeight: FontWeight.w600,
-                color: Colors.blueGrey.shade700,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          const SizedBox(width: AppDimensions.xs),
-          Container(
-            constraints: const BoxConstraints(minWidth: 44),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: scoreColor.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              score > 0 ? score.toStringAsFixed(2) : '-',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: AppDimensions.fontXs + 1,
-                fontWeight: FontWeight.w800,
-                color: scoreColor,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Widget _buildRecommendationCard(double score, String status) {
     final isWarning = status == 'Warning';

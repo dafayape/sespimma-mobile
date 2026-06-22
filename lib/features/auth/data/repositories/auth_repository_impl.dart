@@ -75,4 +75,14 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<void> logout() async {
     await localDataSource.clearTokens();
   }
+
+  @override
+  Future<void> updateProfilePhoto(String photoPath) async {
+    await remoteDataSource.updateProfilePhoto(photoPath);
+  }
+
+  @override
+  Future<void> changePassword(String currentPassword, String newPassword, String confirmPassword) async {
+    await remoteDataSource.changePassword(currentPassword, newPassword, confirmPassword);
+  }
 }

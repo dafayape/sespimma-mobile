@@ -65,4 +65,25 @@ class InboxRemoteDataSource {
       throw Exception(e.toString());
     }
   }
+
+  Future<void> createInbox(Map<String, dynamic> data) async {
+    try {
+      final response = await dio.post(
+        '/korsis/inbox',
+        data: data,
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception('Failed to create record');
+      }
+    } on DioException catch (e) {
+      if (e.response != null && e.response?.data is Map) {
+        final errData = e.response!.data as Map;
+        throw Exception(errData['error'] ?? errData['message'] ?? 'Server error');
+      }
+      throw Exception(e.message ?? 'Network error');
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
 }

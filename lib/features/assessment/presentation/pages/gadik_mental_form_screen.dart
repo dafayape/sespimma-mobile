@@ -1,9 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:sespimma/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:sespimma/features/auth/presentation/bloc/auth_state.dart';
-import 'package:sespimma/features/assessment/data/models/korsis_inbox_mock_data.dart';
+import 'package:sespimma/injection_container.dart';
+import 'package:sespimma/features/assessment/data/datasources/assessment_remote_data_source.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:sespimma/core/constants/app_dimensions.dart';
@@ -43,10 +41,6 @@ class _GadikMentalFormScreenState extends State<GadikMentalFormScreen> {
     return (_selectedSerdik!['no_serdik'] ?? _selectedSerdik!['nip'] ?? _selectedSerdik!['nrp'] ?? '-').toString();
   }
 
-  String get _selectedSerdikPokjar {
-    if (_selectedSerdik == null) return '';
-    return (_selectedSerdik!['kelompok_kelas'] ?? _selectedSerdik!['group_name'] ?? '-').toString();
-  }
 
   String get _selectedSerdikPangkat {
     if (_selectedSerdik == null) return '';
@@ -95,14 +89,12 @@ class _GadikMentalFormScreenState extends State<GadikMentalFormScreen> {
 
   double get _currentBaseScore {
     if (_selectedSerdik != null) {
-      double dynamicPoints = 0.0;
-      for (var item in KorsisInboxMockData.items) {
-        if (item.nosis == _selectedSerdikNosis &&
-            item.status == 'disetujui') {
-          dynamicPoints += item.isReward ? item.points : -item.points;
-        }
+      if (_selectedCategory != null) {
+        final aspectKey = _selectedCategory!.aspect.toLowerCase().replaceAll(' ', '_');
+        final currentScore = _selectedSerdik![aspectKey] ?? _selectedSerdik![_selectedCategory!.aspect] ?? 80.0;
+        return (currentScore as num).toDouble();
       }
-      return 80.0 + dynamicPoints;
+      return (_selectedSerdik!['_mock_score'] as num?)?.toDouble() ?? 80.0;
     }
     return 80.0;
   }
@@ -204,43 +196,54 @@ class _GadikMentalFormScreenState extends State<GadikMentalFormScreen> {
     );
   }
 
-  void _submitForm() {
+  void _submitForm() async {
     if (!_isFormValid) return;
 
     HapticFeedback.heavyImpact();
 
-    final category = _selectedCategory!;
+    try {
+      final dataSource = sl<AssessmentRemoteDataSource>();
+      
+      int itemId = 1;
+      try {
+         itemId = int.parse(_selectedCategory!.id);
+      } catch (_) {}
 
-    String dynamicSender = 'Gadik Sespimma';
-    final authState = context.read<AuthBloc>().state;
-    if (authState is AuthSuccess) {
-      dynamicSender = '${authState.user.pangkat} ${authState.user.name}';
+      final int studentId = int.tryParse((_selectedSerdik!['user_id'] ?? _selectedSerdik!['id'] ?? '').toString()) ?? 1;
+
+      if (widget.isReward) {
+        await dataSource.submitUserReward({
+          'user_id': studentId,
+          'reward_item_id': itemId,
+          'point': _selectedCategory!.point,
+          'qty': 1,
+          'reward_date': DateTime.now().toUtc().toIso8601String(),
+          'notes': _justificationController.text.isNotEmpty
+              ? _justificationController.text
+              : 'Pencatatan oleh Gadik',
+        });
+      } else {
+        await dataSource.submitPunishmentLog({
+          'user_id': studentId,
+          'punishment_item_id': itemId,
+          'point': _selectedCategory!.point.abs(),
+          'qty': 1,
+          'violation_date': DateTime.now().toUtc().toIso8601String(),
+          'notes': _justificationController.text.isNotEmpty
+              ? _justificationController.text
+              : 'Pencatatan oleh Gadik',
+        });
+      }
+
+      if (mounted) {
+        Navigator.pop(context);
+        AppNotifier.showSuccess(context, 'Penilaian berhasil dikirim ke Korsis!');
+      }
+    } catch (e) {
+      if (mounted) {
+        AppNotifier.showError(context, 'Gagal mengirim penilaian: $e');
+      }
     }
-
-    final newItem = InboxItem(
-      id: 'gadik_${DateTime.now().millisecondsSinceEpoch}',
-      serdikName: _selectedSerdikName,
-      pangkat: _selectedSerdikPangkat,
-      nosis: _selectedSerdikNosis,
-      pokjar: _selectedSerdikPokjar,
-      isReward: widget.isReward,
-      senderName: dynamicSender,
-      timestamp: DateTime.now(),
-      points: category.point,
-      description: _justificationController.text.isNotEmpty
-          ? _justificationController.text
-          : 'Pencatatan oleh Gadik terhadap '
-                'kedisiplinan dan kinerja serdik.',
-      rewardPunishmentName: category.description,
-      status: 'pending',
-      photoPath: _selectedPhoto?.path,
-    );
-
-    KorsisInboxMockData.addRecord(newItem);
-
-    if (!mounted) return;
-    Navigator.pop(context);
-    AppNotifier.showSuccess(context, 'Penilaian berhasil dikirim ke Korsis!');
   }
 
   @override

@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/usecases/login_usecase.dart';
+import '../../domain/repositories/auth_repository.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 import '../../data/datasources/serdik_real_data.dart';
@@ -10,8 +11,12 @@ import '../../data/datasources/korsis_real_data.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final LoginUseCase loginUseCase;
+  final AuthRepository authRepository;
 
-  AuthBloc({required this.loginUseCase}) : super(AuthInitial()) {
+  AuthBloc({
+    required this.loginUseCase,
+    required this.authRepository,
+  }) : super(AuthInitial()) {
     on<LoginSubmitted>(_onLoginSubmitted);
     on<UpdateProfilePhotoRequested>(_onUpdateProfilePhotoRequested);
     on<ChangePasswordRequested>(_onChangePasswordRequested);
@@ -39,48 +44,31 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
   }
 
-  void _onUpdateProfilePhotoRequested(
+  Future<void> _onUpdateProfilePhotoRequested(
     UpdateProfilePhotoRequested event,
     Emitter<AuthState> emit,
-  ) {
+  ) async {
     if (state is AuthSuccess) {
       final currentUser = (state as AuthSuccess).user;
-      final updatedUser = currentUser.copyWith(
-        profilePhoto: event.photoPath,
-        clearProfilePhoto: event.photoPath == null,
-      );
+      final currentState = state;
 
-      if (updatedUser.roleId == 'serdik') {
-        for (var record in SerdikRealData.records) {
-          if (record['no_serdik'] == updatedUser.noSerdik) {
-            record['profile_photo'] = event.photoPath;
-            break;
-          }
+      emit(AuthLoading());
+
+      try {
+        if (event.photoPath != null) {
+          await authRepository.updateProfilePhoto(event.photoPath!);
         }
-      } else if (updatedUser.roleId == 'patun') {
-        for (var record in PatunRealData.records) {
-          if (record['nrp'] == updatedUser.nrp) {
-            record['foto'] = event.photoPath;
-            break;
-          }
-        }
-      } else if (updatedUser.roleId == 'gadik') {
-        for (var record in GadikRealData.records) {
-          if (record['nrp'] == updatedUser.nrp) {
-            record['foto'] = event.photoPath;
-            break;
-          }
-        }
-      } else if (updatedUser.roleId == 'korsis') {
-        for (var record in KorsisRealData.records) {
-          if (record['nrp'] == updatedUser.nrp) {
-            record['foto'] = event.photoPath;
-            break;
-          }
-        }
+        
+        final updatedUser = currentUser.copyWith(
+          profilePhoto: event.photoPath,
+          clearProfilePhoto: event.photoPath == null,
+        );
+
+        emit(AuthSuccess(updatedUser));
+      } catch (e) {
+        emit(AuthFailure(e.toString().replaceAll('Exception: ', '')));
+        emit(currentState);
       }
-
-      emit(AuthSuccess(updatedUser));
     }
   }
 
@@ -89,18 +77,22 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     if (state is AuthSuccess) {
-      final user = (state as AuthSuccess).user;
+      final currentUser = (state as AuthSuccess).user;
+      final currentState = state;
+      
       emit(AuthLoading());
-      await Future.delayed(const Duration(milliseconds: 1200));
-
-      if (event.oldPassword != 'password123') {
-        emit(AuthFailure('Password lama yang Anda masukkan salah.'));
-        await Future.delayed(const Duration(milliseconds: 100));
-        emit(AuthSuccess(user));
-        return;
+      
+      try {
+        await authRepository.changePassword(
+          event.oldPassword,
+          event.newPassword,
+          event.newPassword,
+        );
+        emit(AuthSuccess(currentUser));
+      } catch (e) {
+        emit(AuthFailure(e.toString().replaceAll('Exception: ', '')));
+        emit(currentState);
       }
-
-      emit(AuthSuccess(user));
     }
   }
 

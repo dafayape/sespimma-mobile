@@ -630,7 +630,7 @@ class RewardPunishmentData {
       }
       _isLoaded = true;
     } catch (e) {
-      print('Failed to load points from API: $e');
+      // print('Failed to load points from API: $e');
       if (rules.isEmpty) {
         rules = List.from(_fallbackRules);
       }
