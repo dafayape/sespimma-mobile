@@ -81,7 +81,7 @@ class UserEntity extends Equatable {
     if (tanggalLahir != null) {
       try {
         final birthDate = DateTime.parse(tanggalLahir!);
-        final today = DateTime(2026, 5, 15);
+        final today = DateTime.now();
         int age = today.year - birthDate.year;
         if (today.month < birthDate.month ||
             (today.month == birthDate.month && today.day < birthDate.day)) {
@@ -93,6 +93,30 @@ class UserEntity extends Equatable {
       }
     }
     return '41';
+  }
+
+  String get displayGolongan {
+    if (golongan != '-' && golongan.trim().isNotEmpty) {
+      return golongan;
+    }
+    if (tanggalLahir != null && tanggalLahir!.isNotEmpty && tanggalLahir != '-') {
+      try {
+        final birthDate = DateTime.parse(tanggalLahir!);
+        final today = DateTime.now();
+        int age = today.year - birthDate.year;
+        if (today.month < birthDate.month ||
+            (today.month == birthDate.month && today.day < birthDate.day)) {
+          age--;
+        }
+        if (age <= 30) return 'GOL I';
+        if (age <= 40) return 'GOL II';
+        if (age <= 50) return 'GOL III';
+        return 'GOL IV';
+      } catch (_) {
+        return '-';
+      }
+    }
+    return '-';
   }
 
   UserEntity copyWith({

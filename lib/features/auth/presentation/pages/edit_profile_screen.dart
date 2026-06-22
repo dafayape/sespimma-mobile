@@ -483,7 +483,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             const SizedBox(height: AppDimensions.md),
             _buildInfoRow('Eselon', user.eselon),
             const SizedBox(height: AppDimensions.md),
-            _buildInfoRow('Golongan', user.golongan),
+            _buildInfoRow('Golongan', user.displayGolongan),
           ] else ...[
             _buildInfoRow(user.nrp.length > 10 ? 'NIP' : 'NRP', user.nrp),
             const SizedBox(height: AppDimensions.md),

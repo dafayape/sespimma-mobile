@@ -366,7 +366,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       rows = [
         _buildDetailRow(AppIcons.bookOpen, 'AGAMA', user.agama),
         _buildDetailRow(AppIcons.chartBar, 'ESELON', user.eselon),
-        _buildDetailRow(AppIcons.chartBar, 'GOLONGAN', user.golongan),
+        _buildDetailRow(AppIcons.chartBar, 'GOLONGAN', user.displayGolongan),
       ];
     } else if (user.roleId == 'medis') {
       rows = [
