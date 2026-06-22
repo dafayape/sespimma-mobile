@@ -2,17 +2,16 @@ import 'package:sespimma/core/constants/app_dimensions.dart';
 import 'package:flutter/material.dart';
 import 'package:sespimma/core/utils/app_notifier.dart';
 import 'package:sespimma/core/utils/icon_mapper.dart';
-import '../../../../core/theme/app_colors.dart';
-import 'package:sespimma/features/leadership_dashboard/data/datasources/pimpinan_mock_data.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../auth/presentation/bloc/auth_bloc.dart';
+import 'package:sespimma/core/theme/app_colors.dart';
+import 'package:sespimma/injection_container.dart';
+import '../../data/datasources/absensi_remote_data_source.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
 import '../../../auth/domain/entities/user_entity.dart';
-import '../../../auth/data/datasources/korsis_real_data.dart';
-import '../../../auth/data/datasources/operator_real_data.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'dart:io';
 import 'package:sespimma/core/utils/avatar_helper.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
 
 class AttendanceHistoryScreen extends StatefulWidget {
   const AttendanceHistoryScreen({super.key});
@@ -25,7 +24,10 @@ class AttendanceHistoryScreen extends StatefulWidget {
 class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _animController;
-  String _appInfo = 'Mengambil info perangkat...';
+  String _appInfo = 'Loading...';
+
+  List<Map<String, dynamic>> _attendances = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -35,6 +37,8 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen>
       duration: const Duration(milliseconds: 600),
     );
     _animController.forward();
+
+    _loadHistory();
 
     DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
     if (Platform.isAndroid) {
@@ -60,22 +64,40 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen>
     }
   }
 
-  String _getZoneCreatorFullName(String creator) {
-    if (creator.toLowerCase() == 'korsis') {
-      return KorsisRealData.records.first['nama'] as String;
-    }
-    for (var k in KorsisRealData.records) {
-      if (k['nama'].toString().toLowerCase().contains(creator.toLowerCase())) {
-        return k['nama'] as String;
+  Future<void> _loadHistory() async {
+    try {
+      final source = sl<AbsensiRemoteDataSource>();
+      final data = await source.getHistory();
+      if (mounted) {
+        setState(() {
+          _attendances = data.map((e) => {
+            'id': e['id'],
+            'title': e['title'],
+            'date': _formatDate(DateTime.parse(e['dateTime'])),
+            'time': _formatTime(DateTime.parse(e['dateTime'])),
+            'dateTime': DateTime.parse(e['dateTime']),
+            'status': e['status'],
+            'type': e['type'],
+            'location': e['location'] ?? '-',
+            'method': e['method'] ?? '-',
+            'attachment': e['attachment'],
+            'waktuPelaksanaan': e['waktuPelaksanaan'] ?? '-',
+            'waktuBatasAbsen': e['waktuBatasAbsen'] ?? '-',
+            'pembuatZona': e['pembuatZona'] ?? '-',
+          }).toList();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
-    for (var o in OperatorRealData.records) {
-      if (o['nama'].toString().toLowerCase().contains(creator.toLowerCase())) {
-        return o['nama'] as String;
-      }
-    }
-    return creator;
   }
+
+
 
   String _formatDate(DateTime target) {
     const months = [
@@ -102,32 +124,7 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen>
   }
 
   List<Map<String, dynamic>> _getAttendances() {
-    final List<Map<String, dynamic>> result = [];
-
-    for (var att in PimpinanMockData.serdikAttendanceHistory) {
-      final dt = att['dateTime'] as DateTime;
-      result.add({
-        'id': att['id'],
-        'title': att['title'],
-        'date': _formatDate(dt),
-        'time': _formatTime(dt),
-        'dateTime': dt,
-        'status': att['status'] == 'Alpha' ? 'Tanpa Keterangan' : att['status'],
-        'type': att['type'],
-        'location': att['location'] ?? '-',
-        'method': att['method'] ?? '-',
-        'attachment': att['attachment'],
-        'waktuPelaksanaan': att['waktuPelaksanaan'] ?? '-',
-        'waktuBatasAbsen': att['waktuBatasAbsen'] ?? '-',
-        'pembuatZona': _getZoneCreatorFullName(att['pembuatZona'] ?? '-'),
-      });
-    }
-
-    result.sort(
-      (a, b) =>
-          (b['dateTime'] as DateTime).compareTo(a['dateTime'] as DateTime),
-    );
-    return result;
+    return _attendances;
   }
 
   @override
@@ -262,6 +259,18 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          title: const Text('Riwayat Kehadiran', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+          backgroundColor: AppColors.primaryNavy,
+          elevation: 0,
+        ),
+        body: const Center(child: CircularProgressIndicator(color: AppColors.primaryNavy)),
+      );
+    }
+
     final currentAttendances = _getAttendances();
 
     final filteredByStatus = _selectedFilter == 'Semua'

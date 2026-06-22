@@ -57,4 +57,21 @@ class AbsensiRemoteDataSource {
       ),
     );
   }
+
+  Future<List<Map<String, dynamic>>> getHistory() async {
+    try {
+      final response = await dio.get('/api/mobile/attendance/history');
+      if (response.data != null && response.data['data'] != null) {
+        return List<Map<String, dynamic>>.from(response.data['data']);
+      }
+      return [];
+    } on DioException catch (e) {
+      if (e.response?.data != null && e.response?.data['error'] != null) {
+        throw Exception(e.response?.data['error']);
+      }
+      throw Exception('Gagal mengambil riwayat absensi');
+    } catch (e) {
+      throw Exception('Terjadi kesalahan: $e');
+    }
+  }
 }
