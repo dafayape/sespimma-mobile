@@ -74,7 +74,7 @@ class _PatunPhysicalMonitoringScreenState
         centerTitle: true,
         automaticallyImplyLeading: false,
         title: const Text(
-          'Monitoring Jasmani',
+          'Monitoring Penilaian',
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.w700,

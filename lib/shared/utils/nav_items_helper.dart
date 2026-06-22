@@ -189,7 +189,7 @@ List<NavItem> getNavItemsByRole(String roleId) {
           screen: HomeScreen(),
         ),
         NavItem(
-          label: 'Zona',
+          label: 'Absen',
           icon: AppIcons.mapPin,
           activeIcon: AppIcons.mapPinFill,
           screen: AttendanceScreen(),

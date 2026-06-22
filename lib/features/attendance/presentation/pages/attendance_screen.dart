@@ -415,7 +415,7 @@ class _AttendanceScreenState extends State<AttendanceScreen>
         elevation: 0,
         centerTitle: true,
         title: const Text(
-          'Zona',
+          'Absen',
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.w700,
