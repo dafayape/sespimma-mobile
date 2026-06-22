@@ -279,15 +279,18 @@ class _AttendanceScreenState extends State<AttendanceScreen>
       setState(() => _isSubmitting = false);
 
       String errorMsg = 'Gagal melakukan absensi';
-      if (e.toString().contains('409') || e.toString().contains('sudah melakukan')) {
+      final errStr = e.toString();
+      if (errStr.contains('mengajukan izin')) {
+        errorMsg = 'Anda tidak bisa absen hadir karena sudah mengajukan izin untuk kegiatan ini';
+        setState(() => _isAttended = true);
+      } else if (errStr.contains('409') || errStr.contains('sudah melakukan')) {
         errorMsg = 'Anda sudah melakukan presensi untuk kegiatan ini hari ini';
         setState(() => _isAttended = true);
-      } else if (e.toString().contains('403') || e.toString().contains('ditutup')) {
+      } else if (errStr.contains('403') || errStr.contains('ditutup')) {
         errorMsg = 'Waktu absensi sudah ditutup';
-      } else if (e.toString().contains('404')) {
+      } else if (errStr.contains('404')) {
         errorMsg = 'Kegiatan tidak ditemukan';
       }
-
 
       AppNotifier.showError(context, errorMsg);
     }
