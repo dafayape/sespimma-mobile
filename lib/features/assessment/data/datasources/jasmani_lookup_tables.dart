@@ -43,7 +43,7 @@ class JasmaniLookupTables {
 
   static double getNilaiLari(int value, String gender, String gol) {
     bool isPria =
-        gender.toLowerCase() == 'laki-laki' || gender.toLowerCase() == 'pria';
+        gender.toLowerCase() == 'laki-laki' || gender.toLowerCase() == 'pria' || gender.toLowerCase() == 'male';
     Map<double, int> map;
     if (gol == 'GOL I') {
       map = isPria ? _datagetNilaiLariPriaGol1 : _datagetNilaiLariWanitaGol1;
@@ -91,7 +91,7 @@ class JasmaniLookupTables {
 
   static double getNilaiPullUp(int value, String gender, String gol) {
     bool isPria =
-        gender.toLowerCase() == 'laki-laki' || gender.toLowerCase() == 'pria';
+        gender.toLowerCase() == 'laki-laki' || gender.toLowerCase() == 'pria' || gender.toLowerCase() == 'male';
     Map<double, int> map;
     if (gol == 'GOL I') {
       map = isPria
@@ -145,7 +145,7 @@ class JasmaniLookupTables {
 
   static double getNilaiPushUp(int value, String gender, String gol) {
     bool isPria =
-        gender.toLowerCase() == 'laki-laki' || gender.toLowerCase() == 'pria';
+        gender.toLowerCase() == 'laki-laki' || gender.toLowerCase() == 'pria' || gender.toLowerCase() == 'male';
     Map<double, int> map;
     if (gol == 'GOL I') {
       map = isPria
@@ -199,7 +199,7 @@ class JasmaniLookupTables {
 
   static double getNilaiSitUp(int value, String gender, String gol) {
     bool isPria =
-        gender.toLowerCase() == 'laki-laki' || gender.toLowerCase() == 'pria';
+        gender.toLowerCase() == 'laki-laki' || gender.toLowerCase() == 'pria' || gender.toLowerCase() == 'male';
     Map<double, int> map;
     if (gol == 'GOL I') {
       map = isPria ? _datagetNilaiSitUpPriaGol1 : _datagetNilaiSitUpWanitaGol1;
@@ -247,7 +247,7 @@ class JasmaniLookupTables {
 
   static double getNilaiShuttleRun(double value, String gender, String gol) {
     bool isPria =
-        gender.toLowerCase() == 'laki-laki' || gender.toLowerCase() == 'pria';
+        gender.toLowerCase() == 'laki-laki' || gender.toLowerCase() == 'pria' || gender.toLowerCase() == 'male';
     Map<double, int> map;
     if (gol == 'GOL I') {
       map = isPria

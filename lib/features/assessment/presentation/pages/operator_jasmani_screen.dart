@@ -175,7 +175,8 @@ class _OperatorJasmaniScreenState extends State<OperatorJasmaniScreen> {
                       final gender = (serdik['gender'] ?? serdik['jenis_kelamin'] ?? 'Pria').toString();
                       final isPria =
                           gender.toLowerCase() == 'laki-laki' ||
-                          gender.toLowerCase() == 'pria';
+                          gender.toLowerCase() == 'pria' ||
+                          gender.toLowerCase() == 'male';
                       if (_selectedGender == 'Pria' && !isPria) return false;
                       if (_selectedGender == 'Wanita' && isPria) return false;
                     }
@@ -554,14 +555,16 @@ class _OperatorJasmaniScreenState extends State<OperatorJasmaniScreen> {
                               decoration: BoxDecoration(
                                 color:
                                     (gender.toLowerCase() == 'pria' ||
-                                        gender.toLowerCase() == 'laki-laki')
+                                        gender.toLowerCase() == 'laki-laki' ||
+                                        gender.toLowerCase() == 'male')
                                     ? Colors.blue.shade100
                                     : Colors.pink.shade100,
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
                                 (gender.toLowerCase() == 'pria' ||
-                                        gender.toLowerCase() == 'laki-laki')
+                                        gender.toLowerCase() == 'laki-laki' ||
+                                        gender.toLowerCase() == 'male')
                                     ? 'P'
                                     : 'W',
                                 style: TextStyle(
@@ -569,7 +572,8 @@ class _OperatorJasmaniScreenState extends State<OperatorJasmaniScreen> {
                                   fontWeight: FontWeight.w900,
                                   color:
                                       (gender.toLowerCase() == 'pria' ||
-                                          gender.toLowerCase() == 'laki-laki')
+                                          gender.toLowerCase() == 'laki-laki' ||
+                                          gender.toLowerCase() == 'male')
                                       ? Colors.blue.shade900
                                       : Colors.pink.shade900,
                                 ),
