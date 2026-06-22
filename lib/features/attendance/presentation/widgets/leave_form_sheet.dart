@@ -305,9 +305,10 @@ class _LeaveFormSheetState extends State<LeaveFormSheet> {
                             }
                           } catch (e) {
                             if (context.mounted) {
+                              String errorMsg = e.toString().replaceAll('Exception: ', '');
                               AppNotifier.showError(
                                 context,
-                                'Gagal mengajukan izin: $e',
+                                errorMsg,
                               );
                             }
                           } finally {
