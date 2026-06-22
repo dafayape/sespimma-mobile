@@ -3,41 +3,29 @@ import 'package:intl/intl.dart';
 class JasmaniLookupTables {
   static String getGolongan(String tanggalLahir, [DateTime? testDate]) {
     if (tanggalLahir.isEmpty || tanggalLahir == '-') {
-      {
-        return 'GOL II';
-      }
+      return 'GOL II';
     }
     try {
-      final dob = DateFormat('yyyy-MM-dd').parse(tanggalLahir);
+      final dob = DateTime.parse(tanggalLahir);
       final test = testDate ?? DateTime.now();
       int age = test.year - dob.year;
       if (test.month < dob.month ||
           (test.month == dob.month && test.day < dob.day)) {
         age--;
       }
-      if (test.month == dob.month && test.day == dob.day) {
-        age++;
-      }
+      
       if (age <= 30) {
-        {
-          return 'GOL I';
-        }
+        return 'GOL I';
       }
       if (age <= 40) {
-        {
-          return 'GOL II';
-        }
+        return 'GOL II';
       }
       if (age <= 50) {
-        {
-          return 'GOL III';
-        }
+        return 'GOL III';
       }
       return 'GOL IV';
     } catch (e) {
-      {
-        return 'GOL II';
-      }
+      return 'GOL II';
     }
   }
 
