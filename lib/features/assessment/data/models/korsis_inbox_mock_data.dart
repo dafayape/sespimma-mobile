@@ -48,7 +48,7 @@ class InboxItem {
       pokjar: json['pokjar'] ?? '',
       isReward: json['is_reward'] ?? json['isReward'] ?? false,
       senderName: json['sender_name'] ?? json['senderName'] ?? '',
-      timestamp: json['timestamp'] != null ? DateTime.parse(json['timestamp']) : DateTime.now(),
+      timestamp: json['timestamp'] != null ? DateTime.parse(json['timestamp']).toLocal() : DateTime.now(),
       points: (json['points'] as num?)?.toDouble() ?? 0.0,
       description: json['description'] ?? '',
       rewardPunishmentName: json['reward_punishment_name'] ?? json['rewardPunishmentName'] ?? '',
@@ -57,11 +57,11 @@ class InboxItem {
       rewardPunishmentId: json['reward_punishment_id'] ?? json['rewardPunishmentId'],
       isIzin: json['is_izin'] ?? json['isIzin'] ?? false,
       izinStartTime: json['izin_start_time'] != null 
-          ? DateTime.parse(json['izin_start_time']) 
-          : (json['izinStartTime'] != null ? DateTime.parse(json['izinStartTime']) : null),
+          ? DateTime.parse(json['izin_start_time']).toLocal() 
+          : (json['izinStartTime'] != null ? DateTime.parse(json['izinStartTime']).toLocal() : null),
       izinEndTime: json['izin_end_time'] != null 
-          ? DateTime.parse(json['izin_end_time']) 
-          : (json['izinEndTime'] != null ? DateTime.parse(json['izinEndTime']) : null),
+          ? DateTime.parse(json['izin_end_time']).toLocal() 
+          : (json['izinEndTime'] != null ? DateTime.parse(json['izinEndTime']).toLocal() : null),
       attachmentPath: json['attachment_url'] ?? json['attachmentPath'],
     );
   }
