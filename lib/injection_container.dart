@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -49,18 +50,18 @@ Future<void> _initExternal() async {
     dio.interceptors.add(
       QueuedInterceptorsWrapper(
         onRequest: (options, handler) async {
-          print('onRequest interceptor: path=${options.path}');
+          developer.log('onRequest interceptor: path=${options.path}', name: 'DioInterceptor');
           if (!options.path.contains('/auth/login') &&
               !options.path.contains('/auth/refresh-token')) {
             final authLocalDataSource = sl<AuthLocalDataSource>();
             try {
               final token = await authLocalDataSource.getAccessToken();
-              print('onRequest token resolved: ${token != null ? "YES" : "NO"}');
+              developer.log('onRequest token resolved: ${token != null ? "YES" : "NO"}', name: 'DioInterceptor');
               if (token != null) {
                 options.headers['Authorization'] = 'Bearer $token';
               }
             } catch (e) {
-              print('onRequest error reading token: $e');
+              developer.log('onRequest error reading token: $e', name: 'DioInterceptor');
             }
           }
 

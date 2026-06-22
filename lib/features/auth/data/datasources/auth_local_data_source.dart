@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 abstract class AuthLocalDataSource {
@@ -41,10 +42,10 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   Future<String?> getAccessToken() async {
     try {
       final res = await secureStorage.read(key: _accessTokenKey);
-      print('AuthLocalDataSource getAccessToken read: ${res != null ? "success (len: ${res.length})" : "null"}');
+      developer.log('AuthLocalDataSource getAccessToken read: ${res != null ? "success (len: ${res.length})" : "null"}', name: 'AuthLocal');
       return res;
     } catch (e) {
-      print('AuthLocalDataSource getAccessToken exception: $e');
+      developer.log('AuthLocalDataSource getAccessToken exception: $e', name: 'AuthLocal');
       await secureStorage.deleteAll();
       return null;
     }
