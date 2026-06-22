@@ -30,6 +30,7 @@ class _LeaveFormSheetState extends State<LeaveFormSheet> {
   String? attachedFilePath;
   bool isAttaching = false;
   bool _isLoading = false;
+  String _izinType = 'izin';
   late final TextEditingController reasonCtrl;
   final formKey = GlobalKey<FormState>();
 
@@ -129,17 +130,52 @@ class _LeaveFormSheetState extends State<LeaveFormSheet> {
               ),
             ),
             const SizedBox(height: AppDimensions.xxl),
-            const Text(
-              'Pengajuan Izin Khusus',
-              style: TextStyle(
-                fontSize: AppDimensions.fontLg,
-                fontWeight: FontWeight.w800,
-                color: AppColors.primaryNavy,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Pengajuan Izin',
+                  style: TextStyle(
+                    fontSize: AppDimensions.fontLg,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primaryNavy,
+                  ),
+                ),
+                DropdownButton<String>(
+                  value: _izinType,
+                  icon: const Icon(Icons.arrow_drop_down, color: AppColors.primaryNavy),
+                  elevation: 16,
+                  style: const TextStyle(
+                    color: AppColors.primaryNavy,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  underline: Container(
+                    height: 2,
+                    color: AppColors.primaryNavy,
+                  ),
+                  onChanged: (String? value) {
+                    setState(() {
+                      _izinType = value!;
+                    });
+                  },
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'izin',
+                      child: Text('Izin Khusus'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'sakit',
+                      child: Text('Sakit'),
+                    ),
+                  ],
+                ),
+              ],
             ),
             const SizedBox(height: AppDimensions.xs + 2),
             Text(
-              'Silakan lampirkan alasan tertulis beserta dokumen bukti.',
+              _izinType == 'sakit'
+                  ? 'Silakan lampirkan alasan beserta Surat Keterangan Dokter.'
+                  : 'Silakan lampirkan alasan tertulis beserta dokumen bukti.',
               style: TextStyle(
                 fontSize: AppDimensions.fontXs + 1,
                 color: Colors.blueGrey.shade500,
@@ -297,6 +333,7 @@ class _LeaveFormSheetState extends State<LeaveFormSheet> {
                               endTime: endDt,
                               description: reasonCtrl.text.trim(),
                               filePath: attachedFilePath!,
+                              izinType: _izinType,
                             );
 
                             if (context.mounted) {

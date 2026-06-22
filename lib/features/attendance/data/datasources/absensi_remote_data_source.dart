@@ -34,6 +34,7 @@ class AbsensiRemoteDataSource {
     required DateTime endTime,
     required String description,
     required String filePath,
+    required String izinType,
   }) async {
     final formData = FormData.fromMap({
       'kegiatan_id': kegiatanId,
@@ -41,6 +42,7 @@ class AbsensiRemoteDataSource {
       'start_time': startTime.toIso8601String(),
       'end_time': endTime.toIso8601String(),
       'description': description,
+      'izin_type': izinType,
       'file': await MultipartFile.fromFile(
         filePath,
         filename: filePath.split('/').last,
