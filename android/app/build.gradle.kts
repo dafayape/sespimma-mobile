@@ -41,7 +41,17 @@ android {
         }
     }
 
-
+    // --- TAMBAHKAN SCRIPT INI UNTUK CUSTOM NAMA APK (KOTLIN DSL) ---
+    applicationVariants.all {
+        if (buildType.name == "release") {
+            outputs.all {
+                // Di Kotlin DSL, kita perlu melakukan casting ke BaseVariantOutputImpl
+                val outputImpl = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+                outputImpl.outputFileName = "sespimma-v1.5(14)-alpha.apk"
+            }
+        }
+    }
+    // ---------------------------------------------------------------
 }
 
 flutter {
