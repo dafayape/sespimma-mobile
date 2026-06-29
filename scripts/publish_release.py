@@ -65,6 +65,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 MOBILE_DIR = os.path.dirname(SCRIPT_DIR)
 PUBSPEC = os.path.join(MOBILE_DIR, "pubspec.yaml")
 DEFAULT_APK = os.path.join(MOBILE_DIR, "build", "app", "outputs", "flutter-apk", "app-release.apk")
+STATE_FILE = os.path.join(SCRIPT_DIR, ".release_state.json")
 
 
 def read_env_api():
@@ -171,7 +172,7 @@ def post_release(api, token, meta, apk_path):
 def login(api):
     header("Autentikasi Developer")
     warn("Login akan mengakhiri sesi aktif Anda yang lain (single-session).")
-    nrp = ask("NRP/NIP developer")
+    nrp = ask("NRP developer")
     pw = getpass.getpass(color("  Kata sandi: ", C))
     url = api.rstrip("/") + "/auth/login"
     data = json.dumps({"nrp_nip": nrp, "password": pw, "device": "web", "force": True}).encode()
@@ -194,6 +195,74 @@ def run_build():
     ok("Build selesai")
 
 
+# ── state (agar tidak perlu mengulang dari awal saat unggah gagal) ────────────
+def save_state(api, meta, apk_path):
+    try:
+        json.dump({"api": api, "meta": meta, "apk_path": apk_path}, open(STATE_FILE, "w", encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def load_state():
+    if os.path.isfile(STATE_FILE):
+        try:
+            return json.load(open(STATE_FILE, encoding="utf-8"))
+        except Exception:  # noqa: BLE001
+            return None
+    return None
+
+
+def clear_state():
+    try:
+        os.remove(STATE_FILE)
+    except OSError:
+        pass
+
+
+def get_token(api, supplied):
+    return supplied if supplied else login(api)
+
+
+def upload_with_retry(api, token, meta, apk_path):
+    """Unggah dengan retry interaktif — data rilis tidak hilang saat gagal."""
+    header("Mengunggah ke VPS")
+    while True:
+        info("Mengirim APK + metadata ...")
+        try:
+            status, body = post_release(api, token, meta, apk_path)
+        except urllib.error.HTTPError as e:
+            status, body = e.code, e.read().decode("utf-8", "ignore")
+        except Exception as e:  # noqa: BLE001
+            status, body = 0, str(e)
+
+        if status == 200:
+            clear_state()
+            ok("Rilis berhasil dipublikasikan!")
+            try:
+                print("  " + json.dumps(json.loads(body), ensure_ascii=False))
+            except Exception:  # noqa: BLE001
+                print("  " + str(body))
+            info("Cek halaman Unduh Aplikasi — versi, tanggal, ukuran, & changelog sudah diperbarui.")
+            return 0
+
+        err(f"Gagal ({status}): {str(body)[:300]}")
+        save_state(api, meta, apk_path)
+        if status == 413:
+            warn("Ukuran melebihi batas nginx (413). Di VPS tambahkan 'client_max_body_size 200M;'")
+            warn("pada blok server nginx, lalu jalankan: sudo nginx -t && sudo systemctl reload nginx.")
+        elif status in (401, 403):
+            warn("Token tidak valid/kedaluwarsa, mencoba login ulang ...")
+            try:
+                token = login(api)
+                ok("Login berhasil")
+                continue
+            except Exception as e:  # noqa: BLE001
+                err(f"Login gagal: {e}")
+        if ask("Coba unggah lagi sekarang? (Y/n)", "Y").lower() == "n":
+            warn("Rilis disimpan sementara. Setelah perbaikan, jalankan: python3 scripts/publish_release.py --retry-last")
+            return 1
+
+
 def main():
     p = argparse.ArgumentParser(description="Publikasikan rilis aplikasi SESPIMMA ke VPS.")
     p.add_argument("--api", default=os.environ.get("API_BASE_URL", read_env_api()))
@@ -201,10 +270,31 @@ def main():
     p.add_argument("--apk", default="", help="Pakai APK yang sudah ada (lewati build)")
     p.add_argument("--skip-build", action="store_true", help="Lewati flutter build")
     p.add_argument("--no-pubspec", action="store_true", help="Jangan ubah pubspec.yaml")
+    p.add_argument("--retry-last", action="store_true", help="Ulangi unggahan terakhir yang gagal (tanpa build & isi ulang)")
     args = p.parse_args()
 
     print(color(B + "\n=== Publikasi Rilis SESPIMMA ===" + X, B))
     info(f"Target API: {color(args.api, B)}")
+
+    # ── ulangi rilis tertunda (mis. setelah memperbaiki 413 nginx) ──
+    if args.retry_last:
+        st = load_state()
+        if not st:
+            err("Tidak ada rilis tertunda. Jalankan tanpa --retry-last untuk membuat rilis baru.")
+            return 1
+        api = st.get("api", args.api)
+        meta = st.get("meta", {})
+        apk_path = st.get("apk_path", "")
+        info(f"Mengulang rilis tertunda: v{meta.get('version')}+{meta.get('build')}  ({apk_path})")
+        if not apk_path or not os.path.isfile(apk_path):
+            err(f"APK tidak ditemukan: {apk_path}. Jalankan tanpa --retry-last untuk build ulang.")
+            return 1
+        try:
+            token = get_token(api, args.token)
+        except Exception as e:  # noqa: BLE001
+            err(f"Login gagal: {e}")
+            return 1
+        return upload_with_retry(api, token, meta, apk_path)
 
     cur, build = read_pubspec_version()
     new_version = choose_version(cur, build)
@@ -225,6 +315,7 @@ def main():
 
     meta = {
         "version": new_version,
+        "build": new_build,
         "date": date,
         "title": title,
         "description": description,
@@ -265,37 +356,18 @@ def main():
     ok(f"APK siap: {apk_path} ({size_mb:.1f} MB)")
 
     # ── token ──
-    token = args.token
-    if not token:
-        try:
-            token = login(args.api)
-            ok("Login berhasil")
-        except Exception as e:  # noqa: BLE001
-            err(f"Login gagal: {e}")
-            return 1
-
-    # ── unggah ──
-    header("Mengunggah ke VPS")
-    info("Mengirim APK + metadata ...")
     try:
-        status, body = post_release(args.api, token, meta, apk_path)
-    except urllib.error.HTTPError as e:  # type: ignore[attr-defined]
-        err(f"Gagal ({e.code}): {e.read().decode('utf-8', 'ignore')}")
-        return 1
+        token = get_token(args.api, args.token)
+        if not args.token:
+            ok("Login berhasil")
     except Exception as e:  # noqa: BLE001
-        err(f"Gagal mengunggah: {e}")
+        err(f"Login gagal: {e}")
+        save_state(args.api, meta, apk_path)
+        warn("Rilis disimpan sementara. Setelah login siap, jalankan: python3 scripts/publish_release.py --retry-last")
         return 1
 
-    if status == 200:
-        ok("Rilis berhasil dipublikasikan!")
-        try:
-            print("  " + json.dumps(json.loads(body), ensure_ascii=False))
-        except Exception:  # noqa: BLE001
-            print("  " + body)
-        info("Cek halaman Unduh Aplikasi — versi, tanggal, ukuran, & changelog sudah diperbarui.")
-        return 0
-    err(f"Server menolak ({status}): {body}")
-    return 1
+    # ── unggah (otomatis retry, tanpa kehilangan data) ──
+    return upload_with_retry(args.api, token, meta, apk_path)
 
 
 if __name__ == "__main__":
