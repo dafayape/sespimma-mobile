@@ -128,6 +128,19 @@ class _AttendanceScreenState extends State<AttendanceScreen>
 
     if (result != null && mounted) {
       final String scannedZoneId = result['zoneId'];
+      final String? qrDate = result['date'];
+      
+      final now = DateTime.now();
+      final todayStr = "${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+      
+      if (qrDate != null && qrDate != todayStr) {
+        AppNotifier.showError(
+          context,
+          'QR Code ini kedaluwarsa atau bukan jadwal untuk hari ini.',
+        );
+        return;
+      }
+
       final matchedZone = _zones
           .where((z) => z.id == scannedZoneId)
           .firstOrNull;

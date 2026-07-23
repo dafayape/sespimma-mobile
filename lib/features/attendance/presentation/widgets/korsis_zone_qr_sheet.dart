@@ -1,4 +1,5 @@
 import 'dart:ui' as ui;
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -338,15 +339,14 @@ class _KorsisZoneQrSheetState extends State<KorsisZoneQrSheet> {
   }
 
   String _buildQrPayload(AttendanceZone zone) {
-    return [
-      'zone_id:${zone.id}',
-      'name:${zone.name}',
-      'activity:${zone.activityName}',
-      'lat:${zone.latitude}',
-      'lng:${zone.longitude}',
-      'radius:${zone.radiusMeters}',
-      'start:${zone.startTime.millisecondsSinceEpoch}',
-      'end:${zone.endTime.millisecondsSinceEpoch}',
-    ].join('|');
+    final yyyy = zone.startTime.year.toString().padLeft(4, '0');
+    final mm = zone.startTime.month.toString().padLeft(2, '0');
+    final dd = zone.startTime.day.toString().padLeft(2, '0');
+    
+    return json.encode({
+      'type': 'attendance_sespimma',
+      'zoneId': zone.id,
+      'date': '$yyyy-$mm-$dd',
+    });
   }
 }
