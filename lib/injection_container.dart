@@ -6,6 +6,7 @@ import 'package:get_it/get_it.dart';
 
 import 'package:talker_dio_logger/talker_dio_logger.dart';
 import 'core/local_database_helper.dart';
+import 'core/network/certificate_pinning_interceptor.dart';
 import 'core/utils/app_logger.dart';
 import 'features/attendance/data/datasources/kegiatan_remote_data_source.dart';
 import 'features/attendance/data/datasources/absensi_remote_data_source.dart';
@@ -46,6 +47,10 @@ Future<void> _initExternal() async {
         contentType: 'application/json',
       ),
     );
+
+    // Certificate pinning: no-ops (with a logged warning) until a real
+    // production fingerprint is filled in — see file for reasoning.
+    dio.interceptors.add(CertificatePinningGuardInterceptor());
 
     dio.interceptors.add(
       QueuedInterceptorsWrapper(
