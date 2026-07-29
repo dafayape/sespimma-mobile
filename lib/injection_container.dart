@@ -23,8 +23,28 @@ import 'features/auth/data/repositories/auth_repository_impl.dart';
 import 'features/auth/domain/repositories/auth_repository.dart';
 import 'features/auth/domain/usecases/login_usecase.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
+import 'features/auth/presentation/bloc/auth_event.dart';
 
 final sl = GetIt.instance;
+
+/// Dispatches the single, consistent "force logout" trigger (see
+/// `ForceLogoutRequested` doc) from this interceptor's refresh-failure
+/// path. `AuthBloc` is registered as a lazy singleton (not a factory)
+/// specifically so `sl<AuthBloc>()` here resolves to the SAME instance
+/// `main.dart`'s `BlocProvider(create: (_) => di.sl<AuthBloc>())` hands to
+/// the widget tree — a factory would hand back an orphaned instance no
+/// screen is listening to. This interceptor runs outside the widget tree
+/// and has no BuildContext, so GetIt is the only way to reach it.
+void _forceLogout() {
+  try {
+    sl<AuthBloc>().add(const ForceLogoutRequested());
+  } catch (e) {
+    developer.log(
+      '_forceLogout: failed to dispatch ForceLogoutRequested: $e',
+      name: 'DioInterceptor',
+    );
+  }
+}
 
 Future<void> init() async {
   await _initExternal();
@@ -111,9 +131,11 @@ Future<void> _initExternal() async {
                 }
               } catch (refreshError) {
                 await authLocalDataSource.clearTokens();
+                _forceLogout();
               }
             } else {
               await authLocalDataSource.clearTokens();
+              _forceLogout();
             }
           }
           return handler.next(e);
@@ -149,7 +171,12 @@ void _initFeatures() {
 }
 
 void _initAuthFeature() {
-  sl.registerFactory<AuthBloc>(() => AuthBloc(
+  // Lazy singleton (not a factory): this must be the SAME instance the
+  // widget tree's BlocProvider uses, so that the Dio interceptor above
+  // (which has no BuildContext and can only reach it via `sl<AuthBloc>()`)
+  // dispatches ForceLogoutRequested to the bloc a top-level listener is
+  // actually watching, rather than an unrelated throwaway instance.
+  sl.registerLazySingleton<AuthBloc>(() => AuthBloc(
     loginUseCase: sl(),
     authRepository: sl(),
   ));

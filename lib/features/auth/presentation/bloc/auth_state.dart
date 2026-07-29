@@ -39,3 +39,16 @@ class AuthNrpValidationSuccess extends AuthState {
   @override
   List<Object> get props => [nrp];
 }
+
+/// Emitted after a [ForceLogoutRequested] event has been handled (local
+/// session cleared, background tracking stopped). A top-level listener
+/// (see `main.dart`) reacts to this by navigating to the login screen and
+/// surfacing [reason] to the user.
+class AuthLoggedOut extends AuthState {
+  final String reason;
+
+  const AuthLoggedOut(this.reason);
+
+  @override
+  List<Object> get props => [reason];
+}

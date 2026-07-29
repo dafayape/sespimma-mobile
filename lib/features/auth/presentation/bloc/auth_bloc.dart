@@ -27,6 +27,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<ResetPasswordRequested>(_onResetPasswordRequested);
     on<VerifyNrpRequested>(_onVerifyNrpRequested);
     on<AutoLoginRequested>(_onAutoLoginRequested);
+    on<ForceLogoutRequested>(_onForceLogoutRequested);
   }
 
   void _onAutoLoginRequested(
@@ -78,6 +79,29 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     });
   }
 
+  /// The single "force logout" trigger reused by both the Dio interceptor
+  /// (token-refresh failure, `injection_container.dart`) and the
+  /// background-isolate session-expired signal
+  /// (`BackgroundLocationService.onSessionExpired`, wired up in
+  /// `main.dart`). Clears local session/tokens and stops background
+  /// tracking via [AuthRepository.logout] (idempotent — safe even if
+  /// tracking was already stopped), then emits [AuthLoggedOut] so the
+  /// top-level listener can navigate to the login screen with [reason].
+  Future<void> _onForceLogoutRequested(
+    ForceLogoutRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    try {
+      await authRepository.logout();
+    } catch (e) {
+      developer.log(
+        'ForceLogoutRequested: logout() failed: $e',
+        name: 'AuthBloc',
+      );
+    }
+    emit(AuthLoggedOut(event.reason));
+  }
+
   Future<void> _onUpdateProfilePhotoRequested(
     UpdateProfilePhotoRequested event,
     Emitter<AuthState> emit,
@@ -92,7 +116,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         if (event.photoPath != null) {
           await authRepository.updateProfilePhoto(event.photoPath!);
         }
-        
+
         final updatedUser = currentUser.copyWith(
           profilePhoto: event.photoPath,
           clearProfilePhoto: event.photoPath == null,
@@ -113,9 +137,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     if (state is AuthSuccess) {
       final currentUser = (state as AuthSuccess).user;
       final currentState = state;
-      
+
       emit(AuthLoading());
-      
+
       try {
         await authRepository.changePassword(
           event.oldPassword,

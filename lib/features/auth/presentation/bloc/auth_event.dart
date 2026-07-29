@@ -72,3 +72,26 @@ class AutoLoginRequested extends AuthEvent {
   @override
   List<Object> get props => [user];
 }
+
+/// Single, consistent "force logout" trigger — dispatched whenever the
+/// app determines the current session is no longer valid, from either of
+/// two independent call sites:
+///  - `injection_container.dart`'s Dio interceptor, when a 401 comes back
+///    and the token-refresh attempt also fails (or there's no refresh
+///    token to try).
+///  - `BackgroundLocationService.onSessionExpired`, when the background
+///    isolate's location ping gets a 401 (see that stream's doc).
+/// Both cases mean the server has revoked this device's session (e.g. the
+/// same account logged in elsewhere), so the outcome is the same either
+/// way: clear local session state, stop background tracking, and send the
+/// user back to the login screen with a visible reason.
+class ForceLogoutRequested extends AuthEvent {
+  final String reason;
+
+  const ForceLogoutRequested({
+    this.reason = 'Sesi Anda telah berakhir, silakan login kembali.',
+  });
+
+  @override
+  List<Object> get props => [reason];
+}
