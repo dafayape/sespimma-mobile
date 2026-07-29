@@ -137,9 +137,7 @@ class _AttendanceScreenState extends State<AttendanceScreen>
       // Best-effort context for the background ping loop — lets pings
       // carry the correct activity_location_id even if this screen closes
       // right after.
-      BackgroundLocationService.updateActivityLocation(
-        activeZone != null ? int.tryParse(activeZone.id) : null,
-      );
+      BackgroundLocationService.updateActivityLocation(activeZone?.id);
     }
   }
 

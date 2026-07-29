@@ -120,7 +120,7 @@ class BackgroundLocationService {
   /// currently inside (or null when outside every zone / unknown). This is
   /// best-effort context attached to pings; the ping loop itself keeps
   /// running independently of any screen being open.
-  static void updateActivityLocation(int? activityLocationId) {
+  static void updateActivityLocation(String? activityLocationId) {
     _service.invoke('setActivityLocation', {
       'activityLocationId': activityLocationId,
     });
@@ -211,7 +211,7 @@ void _onStart(ServiceInstance service) async {
   final dbHelper = LocalDatabaseHelper.instance;
 
   String? studentId;
-  int? activityLocationId;
+  String? activityLocationId;
   Position? lastPosition;
   DateTime? lastFlushAttempt;
 
@@ -231,7 +231,7 @@ void _onStart(ServiceInstance service) async {
     studentId = event?['studentId'] as String?;
   });
   service.on('setActivityLocation').listen((event) {
-    activityLocationId = event?['activityLocationId'] as int?;
+    activityLocationId = event?['activityLocationId'] as String?;
   });
 
   Map<String, dynamic> buildPayload(Position pos, {required int studentIdInt}) {

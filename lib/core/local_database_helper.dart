@@ -171,7 +171,7 @@ class LocalDatabaseHelper {
         student_id INTEGER NOT NULL,
         latitude REAL NOT NULL,
         longitude REAL NOT NULL,
-        activity_location_id INTEGER,
+        activity_location_id TEXT,
         is_mocked INTEGER NOT NULL DEFAULT 0,
         accuracy REAL,
         speed REAL,
