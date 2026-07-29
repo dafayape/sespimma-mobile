@@ -1,6 +1,14 @@
 import 'dart:developer' as developer;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+/// Secure-storage key for the access token. Public so other isolates that
+/// can't import [AuthLocalDataSourceImpl]'s private state directly (e.g.
+/// core/services/background_location_service.dart, which runs in its own
+/// Flutter engine and builds its own FlutterSecureStorage/Dio) can still
+/// read the same token without duplicating a magic string that could
+/// silently drift out of sync.
+const String kAuthAccessTokenStorageKey = 'ACCESS_TOKEN';
+
 abstract class AuthLocalDataSource {
   Future<void> saveTokens({
     required String accessToken,
@@ -23,7 +31,7 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
 
   const AuthLocalDataSourceImpl({required this.secureStorage});
 
-  static const String _accessTokenKey = 'ACCESS_TOKEN';
+  static const String _accessTokenKey = kAuthAccessTokenStorageKey;
   static const String _refreshTokenKey = 'REFRESH_TOKEN';
   static const String _userJsonKey = 'USER_JSON';
 

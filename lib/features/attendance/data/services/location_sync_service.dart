@@ -1,27 +1,44 @@
 import 'dart:async';
 import 'dart:developer' as developer;
-import 'package:dio/dio.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:sespimma/injection_container.dart';
 import '../../domain/models/map_tile_mode.dart';
 import '../../../notification/data/datasources/notification_mock_data.dart';
 
+/// Local, in-app geofence-enter/exit notification watcher.
+///
+/// IMPORTANT — this class does NOT send anything over the network anymore.
+/// It used to also POST realtime location pings to `/mobile/location` on a
+/// 10s timer, but that duplicated `BackgroundLocationService`
+/// (core/services/background_location_service.dart), which runs
+/// independently of any screen's lifecycle via flutter_background_service.
+/// Running both meant two independent senders firing the same ping every
+/// 10s. `BackgroundLocationService` is now the single source of location
+/// pings; this class is left purely as a foreground-only helper that pushes
+/// local notifications (via [NotificationMockData]) when the student enters
+/// or exits an active zone while a screen has it running — it has no
+/// business being backgrounded and does not need to be, since it has no
+/// network/session identity of its own.
 class LocationSyncService {
   static final LocationSyncService _instance = LocationSyncService._internal();
   factory LocationSyncService() => _instance;
   LocationSyncService._internal();
 
   StreamSubscription<Position>? _positionSubscription;
-  Timer? _syncTimer;
+  Timer? _geofenceCheckTimer;
 
   Position? _lastPosition;
   bool _isSyncing = false;
   DateTime _lastGeofenceCheck = DateTime.now();
   static final Map<String, bool> _hasEnteredZone = {};
 
-  static const Duration syncInterval = Duration(seconds: 10);
+  // Position stream is high-frequency (distanceFilter: 2m); geofence
+  // alerts are throttled to once per minute so entering/leaving a zone
+  // doesn't spam notification-list churn. Matches the original combined
+  // ping+alert timer's cadence for this half of its behavior.
+  static const Duration _pollInterval = Duration(seconds: 10);
+  static const Duration _geofenceCheckThrottle = Duration(seconds: 60);
 
-  void startSyncing(String serdikNrp) {
+  void startSyncing() {
     if (_isSyncing) return;
     _isSyncing = true;
 
@@ -45,57 +62,23 @@ class LocationSyncService {
           },
         );
 
-    _syncTimer = Timer.periodic(syncInterval, (timer) {
-      if (_lastPosition != null) {
-        _sendToBackendAPI(serdikNrp, _lastPosition!);
-
-        final now = DateTime.now();
-        if (now.difference(_lastGeofenceCheck).inSeconds >= 60) {
-          _lastGeofenceCheck = now;
-          _checkGeofenceAlerts();
-        }
+    _geofenceCheckTimer = Timer.periodic(_pollInterval, (timer) {
+      if (_lastPosition == null) return;
+      final now = DateTime.now();
+      if (now.difference(_lastGeofenceCheck) >= _geofenceCheckThrottle) {
+        _lastGeofenceCheck = now;
+        _checkGeofenceAlerts();
       }
     });
 
-    developer.log(
-      'LocationSyncService STARTED for NRP: $serdikNrp',
-      name: 'LocationSync',
-    );
+    developer.log('LocationSyncService (local geofence alerts) STARTED', name: 'LocationSync');
   }
 
   void stopSyncing() {
     _positionSubscription?.cancel();
-    _syncTimer?.cancel();
+    _geofenceCheckTimer?.cancel();
     _isSyncing = false;
     developer.log('LocationSyncService STOPPED', name: 'LocationSync');
-  }
-
-  Future<void> _sendToBackendAPI(String nrp, Position pos) async {
-    MockBackendDatabase.serdikLocations[nrp] = {
-      'latitude': pos.latitude,
-      'longitude': pos.longitude,
-      'timestamp': DateTime.now(),
-    };
-
-    try {
-      final dio = sl<Dio>();
-      await dio.post(
-        '/mobile/location',
-        data: {
-          'latitude': pos.latitude,
-          'longitude': pos.longitude,
-        },
-      );
-      developer.log(
-        'MENGIRIM LOKASI REALTIME KE BACKEND -> NRP: $nrp | Lat: ${pos.latitude}, Lng: ${pos.longitude}',
-        name: 'LocationSyncAPI',
-      );
-    } catch (e) {
-      developer.log(
-        'Gagal mengirim lokasi realtime ke backend: $e',
-        name: 'LocationSyncAPI',
-      );
-    }
   }
 
   void _checkGeofenceAlerts() {
@@ -161,8 +144,4 @@ class LocationSyncService {
     });
     NotificationMockData.unreadCountNotifier.value++;
   }
-}
-
-class MockBackendDatabase {
-  static final Map<String, Map<String, dynamic>> serdikLocations = {};
 }

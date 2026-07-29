@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:sespimma/core/services/background_location_service.dart';
 import 'package:sespimma/features/auth/domain/entities/user_entity.dart';
 import 'package:sespimma/features/auth/domain/repositories/auth_repository.dart';
 import 'package:sespimma/features/auth/data/datasources/auth_local_data_source.dart';
@@ -83,6 +84,9 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<void> logout() async {
     try {
       LocationSyncService().stopSyncing();
+    } catch (_) {}
+    try {
+      await BackgroundLocationService.stop();
     } catch (_) {}
     try {
       await remoteDataSource.logout();

@@ -8,6 +8,7 @@ import 'package:talker_flutter/talker_flutter.dart';
 import 'package:talker_bloc_logger/talker_bloc_logger.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
+import 'core/services/background_location_service.dart';
 import 'core/utils/app_logger.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/auth/presentation/pages/forgot_password_screen.dart';
@@ -59,6 +60,12 @@ void main() async {
   await initializeDateFormatting('id_ID', null);
 
   await di.init();
+
+  // Registers the background tracking service handler (does not start it —
+  // AuthBloc starts it on login/auto-login, AuthRepositoryImpl stops it on
+  // logout). Recommended by the flutter_background_service docs to call
+  // this once in main().
+  await BackgroundLocationService.initialize();
 
   runApp(const MyApp());
 }

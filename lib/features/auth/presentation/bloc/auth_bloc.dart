@@ -1,5 +1,9 @@
+import 'dart:developer' as developer;
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/services/background_location_service.dart';
+import '../../domain/entities/user_entity.dart';
 import '../../domain/usecases/login_usecase.dart';
 import '../../domain/repositories/auth_repository.dart';
 import 'auth_event.dart';
@@ -30,6 +34,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) {
     emit(AuthSuccess(event.user));
+    _startTrackingSession(event.user);
   }
 
   Future<void> _onLoginSubmitted(
@@ -46,10 +51,31 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       );
 
       emit(AuthSuccess(user));
+      _startTrackingSession(user);
     } catch (e) {
       final errorMessage = e.toString().replaceAll('Exception: ', '');
       emit(AuthFailure(errorMessage));
     }
+  }
+
+  /// Starts the realtime location background service for the session that
+  /// just began (fresh login or auto-login on app relaunch with a saved
+  /// session). No-ops for non-serdik roles / when serdikId can't be
+  /// resolved to a numeric id — tracking only applies to students.
+  /// Fire-and-forget on purpose: a tracking-start hiccup should never block
+  /// the login flow.
+  void _startTrackingSession(UserEntity user) {
+    final studentId = user.serdikId;
+    if (studentId == null || studentId.isEmpty || int.tryParse(studentId) == null) {
+      developer.log(
+        'Skipping BackgroundLocationService.start(): no numeric serdikId for this user (role=${user.roleId})',
+        name: 'AuthBloc',
+      );
+      return;
+    }
+    BackgroundLocationService.start(studentId: studentId).catchError((e) {
+      developer.log('BackgroundLocationService.start() failed: $e', name: 'AuthBloc');
+    });
   }
 
   Future<void> _onUpdateProfilePhotoRequested(

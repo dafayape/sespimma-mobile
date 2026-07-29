@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
@@ -14,6 +16,7 @@ import 'package:sespimma/features/attendance/presentation/widgets/leave_form_she
 import 'package:sespimma/features/attendance/presentation/widgets/attendance_status_chip.dart';
 import 'package:sespimma/features/attendance/presentation/widgets/attendance_floating_info.dart';
 import 'package:sespimma/features/attendance/presentation/widgets/attendance_action_buttons.dart';
+import 'package:sespimma/core/services/background_location_service.dart';
 import 'package:sespimma/core/utils/app_notifier.dart';
 import 'package:sespimma/features/attendance/data/services/location_sync_service.dart';
 import 'package:sespimma/features/attendance/data/datasources/kegiatan_remote_data_source.dart';
@@ -42,6 +45,7 @@ class _AttendanceScreenState extends State<AttendanceScreen>
 
   late final AnimationController _chipController;
   late final Animation<double> _chipScale;
+  StreamSubscription<Map<String, dynamic>?>? _fakeGpsPingSub;
 
   @override
   void initState() {
@@ -57,7 +61,22 @@ class _AttendanceScreenState extends State<AttendanceScreen>
     );
 
     _fetchZonesFromApi();
-    LocationSyncService().startSyncing('202602003001');
+    // Local-only geofence enter/exit notifications. Realtime location
+    // pings to the backend run independently in BackgroundLocationService
+    // (started at login / auto-login, stopped at logout — see AuthBloc /
+    // AuthRepositoryImpl) regardless of whether this screen is mounted.
+    LocationSyncService().startSyncing();
+
+    // Surface a warning if the background ping loop detects a mocked
+    // (fake GPS) reading. Only observable while this screen is open — see
+    // BackgroundLocationService.onFakeGpsDetected doc.
+    _fakeGpsPingSub = BackgroundLocationService.onFakeGpsDetected.listen((_) {
+      if (!mounted) return;
+      AppNotifier.showError(
+        context,
+        'Lokasi palsu (fake GPS) terdeteksi, presensi tidak akan tercatat.',
+      );
+    });
   }
 
   Future<void> _fetchZonesFromApi() async {
@@ -83,6 +102,7 @@ class _AttendanceScreenState extends State<AttendanceScreen>
   @override
   void dispose() {
     LocationSyncService().stopSyncing();
+    _fakeGpsPingSub?.cancel();
     _chipController.dispose();
     super.dispose();
   }
@@ -114,6 +134,12 @@ class _AttendanceScreenState extends State<AttendanceScreen>
 
     if (changed && !isFakeGps) {
       _chipController.forward(from: 0.0);
+      // Best-effort context for the background ping loop — lets pings
+      // carry the correct activity_location_id even if this screen closes
+      // right after.
+      BackgroundLocationService.updateActivityLocation(
+        activeZone != null ? int.tryParse(activeZone.id) : null,
+      );
     }
   }
 
