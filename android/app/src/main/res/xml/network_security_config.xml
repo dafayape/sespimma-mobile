@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPKI (public-key) pinning for sespima.web.id, enforced by the Android OS
+  network stack itself — this is the permanent fix for the leaf-certificate
+  rotation problem: the pinned value below is the SHA-256 hash of the
+  certificate's PUBLIC KEY, not the certificate bytes, so it survives every
+  Let's Encrypt renewal AS LONG AS the VPS's certbot config reuses the same
+  private key across renewals (`reuse_key = True` in
+  /etc/letsencrypt/renewal/sespima.web.id.conf, or certbot's reuse key flag).
+  If that VPS-side config is ever missed and the key does rotate, this pin
+  will start rejecting connections again — regenerate it with:
+
+    echo | openssl s_client -connect sespima.web.id:443 -servername sespima.web.id 2>/dev/null \
+      | openssl x509 -pubkey -noout \
+      | openssl pkey -pubin -outform der \
+      | openssl dgst -sha256 -binary \
+      | openssl enc -base64
+
+  Only ONE pin is listed below (no backup key pre-generated yet). Google's
+  own guidance is to always include a second, not-yet-deployed backup pin
+  so a deliberate future key rotation doesn't require an app release before
+  the new key is live — worth generating a backup keypair and adding its
+  SPKI hash here later, but is not required for the "survive routine
+  Let's Encrypt renewal" problem this config solves right now.
+
+  `expiration` is a safety valve, not a target: if this pin is ever left
+  stale past this date, Android silently STOPS enforcing it (falls back to
+  normal certificate validation) instead of locking out every user forever
+  — pick a value here that's comfortably far out, then push it further
+  whenever this file is touched for another reason.
+
+  cleartextTrafficPermitted stays true in the base config (mirrors the
+  previous blanket android:usesCleartextTraffic="true" in AndroidManifest.xml,
+  which this file now supersedes for domains it lists) so local-backend dev
+  builds (USE_DESKTOP_DB / a local API_BASE_URL) keep working unpinned.
+-->
+<network-security-config>
+    <domain-config>
+        <domain includeSubdomains="true">sespima.web.id</domain>
+        <pin-set expiration="2028-07-29">
+            <pin digest="SHA-256">WHi0JYUOUroGeV7LrEgG9SYalgEOyo+xN05q1uNJTRk=</pin>
+        </pin-set>
+    </domain-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

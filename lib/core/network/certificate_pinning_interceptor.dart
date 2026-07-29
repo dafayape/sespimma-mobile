@@ -1,4 +1,5 @@
 import 'dart:developer' as developer;
+import 'dart:io' show Platform;
 
 import 'package:dio/dio.dart';
 import 'package:http_certificate_pinning/http_certificate_pinning.dart';
@@ -67,6 +68,25 @@ bool get _isPlaceholderPin =>
 /// fills in the real fingerprint. This guard makes that failure mode
 /// impossible: enforcement only turns on once [kProductionCertSha256Pins]
 /// has actually been replaced.
+///
+/// iOS-only. Android now pins at the OS/network-stack level instead, via
+/// `android/app/src/main/res/xml/network_security_config.xml` — a
+/// `<pin-set>` keyed on the certificate's SPKI (public key) hash rather
+/// than this package's whole-leaf-certificate hash. SPKI pinning survives
+/// every Let's Encrypt renewal as long as the VPS's certbot config reuses
+/// the same private key (`reuse_key = True`); this Dio-level plugin does
+/// NOT support SPKI pinning (confirmed by reading its native source — see
+/// [kProductionCertSha256Pins] doc), so it would still need a fresh
+/// fingerprint every ~90 days if left active. Keeping BOTH active on
+/// Android would reintroduce exactly that fragility (whichever one goes
+/// stale first blocks every request), so this class no-ops on Android and
+/// leaves enforcement entirely to the network security config. iOS has no
+/// equivalent declarative SPKI-pinning mechanism (Apple requires a native
+/// `URLSessionDelegate`/`SecTrust` implementation for true SPKI pinning,
+/// out of scope here — no Mac/Xcode available to build or verify one), so
+/// it keeps relying on this package's leaf(+intermediate) whole-cert pin,
+/// still subject to the routine leaf-renewal update cadence documented on
+/// [kProductionCertSha256Pins].
 class CertificatePinningGuardInterceptor extends Interceptor {
   bool _warnedOnce = false;
 
@@ -79,6 +99,12 @@ class CertificatePinningGuardInterceptor extends Interceptor {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
+    if (!Platform.isIOS) {
+      // Android: enforcement lives in network_security_config.xml instead
+      // (see class doc). Nothing to do here.
+      return handler.next(options);
+    }
+
     if (_isPlaceholderPin) {
       if (!_warnedOnce) {
         _warnedOnce = true;
