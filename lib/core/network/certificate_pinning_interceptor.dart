@@ -39,7 +39,13 @@ import 'package:http_certificate_pinning/http_certificate_pinning.dart';
 /// or unfilled pin has a much worse blast radius (bricks connectivity for
 /// every production user) than temporarily running without pinning.
 const List<String> kProductionCertSha256Pins = [
-  'REPLACE_ME_WITH_REAL_SHA256_FINGERPRINT',
+  // Leaf cert for sespima.web.id, captured 2026-07-29. Let's Encrypt
+  // renews this roughly every ~90 days (next renewal ~2026-10) — this
+  // value WILL go stale then. Re-run the openssl command in the doc
+  // comment above before it does, or every production user gets locked
+  // out the moment the cert rotates. Consider also adding the
+  // intermediate CA's fingerprint as a second, more stable backup entry.
+  '7D:C1:ED:A7:84:A4:D0:88:A4:79:DD:66:F3:A6:03:2C:6F:1C:CD:F3:5B:5E:10:22:16:F4:27:22:CB:61:E4:CD',
 ];
 
 /// Hosts this pin applies to. Requests to any other host (should not
