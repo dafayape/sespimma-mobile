@@ -1,5 +1,6 @@
 import 'package:sespimma/core/constants/app_dimensions.dart';
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,6 +8,13 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:maps_toolkit/maps_toolkit.dart' as mp;
+// `hide ServiceStatus`: both this package and geolocator export a
+// `ServiceStatus` type; the file already uses geolocator's (GPS
+// enabled/disabled), so permission_handler's same-named export is hidden
+// here. `show Permission` alone would also hide the `.request()`
+// extension method (PermissionActions), which is why this isn't scoped
+// down further.
+import 'package:permission_handler/permission_handler.dart' hide ServiceStatus;
 import 'package:sespimma/core/utils/icon_mapper.dart';
 import 'package:sespimma/core/utils/app_notifier.dart';
 import 'package:sespimma/core/utils/avatar_helper.dart';
@@ -196,6 +204,25 @@ class _GeofenceMapWidgetState extends State<GeofenceMapWidget>
       });
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       widget.onGpsStateChanged?.call(false);
+    }
+
+    // Background realtime tracking (BackgroundLocationService) needs
+    // "Always" authorization on iOS — "When In Use" (just granted above)
+    // is not enough for iOS to keep delivering position updates while the
+    // app is backgrounded. `Geolocator.requestPermission()` can't perform
+    // this upgrade itself: once a permission decision already exists,
+    // its native iOS handler short-circuits and returns the current
+    // status without prompting again (see geolocator_apple's
+    // PermissionHandler.m). `permission_handler`'s locationAlways request
+    // does support the upgrade (it calls CLLocationManager's
+    // requestAlwaysAuthorization when currently authorizedWhenInUse), and
+    // Apple's guidelines require "When In Use" to already be granted
+    // before that succeeds — which is exactly the state at this point in
+    // the flow. Fire-and-forget: a denial here just means background
+    // tracking degrades to foreground-only, it must never block this
+    // (foreground) attendance map from starting.
+    if (Platform.isIOS) {
+      unawaited(Permission.locationAlways.request());
     }
 
     const locationSettings = LocationSettings(

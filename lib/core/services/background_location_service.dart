@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:developer' as developer;
+import 'dart:io' show Platform;
 import 'dart:ui';
 
 import 'package:dio/dio.dart';
@@ -150,6 +151,19 @@ class BackgroundLocationService {
   /// fully backgrounded/killed app, only the persistent foreground
   /// notification.
   static Stream<Map<String, dynamic>?> get onFakeGpsDetected => _service.on('fakeGpsDetected');
+
+  /// Fires when the background isolate's ping (or outbox flush) gets a 401
+  /// from `/mobile/location` — i.e. the server has revoked this device's
+  /// session (most commonly: the same account logged in elsewhere, which
+  /// invalidates `users.current_token` server-side — see
+  /// `backend/middleware/auth.go`'s single-active-session enforcement).
+  /// Unlike a plain network failure, retrying will never succeed, so the
+  /// background isolate stops itself and fires this event instead of
+  /// queueing. The main isolate should treat this as "forced logout":
+  /// clear local session state and navigate to the login screen. See
+  /// `AuthBloc`'s `ForceLogoutRequested` event, which both this stream and
+  /// the main-isolate Dio interceptor's refresh-failure path funnel into.
+  static Stream<Map<String, dynamic>?> get onSessionExpired => _service.on('sessionExpired');
 }
 
 const Duration _pingInterval = Duration(seconds: 10);
@@ -159,12 +173,30 @@ const String _locationEndpoint = '/mobile/location';
 @pragma('vm:entry-point')
 Future<bool> _onIosBackground(ServiceInstance service) async {
   DartPluginRegistrant.ensureInitialized();
-  // iOS background-fetch style callbacks are limited to ~15-20s and do not
-  // support a long-running position stream the way the Android foreground
-  // service does. A full iOS background tracking implementation would need
-  // its own design (e.g. significant-location-change API) and is out of
-  // scope here; this stub simply keeps the service contract satisfied
-  // without attempting something the platform will kill anyway.
+  // iOS background-fetch style callbacks (BGTaskScheduler, which is what
+  // flutter_background_service's IosConfiguration.onBackground wraps) are
+  // limited to ~15-30s and do not support a long-running position stream
+  // the way the Android foreground service does — it was never going to be
+  // the right tool for continuous tracking. Real iOS background location
+  // instead comes from `_onStart` (wired as `onForeground`, which on iOS
+  // is already the code path that runs whenever the app process is alive,
+  // backgrounded or not) combined with CLLocationManager background
+  // delivery: "Always" location authorization + `UIBackgroundModes:
+  // location` in Info.plist + `AppleSettings(allowBackgroundLocationUpdates:
+  // true, ...)` on the position stream below. When those are in place, iOS
+  // itself keeps the process alive and keeps delivering position callbacks
+  // to `_onStart` while backgrounded — no separate background isolate is
+  // needed on iOS the way Android requires one, so this stub is left as a
+  // harmless no-op satisfying the plugin's required callback contract.
+  //
+  // One thing genuinely cannot be fixed from app code: if the user
+  // force-quits the app (swipe-kill) on iOS, ALL background execution —
+  // including CLLocationManager background delivery — stops immediately
+  // and unconditionally. This is deliberate iOS OS-level behavior (by
+  // design, so users can be certain a swiped-away app is truly not
+  // running), not a bug or a gap in this implementation, and no app-level
+  // technique (background modes, significant-location-change, etc.)
+  // bypasses it. Only re-opening the app resumes tracking.
   return true;
 }
 
@@ -214,6 +246,46 @@ void _onStart(ServiceInstance service) async {
   String? activityLocationId;
   Position? lastPosition;
   DateTime? lastFlushAttempt;
+  bool sessionExpiredHandled = false;
+
+  // Declared here (assigned further down, once the position stream and
+  // timers actually start) so that `stopTracking`/`handleSessionExpired`
+  // below — which are themselves defined before `sendPing`/`flushOutbox`
+  // need them — can close over them. Dart requires a variable to be
+  // lexically declared before any reference to it, even inside a closure
+  // that only runs later, so these `late final`s stand in as forward
+  // declarations.
+  late final StreamSubscription<Position> positionSub;
+  late final Timer pingTimer;
+  late final Timer flushTimer;
+
+  /// Shared teardown: cancels the position stream and both timers, then
+  /// stops the service. Reused by both a normal `stopService` invoke
+  /// (from the main isolate, on manual logout) and [handleSessionExpired]
+  /// (401 from the server, detected in this isolate) so there is exactly
+  /// one place that knows how to shut this isolate down cleanly.
+  Future<void> stopTracking() async {
+    await positionSub.cancel();
+    pingTimer.cancel();
+    flushTimer.cancel();
+    await service.stopSelf();
+  }
+
+  /// Called when a ping or outbox flush gets a 401 back from
+  /// `/mobile/location` — the server has revoked this device's session
+  /// (see [BackgroundLocationService.onSessionExpired] doc). Idempotent:
+  /// safe to call from both `sendPing` and `flushOutbox` even if a 401
+  /// races in from both at nearly the same time.
+  Future<void> handleSessionExpired() async {
+    if (sessionExpiredHandled) return;
+    sessionExpiredHandled = true;
+    developer.log(
+      'BackgroundLocation: 401 received, session expired — stopping tracking',
+      name: 'BackgroundLocation',
+    );
+    service.invoke('sessionExpired', {});
+    await stopTracking();
+  }
 
   // Read the last-known studentId directly from storage rather than
   // waiting on the setStudent invoke() message — see
@@ -270,6 +342,15 @@ void _onStart(ServiceInstance service) async {
           });
           await dbHelper.deleteLocationPing(row['id'] as int);
         } catch (e) {
+          if (e is DioException && e.response?.statusCode == 401) {
+            // Session revoked — the rest of the outbox will never succeed
+            // either under this dead token, so stop draining entirely
+            // rather than just breaking this cycle. Row stays queued
+            // un-deleted, but that no longer matters once the isolate
+            // stops (see handleSessionExpired doc).
+            await handleSessionExpired();
+            return;
+          }
           developer.log('BackgroundLocation: flush failed, stopping for now: $e', name: 'BackgroundLocation');
           break; // still offline / still failing — stop for this cycle
         }
@@ -303,6 +384,16 @@ void _onStart(ServiceInstance service) async {
       // anything queued while we were offline.
       await flushOutbox();
     } catch (e) {
+      if (e is DioException && e.response?.statusCode == 401) {
+        // Session revoked server-side (e.g. the same account logged in
+        // elsewhere, invalidating this device's token) — distinct from a
+        // plain network failure/timeout, which keeps queueing as normal.
+        // Retrying can never succeed under a dead session, so this
+        // payload is deliberately dropped rather than enqueued (it would
+        // just sit in the outbox forever) and tracking stops.
+        await handleSessionExpired();
+        return;
+      }
       developer.log('BackgroundLocation: ping failed, queueing: $e', name: 'BackgroundLocation');
       try {
         await dbHelper.enqueueLocationPing(payload);
@@ -312,11 +403,33 @@ void _onStart(ServiceInstance service) async {
     }
   }
 
-  final positionSub = Geolocator.getPositionStream(
-    locationSettings: const LocationSettings(
-      accuracy: LocationAccuracy.high,
-      distanceFilter: 2,
-    ),
+  // On Android, the real foreground service (isForegroundMode: true, see
+  // initialize()) is what keeps this isolate alive, so the generic
+  // LocationSettings below is enough. On iOS there is no separate
+  // background isolate — `_onStart` runs as `onForeground` and is already
+  // the code path alive whenever the process is alive (see _onIosBackground
+  // doc) — so AppleSettings' background-delivery flags are what keep iOS
+  // actually *delivering* position callbacks here while the app is
+  // backgrounded. `allowBackgroundLocationUpdates`/`showBackgroundLocationIndicator`
+  // only take effect once "Always" authorization is granted (see the
+  // permission flow in geofence_map_widget.dart) and Info.plist declares
+  // `UIBackgroundModes: location` — without both, iOS simply pauses
+  // delivery once backgrounded regardless of these settings.
+  final locationSettings = Platform.isIOS
+      ? AppleSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 2,
+          pauseLocationUpdatesAutomatically: false,
+          allowBackgroundLocationUpdates: true,
+          showBackgroundLocationIndicator: true,
+        )
+      : const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 2,
+        );
+
+  positionSub = Geolocator.getPositionStream(
+    locationSettings: locationSettings,
   ).listen(
     (Position position) {
       if (position.latitude.isFinite && position.longitude.isFinite) {
@@ -329,21 +442,18 @@ void _onStart(ServiceInstance service) async {
     cancelOnError: false,
   );
 
-  final pingTimer = Timer.periodic(_pingInterval, (timer) {
+  pingTimer = Timer.periodic(_pingInterval, (timer) {
     final pos = lastPosition;
     if (pos != null) {
       sendPing(pos);
     }
   });
 
-  final flushTimer = Timer.periodic(_flushMinInterval, (timer) {
+  flushTimer = Timer.periodic(_flushMinInterval, (timer) {
     flushOutbox();
   });
 
   service.on('stopService').listen((event) async {
-    await positionSub.cancel();
-    pingTimer.cancel();
-    flushTimer.cancel();
-    await service.stopSelf();
+    await stopTracking();
   });
 }

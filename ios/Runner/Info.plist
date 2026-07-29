@@ -72,5 +72,11 @@
 		<string>Aplikasi memerlukan izin lokasi Anda untuk fitur absensi presensi.</string>
 		<key>NSLocationAlwaysUsageDescription</key>
 		<string>Aplikasi memerlukan izin lokasi untuk pencatatan absensi presensi.</string>
+		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+		<string>SESPIMMA memerlukan akses lokasi Anda, termasuk saat aplikasi berjalan di latar belakang, untuk pelacakan GPS dan pencatatan presensi kehadiran secara real-time selama kegiatan pendidikan di akademi.</string>
+		<key>UIBackgroundModes</key>
+		<array>
+			<string>location</string>
+		</array>
 	</dict>
 </plist>
