@@ -3,31 +3,44 @@ import 'dart:developer' as developer;
 import 'package:dio/dio.dart';
 import 'package:http_certificate_pinning/http_certificate_pinning.dart';
 
-/// SHA-256 fingerprint of the production TLS certificate served by
-/// `sespima.web.id`, formatted like `AA:BB:CC:...` (colon-separated hex,
-/// as required by the `http_certificate_pinning` package).
+/// SHA-256 fingerprint(s) of the production TLS certificate(s) served by
+/// `sespima.web.id`, as hex strings (colons optional — the plugin strips
+/// them before comparing; see `http_certificate_pinning`'s
+/// `HttpCertificatePinning.check()`).
 ///
-/// *** PLACEHOLDER — THIS IS NOT A REAL FINGERPRINT ***
-/// This value was written from a sandbox with no network access, so the
-/// live certificate could not be fetched. Before this pin is trustworthy,
-/// replace it with the real value obtained via, e.g.:
+/// IMPORTANT — this package (confirmed by reading its Android platform
+/// source, `HttpCertificatePinningPlugin.kt`) hashes the **entire leaf
+/// certificate's DER encoding** (`cert.encoded`) with SHA-256, NOT the
+/// SPKI/public-key. Do NOT use a value produced by a "public key pin"
+/// pipeline (e.g. `openssl x509 -pubkey | openssl pkey -pubin ... | openssl
+/// enc -base64`) — that is a different hash over different input bytes,
+/// base64 instead of hex, and will simply never match, silently locking
+/// out every production user once enforcement is enabled.
 ///
+/// Get the correct value with:
 /// ```
-/// openssl s_client -connect sespima.web.id:443 -servername sespima.web.id -verify_return_error < /dev/null 2> /dev/null \
+/// echo | openssl s_client -connect sespima.web.id:443 -servername sespima.web.id 2>/dev/null \
 ///   | openssl x509 -noout -fingerprint -sha256
 /// ```
+/// This prints e.g. `sha256 Fingerprint=AA:BB:CC:...` — put just the hex
+/// (colons are fine, they're stripped automatically) into the list below.
 ///
-/// (or the equivalent value your CDN/host provides). Consider pinning the
-/// CA/intermediate certificate rather than the leaf if certs auto-renew
-/// (e.g. Let's Encrypt), otherwise every renewal will require an app
-/// release to update this constant before the old pin expires.
+/// This is a LEAF certificate pin: Let's Encrypt renews the leaf roughly
+/// every ~90 days, and each renewal changes this fingerprint even though
+/// the domain/key policy hasn't changed — so treat updating this list as a
+/// recurring operational task, not a one-time setup. Prefer listing both
+/// the current AND (once available) the intermediate CA's fingerprint as a
+/// second, more stable entry so a routine leaf renewal alone doesn't lock
+/// the app out before this list is updated.
 ///
-/// While this remains the placeholder sentinel below,
+/// While this list contains ONLY the placeholder sentinel below,
 /// [CertificatePinningGuardInterceptor] SKIPS enforcement entirely (with a
 /// one-time logged warning) rather than rejecting every request — a wrong
 /// or unfilled pin has a much worse blast radius (bricks connectivity for
 /// every production user) than temporarily running without pinning.
-const String kProductionCertSha256Pin = 'REPLACE_ME_WITH_REAL_SHA256_FINGERPRINT';
+const List<String> kProductionCertSha256Pins = [
+  'REPLACE_ME_WITH_REAL_SHA256_FINGERPRINT',
+];
 
 /// Hosts this pin applies to. Requests to any other host (should not
 /// happen in this app — everything goes through API_BASE_URL — but kept
@@ -35,7 +48,7 @@ const String kProductionCertSha256Pin = 'REPLACE_ME_WITH_REAL_SHA256_FINGERPRINT
 const List<String> kCertificatePinnedHosts = ['sespima.web.id'];
 
 bool get _isPlaceholderPin =>
-    kProductionCertSha256Pin == 'REPLACE_ME_WITH_REAL_SHA256_FINGERPRINT';
+    kProductionCertSha256Pins.every((p) => p == 'REPLACE_ME_WITH_REAL_SHA256_FINGERPRINT');
 
 /// Wraps [CertificatePinningInterceptor] so an unfilled/placeholder pin
 /// degrades to "no enforcement" instead of failing closed.
@@ -46,13 +59,13 @@ bool get _isPlaceholderPin =>
 /// match anything. Using it unguarded would mean the moment this
 /// interceptor is wired in, no request could ever succeed until a human
 /// fills in the real fingerprint. This guard makes that failure mode
-/// impossible: enforcement only turns on once [kProductionCertSha256Pin]
+/// impossible: enforcement only turns on once [kProductionCertSha256Pins]
 /// has actually been replaced.
 class CertificatePinningGuardInterceptor extends Interceptor {
   bool _warnedOnce = false;
 
   late final CertificatePinningInterceptor _delegate = CertificatePinningInterceptor(
-    allowedSHAFingerprints: [kProductionCertSha256Pin],
+    allowedSHAFingerprints: kProductionCertSha256Pins,
   );
 
   @override
@@ -64,7 +77,7 @@ class CertificatePinningGuardInterceptor extends Interceptor {
       if (!_warnedOnce) {
         _warnedOnce = true;
         developer.log(
-          'Certificate pinning DISABLED: kProductionCertSha256Pin in '
+          'Certificate pinning DISABLED: kProductionCertSha256Pins in '
           'lib/core/network/certificate_pinning_interceptor.dart is still '
           'the placeholder value. Fill in the real production SHA-256 '
           'fingerprint to enable enforcement.',
