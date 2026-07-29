@@ -8,12 +8,18 @@ import 'package:sespimma/features/attendance/domain/models/map_tile_mode.dart';
 class AttendanceFloatingInfo extends StatelessWidget {
   final AttendanceZone activeZone;
   final bool isInRadius;
+  // Whether the dwell-time confirm window has elapsed (student has stayed
+  // continuously inside this zone long enough). While false and inside the
+  // zone, we show a short hint instead of the "ready" status text so the
+  // student understands why the submit button isn't active yet.
+  final bool isConfirmed;
   final VoidCallback onTapInfo;
 
   const AttendanceFloatingInfo({
     super.key,
     required this.activeZone,
     required this.isInRadius,
+    this.isConfirmed = true,
     required this.onTapInfo,
   });
 
@@ -87,9 +93,11 @@ class AttendanceFloatingInfo extends StatelessWidget {
                   ),
                   const SizedBox(height: AppDimensions.xs / 2),
                   Text(
-                    isInRadius
-                        ? 'Berada di Radius Absensi'
-                        : 'Di Luar Radius Absensi',
+                    !isInRadius
+                        ? 'Di Luar Radius Absensi'
+                        : (isConfirmed
+                              ? 'Berada di Radius Absensi'
+                              : 'Tetap di area selama beberapa detik...'),
                     style: TextStyle(
                       fontSize: AppDimensions.fontXs - 1,
                       color: statusColor,

@@ -8,10 +8,18 @@ class AbsensiRemoteDataSource {
   /// Submits attendance check-in to the backend.
   /// Returns the response map with status, is_late, datetime, activity_name.
   /// Throws on error.
+  ///
+  /// [isMocked] flags whether the position used for this submission was
+  /// detected by geolocator as a mocked/fake location (`Position.isMocked`).
+  /// [qrToken] is the server-issued HMAC token from the QR-scan path only —
+  /// omit it (leave null) when submitting via the geofence path so the key
+  /// is not sent at all.
   Future<Map<String, dynamic>> checkIn({
     required String kegiatanId,
     required double latitude,
     required double longitude,
+    bool isMocked = false,
+    String? qrToken,
   }) async {
     final response = await dio.post(
       '/mobile/absensi',
@@ -19,9 +27,21 @@ class AbsensiRemoteDataSource {
         'kegiatan_id': kegiatanId,
         'latitude': latitude,
         'longitude': longitude,
+        'is_mocked': isMocked,
+        if (qrToken != null) 'qr_token': qrToken,
       },
     );
 
+    return Map<String, dynamic>.from(response.data);
+  }
+
+  /// Fetches the server-computed HMAC token for today's date (WIB) for the
+  /// given kegiatan. Used by the Korsis QR display screen to embed a
+  /// server-authoritative token in the printed/displayed QR payload.
+  /// Returns `{"kegiatan_id": "...", "date": "YYYY-MM-DD", "token": "..."}`.
+  /// Throws on error.
+  Future<Map<String, dynamic>> fetchQrToken(String kegiatanId) async {
+    final response = await dio.get('/mobile/kegiatan/$kegiatanId/qr-token');
     return Map<String, dynamic>.from(response.data);
   }
 

@@ -11,8 +11,10 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:sespimma/core/constants/app_dimensions.dart';
 import 'package:sespimma/core/theme/app_colors.dart';
 import 'package:sespimma/core/utils/icon_mapper.dart';
+import 'package:sespimma/features/attendance/data/datasources/absensi_remote_data_source.dart';
 import 'package:sespimma/features/attendance/domain/models/map_tile_mode.dart';
 import 'package:sespimma/core/utils/app_notifier.dart';
+import 'package:sespimma/injection_container.dart';
 
 class KorsisZoneQrSheet extends StatefulWidget {
   final List<AttendanceZone> zones;
@@ -30,11 +32,42 @@ class _KorsisZoneQrSheetState extends State<KorsisZoneQrSheet> {
 
   late final List<GlobalKey> _qrKeys;
 
+  // Server-issued HMAC tokens (zone.id -> token), fetched up front since QR
+  // generation used to be a synchronous build()-time helper but now needs
+  // an authoritative token from the backend. A zone whose fetch fails is
+  // simply absent from this map — its QR payload omits `token` rather than
+  // crashing the whole sheet.
+  Map<String, String> _tokens = {};
+  bool _loadingTokens = true;
+
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
     _qrKeys = List.generate(widget.zones.length, (_) => GlobalKey());
+    _loadTokens();
+  }
+
+  Future<void> _loadTokens() async {
+    final absensiSource = sl<AbsensiRemoteDataSource>();
+    final Map<String, String> tokens = {};
+    for (final zone in widget.zones) {
+      try {
+        final data = await absensiSource.fetchQrToken(zone.id);
+        final token = data['token'];
+        if (token is String) {
+          tokens[zone.id] = token;
+        }
+      } catch (_) {
+        // Leave this zone's token missing; handled gracefully in
+        // _buildQrPayload (the `token` key is simply omitted for it).
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _tokens = tokens;
+      _loadingTokens = false;
+    });
   }
 
   @override
@@ -174,16 +207,22 @@ class _KorsisZoneQrSheetState extends State<KorsisZoneQrSheet> {
             ],
           ),
           Expanded(
-            child: PageView.builder(
-              controller: _pageController,
-              onPageChanged: (index) {
-                setState(() => _currentIndex = index);
-                HapticFeedback.lightImpact();
-              },
-              itemCount: widget.zones.length,
-              itemBuilder: (context, index) =>
-                  _buildQrPage(widget.zones[index], index),
-            ),
+            child: _loadingTokens
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      color: AppColors.primaryNavy,
+                    ),
+                  )
+                : PageView.builder(
+                    controller: _pageController,
+                    onPageChanged: (index) {
+                      setState(() => _currentIndex = index);
+                      HapticFeedback.lightImpact();
+                    },
+                    itemCount: widget.zones.length,
+                    itemBuilder: (context, index) =>
+                        _buildQrPage(widget.zones[index], index),
+                  ),
           ),
 
           if (widget.zones.length > 1)
@@ -342,11 +381,12 @@ class _KorsisZoneQrSheetState extends State<KorsisZoneQrSheet> {
     final yyyy = zone.startTime.year.toString().padLeft(4, '0');
     final mm = zone.startTime.month.toString().padLeft(2, '0');
     final dd = zone.startTime.day.toString().padLeft(2, '0');
-    
+
     return json.encode({
       'type': 'attendance_sespimma',
       'zoneId': zone.id,
       'date': '$yyyy-$mm-$dd',
+      'token': _tokens[zone.id],
     });
   }
 }

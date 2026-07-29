@@ -39,9 +39,20 @@ class _AttendanceScreenState extends State<AttendanceScreen>
   bool _isFakeGps = false;
   bool _isAttended = false;
   DateTime? _lastSubmitTime;
+  String? _pendingQrToken;
 
   List<AttendanceZone> _zones = [];
   AttendanceZone? _activeZone;
+
+  // Dwell-time / confirmed-presence gate: the geofence-path submit button
+  // only becomes usable after the student has been continuously inside the
+  // SAME zone for this long (mitigates "brush past the zone edge for a
+  // couple seconds then tap submit"). QR-path submissions are exempt.
+  static const _dwellConfirmDuration = Duration(seconds: 20);
+  DateTime? _insideSince;
+  String? _insideSinceZoneId;
+  bool _isConfirmedInRadius = false;
+  Timer? _dwellTimer;
 
   late final AnimationController _chipController;
   late final Animation<double> _chipScale;
@@ -103,6 +114,7 @@ class _AttendanceScreenState extends State<AttendanceScreen>
   void dispose() {
     LocationSyncService().stopSyncing();
     _fakeGpsPingSub?.cancel();
+    _dwellTimer?.cancel();
     _chipController.dispose();
     super.dispose();
   }
@@ -125,11 +137,29 @@ class _AttendanceScreenState extends State<AttendanceScreen>
       HapticFeedback.mediumImpact();
     }
 
+    // Dwell-time streak: (re)start the clock when we enter a zone or move
+    // to a different one; break it entirely once outside any zone. Must
+    // stay continuously inside the SAME zone for _dwellConfirmDuration
+    // before _isConfirmedInRadius flips true.
+    if (inRadius && !isFakeGps) {
+      if (_insideSince == null || _insideSinceZoneId != activeZone.id) {
+        _insideSince = DateTime.now();
+        _insideSinceZoneId = activeZone.id;
+        _startDwellTimer();
+      }
+    } else {
+      _insideSince = null;
+      _insideSinceZoneId = null;
+      _dwellTimer?.cancel();
+      _dwellTimer = null;
+    }
+
     setState(() {
       _activeZone = activeZone;
       _isInRadius = inRadius && !isFakeGps;
       _isFakeGps = isFakeGps;
       _isGpsLoading = false;
+      _isConfirmedInRadius = _computeConfirmedInRadius();
     });
 
     if (changed && !isFakeGps) {
@@ -139,6 +169,34 @@ class _AttendanceScreenState extends State<AttendanceScreen>
       // right after.
       BackgroundLocationService.updateActivityLocation(activeZone?.id);
     }
+  }
+
+  bool _computeConfirmedInRadius() {
+    if (_insideSince == null) return false;
+    return DateTime.now().difference(_insideSince!) >= _dwellConfirmDuration;
+  }
+
+  /// Ticks once a second while inside a zone so the dwell confirm state
+  /// (and the UI hint tied to it) updates even between sparse position
+  /// stream callbacks. Cancels itself once confirmed or once the zone is
+  /// exited (the latter handled in `_onLocationDetected`).
+  void _startDwellTimer() {
+    _dwellTimer?.cancel();
+    _dwellTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted || _insideSince == null) {
+        timer.cancel();
+        _dwellTimer = null;
+        return;
+      }
+      final confirmed = _computeConfirmedInRadius();
+      if (confirmed != _isConfirmedInRadius) {
+        setState(() => _isConfirmedInRadius = confirmed);
+      }
+      if (confirmed) {
+        timer.cancel();
+        _dwellTimer = null;
+      }
+    });
   }
 
   Future<void> _openQRScanner() async {
@@ -153,7 +211,8 @@ class _AttendanceScreenState extends State<AttendanceScreen>
     if (result != null && mounted) {
       final String scannedZoneId = result['zoneId'];
       final String? qrDate = result['date'];
-      
+      final String? qrToken = result['token'] as String?;
+
       final now = DateTime.now();
       final todayStr = "${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
       
@@ -182,7 +241,10 @@ class _AttendanceScreenState extends State<AttendanceScreen>
           context,
           'QR Code Valid: ${matchedZone.activityName}. Mengirim presensi...',
         );
-        setState(() => _activeZone = matchedZone);
+        setState(() {
+          _activeZone = matchedZone;
+          _pendingQrToken = qrToken;
+        });
         _submitAttendance(fromQr: true);
       } else {
         AppNotifier.showError(
@@ -202,7 +264,7 @@ class _AttendanceScreenState extends State<AttendanceScreen>
     }
 
     if (_isSubmitting ||
-        (!fromQr && !_isInRadius) ||
+        (!fromQr && !_isConfirmedInRadius) ||
         _isFakeGps ||
         _isAttended) {
       return;
@@ -245,6 +307,7 @@ class _AttendanceScreenState extends State<AttendanceScreen>
     try {
       double lat = 0.0;
       double lng = 0.0;
+      bool isMockedPos = false;
       try {
         final position = await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(
@@ -253,18 +316,35 @@ class _AttendanceScreenState extends State<AttendanceScreen>
         );
         lat = position.latitude;
         lng = position.longitude;
+        isMockedPos = position.isMocked;
       } catch (_) {
-        if (_activeZone != null) {
-          lat = _activeZone!.latitude;
-          lng = _activeZone!.longitude;
+        // Do NOT fall back to the zone's own coordinates — that would
+        // trivially satisfy any geofence check (it's the zone's center).
+        // On the geofence path, a failed GPS fetch aborts the submit. On
+        // the QR path the server trusts qr_token, not coordinates, so it's
+        // fine to proceed best-effort with lat/lng at 0.0/0.0.
+        if (!fromQr) {
+          if (!mounted) return;
+          AppNotifier.showError(
+            context,
+            'Tidak dapat mengambil lokasi GPS, coba lagi.',
+          );
+          setState(() => _isSubmitting = false);
+          return;
         }
       }
 
       final absensiSource = sl<AbsensiRemoteDataSource>();
+      // Consume the pending QR token now so a stale value can never leak
+      // into a later geofence-path submission.
+      final String? tokenToSend = fromQr ? _pendingQrToken : null;
+      _pendingQrToken = null;
       final result = await absensiSource.checkIn(
         kegiatanId: _activeZone!.id,
         latitude: lat,
         longitude: lng,
+        isMocked: isMockedPos,
+        qrToken: tokenToSend,
       );
 
       if (!mounted) return;
@@ -538,6 +618,7 @@ class _AttendanceScreenState extends State<AttendanceScreen>
                                 ? AttendanceFloatingInfo(
                                     activeZone: _activeZone!,
                                     isInRadius: _isInRadius,
+                                    isConfirmed: _isConfirmedInRadius,
                                     onTapInfo: () => _showZoneInfo(context),
                                   )
                                 : const SizedBox.shrink(),
@@ -545,7 +626,12 @@ class _AttendanceScreenState extends State<AttendanceScreen>
                           const SizedBox(width: AppDimensions.lg),
                           AttendanceActionButtons(
                             isAttended: _isAttended,
-                            isInRadius: _isInRadius,
+                            // Submit-eligibility requires the dwell confirm,
+                            // not just an instantaneous "inside the zone"
+                            // reading (raw _isInRadius is still shown
+                            // elsewhere, e.g. the status chip, for instant
+                            // feedback).
+                            isInRadius: _isConfirmedInRadius,
                             isSubmitting: _isSubmitting,
                             activeZone: _activeZone,
                             onOpenQr: _openQRScanner,
