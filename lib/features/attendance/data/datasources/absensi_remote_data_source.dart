@@ -28,7 +28,7 @@ class AbsensiRemoteDataSource {
         'latitude': latitude,
         'longitude': longitude,
         'is_mocked': isMocked,
-        if (qrToken != null) 'qr_token': qrToken,
+        'qr_token': ?qrToken,
       },
     );
 
