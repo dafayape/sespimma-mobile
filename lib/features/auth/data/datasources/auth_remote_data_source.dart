@@ -7,7 +7,11 @@ abstract class AuthRemoteDataSource {
   Future<LoginResponse> login(LoginRequest request);
   Future<void> logout();
   Future<void> updateProfilePhoto(String photoPath);
-  Future<void> changePassword(String currentPassword, String newPassword, String confirmPassword);
+  Future<void> changePassword(
+    String currentPassword,
+    String newPassword,
+    String confirmPassword,
+  );
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -24,7 +28,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       );
 
       final data = response.data;
-      if (response.statusCode == 200 && data is Map && (data['token'] != null || data['access_token'] != null)) {
+      if (response.statusCode == 200 &&
+          data is Map &&
+          (data['token'] != null || data['access_token'] != null)) {
         return LoginResponse.fromJson(_normalize(data));
       }
 
@@ -75,7 +81,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     } on DioException catch (e) {
       if (e.response != null && e.response?.data is Map) {
         final data = e.response!.data as Map;
-        throw Exception(data['error'] ?? data['message'] ?? 'Gagal mengunggah foto profil');
+        throw Exception(
+          data['error'] ?? data['message'] ?? 'Gagal mengunggah foto profil',
+        );
       }
       throw Exception(e.message ?? 'Network error');
     } catch (e) {
@@ -84,17 +92,26 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  Future<void> changePassword(String currentPassword, String newPassword, String confirmPassword) async {
+  Future<void> changePassword(
+    String currentPassword,
+    String newPassword,
+    String confirmPassword,
+  ) async {
     try {
-      await dio.patch('/profile/password', data: {
-        'current_password': currentPassword,
-        'new_password': newPassword,
-        'new_password_confirmation': confirmPassword,
-      });
+      await dio.patch(
+        '/profile/password',
+        data: {
+          'current_password': currentPassword,
+          'new_password': newPassword,
+          'new_password_confirmation': confirmPassword,
+        },
+      );
     } on DioException catch (e) {
       if (e.response != null && e.response?.data is Map) {
         final data = e.response!.data as Map;
-        throw Exception(data['error'] ?? data['message'] ?? 'Gagal mengubah kata sandi');
+        throw Exception(
+          data['error'] ?? data['message'] ?? 'Gagal mengubah kata sandi',
+        );
       }
       throw Exception(e.message ?? 'Network error');
     } catch (e) {
@@ -148,13 +165,39 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     };
   }
 
+  /// Menerjemahkan peran dari backend ke kosakata internal aplikasi ini.
+  ///
+  /// Backend menyeragamkan nama perannya (admin+superadmin melebur menjadi
+  /// `operator`, `serdik` menjadi `peserta_didik`, dan seterusnya). Aplikasi ini
+  /// masih memakai sebutan lamanya di puluhan tempat — navigasi, layar profil,
+  /// FAQ — dan menerjemahkan di satu gerbang jauh lebih aman daripada menyisir
+  /// semuanya.
+  ///
+  /// Nama lama tetap didaftar supaya versi aplikasi ini juga tetap bekerja
+  /// terhadap server yang belum diperbarui.
   String _mapRole(String? role) {
-    switch (role) {
+    switch (role?.trim().toLowerCase()) {
+      case 'peserta_didik':
       case 'serdik':
       case 'students':
         return 'siswa';
+      case 'operator':
       case 'admin':
+      case 'superadmin':
         return 'operator';
+      case 'kasespimma':
+      case 'pimpinan':
+        return 'pimpinan';
+      case 'perwira_penuntun':
+      case 'patun':
+        return 'patun';
+      case 'tenaga_pendidik':
+      case 'gadik':
+        return 'gadik';
+      case 'korsis':
+        return 'korsis';
+      case 'developer':
+        return 'developer';
       default:
         return role ?? '-';
     }
