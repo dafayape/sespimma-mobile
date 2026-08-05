@@ -95,6 +95,7 @@ Future<void> _initExternal() async {
         onError: (DioException e, handler) async {
           if (e.response?.statusCode == 401 &&
               !e.requestOptions.path.contains('/auth/login') &&
+              !e.requestOptions.path.contains('/auth/logout') &&
               !e.requestOptions.path.contains('/auth/refresh-token')) {
             final authLocalDataSource = sl<AuthLocalDataSource>();
             final refreshToken = await authLocalDataSource.getRefreshToken();

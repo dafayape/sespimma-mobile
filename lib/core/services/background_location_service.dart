@@ -224,21 +224,7 @@ void _onStart(ServiceInstance service) async {
     ),
   );
 
-  dio.interceptors.add(
-    InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        try {
-          final token = await secureStorage.read(key: kAuthAccessTokenStorageKey);
-          if (token != null) {
-            options.headers['Authorization'] = 'Bearer $token';
-          }
-        } catch (e) {
-          developer.log('BackgroundLocation: token read failed: $e', name: 'BackgroundLocation');
-        }
-        handler.next(options);
-      },
-    ),
-  );
+
 
   final dbHelper = LocalDatabaseHelper.instance;
 
@@ -286,6 +272,27 @@ void _onStart(ServiceInstance service) async {
     service.invoke('sessionExpired', {});
     await stopTracking();
   }
+
+  dio.interceptors.add(
+    InterceptorsWrapper(
+      onRequest: (options, handler) async {
+        try {
+          final token = await secureStorage.read(key: kAuthAccessTokenStorageKey);
+          if (token != null && token.isNotEmpty) {
+            options.headers['Authorization'] = 'Bearer $token';
+            handler.next(options);
+          } else {
+            developer.log('BackgroundLocation: No token, stopping silently', name: 'BackgroundLocation');
+            stopTracking();
+            handler.reject(DioException(requestOptions: options, error: 'No token'));
+          }
+        } catch (e) {
+          developer.log('BackgroundLocation: token read failed: $e', name: 'BackgroundLocation');
+          handler.next(options);
+        }
+      },
+    ),
+  );
 
   // Read the last-known studentId directly from storage rather than
   // waiting on the setStudent invoke() message — see
