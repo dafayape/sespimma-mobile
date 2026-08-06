@@ -62,7 +62,12 @@ class _MedisHealthRecordScreenState extends State<MedisHealthRecordScreen> {
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.camera);
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.camera,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 85,
+    );
     if (pickedFile != null) {
       setState(() {
         _photoPath = pickedFile.path;

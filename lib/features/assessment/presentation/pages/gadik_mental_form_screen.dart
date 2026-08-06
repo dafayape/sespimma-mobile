@@ -124,7 +124,9 @@ class _GadikMentalFormScreenState extends State<GadikMentalFormScreen> {
       final picker = ImagePicker();
       final pickedFile = await picker.pickImage(
         source: source,
-        imageQuality: 70,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
       );
       if (pickedFile != null) {
         setState(() => _selectedPhoto = File(pickedFile.path));

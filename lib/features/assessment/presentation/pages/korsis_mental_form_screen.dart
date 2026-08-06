@@ -195,7 +195,9 @@ class _KorsisMentalFormScreenState extends State<KorsisMentalFormScreen> {
       final picker = ImagePicker();
       final XFile? pickedFile = await picker.pickImage(
         source: source,
-        imageQuality: 70,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
       );
 
       if (pickedFile != null) {

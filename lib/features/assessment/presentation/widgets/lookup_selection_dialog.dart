@@ -985,6 +985,9 @@ class _ConfirmSelectionDialogState extends State<_ConfirmSelectionDialog> {
                   final picker = ImagePicker();
                   final pickedFile = await picker.pickImage(
                     source: ImageSource.camera,
+                    maxWidth: 1024,
+                    maxHeight: 1024,
+                    imageQuality: 85,
                   );
                   if (pickedFile != null) {
                     setState(() {

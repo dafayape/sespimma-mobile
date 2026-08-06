@@ -67,7 +67,12 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen>
 
   Future<void> _pickImage(AssignmentModel a) async {
     Navigator.pop(context);
-    final img = await ImagePicker().pickImage(source: ImageSource.camera);
+    final img = await ImagePicker().pickImage(
+      source: ImageSource.camera,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 85,
+    );
     if (img == null) return;
     await HapticFeedback.mediumImpact();
     setState(() {
