@@ -147,25 +147,41 @@ class PersonalRecommendationsCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
                 border: Border.all(color: item.borderColor, width: 1.5),
               ),
-              child: Column(
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    item.title,
-                    style: TextStyle(
-                      fontSize: AppDimensions.fontSm,
-                      fontWeight: FontWeight.w700,
-                      color: item.textColor,
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: item.iconColor.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
                     ),
+                    child: Icon(item.icon, color: item.iconColor, size: 20),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    item.text,
-                    style: TextStyle(
-                      fontSize: AppDimensions.fontSm - 1,
-                      fontWeight: FontWeight.w500,
-                      color: item.textColor.withValues(alpha: 0.9),
-                      height: 1.4,
+                  const SizedBox(width: AppDimensions.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.title,
+                          style: TextStyle(
+                            fontSize: AppDimensions.fontSm,
+                            fontWeight: FontWeight.w700,
+                            color: item.textColor,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          item.text,
+                          style: TextStyle(
+                            fontSize: AppDimensions.fontSm - 1,
+                            fontWeight: FontWeight.w500,
+                            color: item.textColor.withValues(alpha: 0.9),
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
