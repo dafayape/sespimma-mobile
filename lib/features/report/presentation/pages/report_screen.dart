@@ -21,7 +21,7 @@ class ReportScreen extends StatefulWidget {
 }
 
 class _ReportScreenState extends State<ReportScreen> {
-  String _selectedCategory = 'Mental Kepribadian';
+  String _selectedCategory = 'Akademik';
   Map<String, dynamic>? _reportData;
   bool _isLoadingReport = false;
   String? _reportError;

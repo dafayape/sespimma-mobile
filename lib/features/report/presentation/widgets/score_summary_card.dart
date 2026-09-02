@@ -25,42 +25,38 @@ class ScoreSummaryCard extends StatelessWidget {
     Color badgeBgColor;
     Color badgeTextColor;
     Color scoreColor;
-    Color labelColor;
+    Color labelColor = const Color(0xFF001C40);
 
     if (score == 0) {
       cardBgColor = Colors.white;
-      borderColor = isSelected ? AppColors.primaryNavy : Colors.grey.shade100;
+      borderColor = isSelected ? AppColors.primaryNavy : Colors.grey.shade200;
       badgeBgColor = Colors.blueGrey.shade50;
-      badgeTextColor = Colors.blueGrey.shade600;
+      badgeTextColor = Colors.blueGrey.shade700;
       scoreColor = AppColors.primaryNavy;
-      labelColor = Colors.blueGrey.shade500;
     } else if (score >= 80.0) {
       cardBgColor = isSelected
           ? Colors.green.shade50.withValues(alpha: 0.9)
           : Colors.green.shade50;
       borderColor = isSelected ? Colors.green.shade700 : Colors.green.shade200;
       badgeBgColor = Colors.green.shade100;
-      badgeTextColor = Colors.green.shade700;
-      scoreColor = Colors.green.shade700;
-      labelColor = Colors.green.shade700;
+      badgeTextColor = Colors.green.shade800;
+      scoreColor = Colors.green.shade800;
     } else if (score >= 70.0) {
       cardBgColor = isSelected
           ? Colors.amber.shade50.withValues(alpha: 0.9)
           : Colors.amber.shade50;
       borderColor = isSelected ? Colors.amber.shade700 : Colors.amber.shade200;
       badgeBgColor = Colors.amber.shade100;
-      badgeTextColor = Colors.amber.shade700;
-      scoreColor = Colors.amber.shade700;
-      labelColor = Colors.amber.shade700;
+      badgeTextColor = Colors.amber.shade900;
+      scoreColor = Colors.amber.shade900;
     } else {
       cardBgColor = isSelected
           ? Colors.red.shade50.withValues(alpha: 0.9)
           : Colors.red.shade50;
       borderColor = isSelected ? Colors.red.shade700 : Colors.red.shade200;
       badgeBgColor = Colors.red.shade100;
-      badgeTextColor = Colors.red.shade700;
-      scoreColor = Colors.red.shade700;
-      labelColor = Colors.red.shade700;
+      badgeTextColor = Colors.red.shade800;
+      scoreColor = Colors.red.shade800;
     }
 
     return AnimatedContainer(
