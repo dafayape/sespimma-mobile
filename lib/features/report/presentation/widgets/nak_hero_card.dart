@@ -16,32 +16,37 @@ class NakHeroCard extends StatelessWidget {
   });
 
   static const Color accentGold = Color(0xFFF59E0B);
-  static const Color emeraldBg = Color(0xFFDCFCE7);
-  static const Color emeraldText = Color(0xFF15803D);
-  static const Color emeraldBorder = Color(0xFF10B981);
 
   String get _predikatLabel {
-    if (nakScore >= 85.0) return 'Sangat Baik';
-    if (nakScore >= 75.0) return 'Baik';
+    if (nakScore >= 85.0) return 'Sangat Memuaskan';
+    if (nakScore >= 75.0) return 'Memuaskan';
     if (nakScore >= 65.0) return 'Cukup';
-    if (nakScore > 0) return 'Kurang';
-    return 'Belum Ada Nilai';
+    if (nakScore > 0) return 'Perlu Pembinaan';
+    return 'Proses Penilaian';
   }
 
   Color get _predikatBgColor {
-    if (nakScore >= 85.0) return emeraldBg;
-    if (nakScore >= 75.0) return const Color(0xFFDBEAFE);
-    if (nakScore >= 65.0) return const Color(0xFFFEF3C7);
-    if (nakScore > 0) return const Color(0xFFFEE2E2);
-    return Colors.grey.shade100;
+    if (nakScore >= 85.0) return const Color(0xFF065F46).withValues(alpha: 0.35);
+    if (nakScore >= 75.0) return const Color(0xFF1E40AF).withValues(alpha: 0.35);
+    if (nakScore >= 65.0) return const Color(0xFF92400E).withValues(alpha: 0.35);
+    if (nakScore > 0) return const Color(0xFF991B1B).withValues(alpha: 0.35);
+    return Colors.white.withValues(alpha: 0.08);
   }
 
   Color get _predikatTextColor {
-    if (nakScore >= 85.0) return emeraldText;
-    if (nakScore >= 75.0) return const Color(0xFF1D4ED8);
-    if (nakScore >= 65.0) return const Color(0xFFB45309);
-    if (nakScore > 0) return const Color(0xFFB91C1C);
-    return Colors.grey.shade600;
+    if (nakScore >= 85.0) return const Color(0xFF34D399);
+    if (nakScore >= 75.0) return const Color(0xFF60A5FA);
+    if (nakScore >= 65.0) return const Color(0xFFFBBF24);
+    if (nakScore > 0) return const Color(0xFFFCA5A5);
+    return Colors.white70;
+  }
+
+  Color get _predikatBorderColor {
+    if (nakScore >= 85.0) return const Color(0xFF059669);
+    if (nakScore >= 75.0) return const Color(0xFF2563EB);
+    if (nakScore >= 65.0) return const Color(0xFFD97706);
+    if (nakScore > 0) return const Color(0xFFDC2626);
+    return Colors.white24;
   }
 
   bool get _isPassed {
@@ -65,25 +70,25 @@ class NakHeroCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppDimensions.radiusXl + 4),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0F172A).withValues(alpha: 0.25),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
+            color: const Color(0xFF0F172A).withValues(alpha: 0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.1),
-          width: 1,
+          color: Colors.white.withValues(alpha: 0.12),
+          width: 1.2,
         ),
       ),
       child: Stack(
         children: [
           Positioned(
-            right: -20,
-            top: -20,
+            right: -15,
+            top: -15,
             child: Icon(
-              Icons.military_tech_outlined,
-              size: 140,
-              color: Colors.white.withValues(alpha: 0.04),
+              Icons.military_tech_rounded,
+              size: 130,
+              color: Colors.white.withValues(alpha: 0.035),
             ),
           ),
           Padding(
@@ -91,21 +96,18 @@ class NakHeroCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Header Row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(6),
+                          width: 4,
+                          height: 16,
                           decoration: BoxDecoration(
-                            color: accentGold.withValues(alpha: 0.2),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.stars_rounded,
                             color: accentGold,
-                            size: 18,
+                            borderRadius: BorderRadius.circular(2),
                           ),
                         ),
                         const SizedBox(width: AppDimensions.sm),
@@ -113,7 +115,7 @@ class NakHeroCard extends StatelessWidget {
                           'NILAI AKHIR KUMULATIF (NAK)',
                           style: TextStyle(
                             fontSize: AppDimensions.fontXs + 1,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w700,
                             color: Colors.white70,
                             letterSpacing: 0.8,
                           ),
@@ -125,12 +127,13 @@ class NakHeroCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: _predikatBgColor,
                         borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
+                        border: Border.all(color: _predikatBorderColor, width: 1),
                       ),
                       child: Text(
                         _predikatLabel,
                         style: TextStyle(
                           fontSize: AppDimensions.fontXs,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w700,
                           color: _predikatTextColor,
                         ),
                       ),
@@ -138,31 +141,32 @@ class NakHeroCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: AppDimensions.lg),
+                // Score Row
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
                       nakScore > 0 ? nakScore.toStringAsFixed(2) : '—',
                       style: const TextStyle(
-                        fontSize: 42,
+                        fontSize: 44,
                         fontWeight: FontWeight.w900,
                         color: Colors.white,
                         height: 1.0,
-                        letterSpacing: -1,
+                        letterSpacing: -1.2,
                       ),
                     ),
                     const SizedBox(width: AppDimensions.md),
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
+                      padding: const EdgeInsets.only(bottom: 6),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: _isPassed
                               ? const Color(0xFF059669).withValues(alpha: 0.2)
-                              : Colors.amber.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(6),
+                              : const Color(0xFFB45309).withValues(alpha: 0.25),
+                          borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
                           border: Border.all(
-                            color: _isPassed ? emeraldBorder : Colors.amber.shade400,
+                            color: _isPassed ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
                             width: 1,
                           ),
                         ),
@@ -172,15 +176,15 @@ class NakHeroCard extends StatelessWidget {
                             Icon(
                               _isPassed ? Icons.check_circle_rounded : Icons.warning_amber_rounded,
                               size: 14,
-                              color: _isPassed ? const Color(0xFF34D399) : Colors.amber.shade300,
+                              color: _isPassed ? const Color(0xFF34D399) : const Color(0xFFFBBF24),
                             ),
-                            const SizedBox(width: 4),
+                            const SizedBox(width: 5),
                             Text(
                               _isPassed ? 'MEMENUHI SYARAT' : 'DALAM PENGAWASAN',
                               style: TextStyle(
                                 fontSize: AppDimensions.fontXs - 1,
                                 fontWeight: FontWeight.w800,
-                                color: _isPassed ? const Color(0xFF34D399) : Colors.amber.shade300,
+                                color: _isPassed ? const Color(0xFF34D399) : const Color(0xFFFBBF24),
                                 letterSpacing: 0.5,
                               ),
                             ),
@@ -190,20 +194,22 @@ class NakHeroCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: AppDimensions.lg),
+                const SizedBox(height: AppDimensions.xl),
+                // Weight Distribution Bar
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.06),
-                    borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+                    color: Colors.white.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
                   ),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: const [
                       _WeightItem(label: 'Akademik', weight: '40%'),
-                      Text('•', style: TextStyle(color: Colors.white38)),
+                      _VerticalDivider(),
                       _WeightItem(label: 'Mental', weight: '40%'),
-                      Text('•', style: TextStyle(color: Colors.white38)),
+                      _VerticalDivider(),
                       _WeightItem(label: 'Jasmani', weight: '20%'),
                     ],
                   ),
@@ -217,6 +223,19 @@ class NakHeroCard extends StatelessWidget {
   }
 }
 
+class _VerticalDivider extends StatelessWidget {
+  const _VerticalDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: 14,
+      color: Colors.white.withValues(alpha: 0.15),
+    );
+  }
+}
+
 class _WeightItem extends StatelessWidget {
   final String label;
   final String weight;
@@ -226,20 +245,21 @@ class _WeightItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          '$label: ',
+          '$label ',
           style: const TextStyle(
             fontSize: AppDimensions.fontXs,
             fontWeight: FontWeight.w500,
-            color: Colors.white60,
+            color: Colors.white70,
           ),
         ),
         Text(
           weight,
           style: const TextStyle(
             fontSize: AppDimensions.fontXs,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w700,
             color: NakHeroCard.accentGold,
           ),
         ),
