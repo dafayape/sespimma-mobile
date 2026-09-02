@@ -38,11 +38,11 @@ class ScoreCategoryRow extends StatelessWidget {
             const SizedBox(width: AppDimensions.md),
             Expanded(
               child: ScoreSummaryCard(
-                label: 'Mental Kepribadian',
+                label: 'Mental',
                 score: nilaiMental,
                 weight: '40%',
-                isSelected: selectedCategory == 'Mental Kepribadian',
-                onTap: () => onCategoryChanged('Mental Kepribadian'),
+                isSelected: selectedCategory == 'Mental' || selectedCategory == 'Mental Kepribadian',
+                onTap: () => onCategoryChanged('Mental'),
               ),
             ),
           ],

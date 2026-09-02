@@ -72,7 +72,7 @@ class PersonalRecommendationsCard extends StatelessWidget {
           textColor: const Color(0xFFB91C1C),
         ));
       }
-    } else if (category == 'Mental Kepribadian') {
+    } else if (category == 'Mental' || category == 'Mental Kepribadian') {
       if (mentalScore >= 80.0) {
         list.add(RecommendationItemData(
           title: 'Integritas & Kepemimpinan Prima',
