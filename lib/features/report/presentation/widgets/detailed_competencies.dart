@@ -224,7 +224,7 @@ class _CompetencyItem extends StatelessWidget {
   const _CompetencyItem({required this.title, required this.score});
 
   String get _status {
-    if (score == 0) return 'Belum Nilai (BN)';
+    if (score == 0) return '';
     if (score > 85.00) return 'Sangat Memuaskan (SM)';
     if (score > 80.00) return 'Memuaskan (M)';
     if (score > 75.00) return 'Baik (B)';
@@ -371,9 +371,9 @@ class _CompetencyItem extends StatelessWidget {
                                   fontSize: AppDimensions.fontSm,
                                   fontWeight: FontWeight.w700,
                                   color: Color(0xFF001C40),
+                                  height: 1.25,
                                 ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
+                                softWrap: true,
                               ),
                             ),
                           ],
@@ -385,17 +385,21 @@ class _CompetencyItem extends StatelessWidget {
                             fontSize: AppDimensions.fontSm,
                             fontWeight: FontWeight.w700,
                             color: Color(0xFF001C40),
+                            height: 1.25,
+                          ),
+                          softWrap: true,
+                        ),
+                      if (_status.isNotEmpty) ...[
+                        const SizedBox(height: AppDimensions.xs),
+                        Text(
+                          _status,
+                          style: TextStyle(
+                            fontSize: AppDimensions.fontXs + 2,
+                            fontWeight: FontWeight.w600,
+                            color: _statusColor,
                           ),
                         ),
-                      const SizedBox(height: AppDimensions.xs),
-                      Text(
-                        _status,
-                        style: TextStyle(
-                          fontSize: AppDimensions.fontXs + 2,
-                          fontWeight: FontWeight.w600,
-                          color: _statusColor,
-                        ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
@@ -432,7 +436,7 @@ class _ExpandableCompetencyGroup extends StatelessWidget {
   });
 
   String get _status {
-    if (score == 0) return 'Belum Nilai (BN)';
+    if (score == 0) return '';
     if (score > 85.00) return 'Sangat Memuaskan (SM)';
     if (score > 80.00) return 'Memuaskan (M)';
     if (score > 75.00) return 'Baik (B)';
@@ -593,9 +597,9 @@ class _ExpandableCompetencyGroup extends StatelessWidget {
                                   fontSize: AppDimensions.fontSm,
                                   fontWeight: FontWeight.w700,
                                   color: Color(0xFF001C40),
+                                  height: 1.25,
                                 ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
+                                softWrap: true,
                               ),
                             ),
                           ],
@@ -607,17 +611,21 @@ class _ExpandableCompetencyGroup extends StatelessWidget {
                             fontSize: AppDimensions.fontSm,
                             fontWeight: FontWeight.w700,
                             color: Color(0xFF001C40),
+                            height: 1.25,
+                          ),
+                          softWrap: true,
+                        ),
+                      if (_status.isNotEmpty) ...[
+                        const SizedBox(height: AppDimensions.xs),
+                        Text(
+                          _status,
+                          style: TextStyle(
+                            fontSize: AppDimensions.fontXs + 2,
+                            fontWeight: FontWeight.w600,
+                            color: _statusColor,
                           ),
                         ),
-                      const SizedBox(height: AppDimensions.xs),
-                      Text(
-                        _status,
-                        style: TextStyle(
-                          fontSize: AppDimensions.fontXs + 2,
-                          fontWeight: FontWeight.w600,
-                          color: _statusColor,
-                        ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
