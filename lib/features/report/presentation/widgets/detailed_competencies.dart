@@ -54,87 +54,106 @@ class DetailedCompetencies extends StatelessWidget {
     } else if (category == 'Akademik') {
       final Map<String, dynamic> actualScores = rawScores ?? {};
 
-      double ujianMp = _getScore(actualScores, 'UJIAN_MAPEL');
-      double nkkpMateri = _getScore(actualScores, 'NKKP_MATERI');
-      double nkkpPaparan = _getScore(actualScores, 'NKKP_PAPARAN');
-      double nkkpKeaktifan = _getScore(actualScores, 'NKKP_KEAKTIFAN');
-      double nkkp = ScoringCalculator.hitungNKKPatauNPKP(nmpn: nkkpMateri, npa: nkkpPaparan, nka: nkkpKeaktifan);
+      double ujianMp = _getScore(actualScores, 'NUMP') > 0 ? _getScore(actualScores, 'NUMP') : _getScore(actualScores, 'UJIAN_MAPEL');
 
-      double npkpMateri = _getScore(actualScores, 'NPKP_MATERI');
-      double npkpPaparan = _getScore(actualScores, 'NPKP_PAPARAN');
-      double npkpKeaktifan = _getScore(actualScores, 'NPKP_KEAKTIFAN');
-      double npkp = ScoringCalculator.hitungNKKPatauNPKP(nmpn: npkpMateri, npa: npkpPaparan, nka: npkpKeaktifan);
+      double nkkpMateri = _getScore(actualScores, 'NKKP_MATERI') > 0 ? _getScore(actualScores, 'NKKP_MATERI') : _getScore(actualScores, 'NMPN_NKKP');
+      double nkkpPaparan = _getScore(actualScores, 'NKKP_PAPARAN') > 0 ? _getScore(actualScores, 'NKKP_PAPARAN') : _getScore(actualScores, 'NPA_NKKP');
+      double nkkpKeaktifan = _getScore(actualScores, 'NKKP_KEAKTIFAN') > 0 ? _getScore(actualScores, 'NKKP_KEAKTIFAN') : _getScore(actualScores, 'NKA_NKKP');
+      double nkkp = _getScore(actualScores, 'NKKP') > 0
+          ? _getScore(actualScores, 'NKKP')
+          : ScoringCalculator.hitungNKKPatauNPKP(nmpn: nkkpMateri, npa: nkkpPaparan, nka: nkkpKeaktifan);
 
-      double nkpMateri = _getScore(actualScores, 'NKP_MATERI');
-      double nkpPaparan = _getScore(actualScores, 'NKP_PAPARAN');
-      double nkp = ScoringCalculator.hitungNKP(nmpn: nkpMateri, npa: nkpPaparan);
+      double npkpMateri = _getScore(actualScores, 'NPKP_MATERI') > 0 ? _getScore(actualScores, 'NPKP_MATERI') : _getScore(actualScores, 'NMPN_NPKP');
+      double npkpPaparan = _getScore(actualScores, 'NPKP_PAPARAN') > 0 ? _getScore(actualScores, 'NPKP_PAPARAN') : _getScore(actualScores, 'NPA_NPKP');
+      double npkpKeaktifan = _getScore(actualScores, 'NPKP_KEAKTIFAN') > 0 ? _getScore(actualScores, 'NPKP_KEAKTIFAN') : _getScore(actualScores, 'NKA_NPKP');
+      double npkp = _getScore(actualScores, 'NPKP') > 0
+          ? _getScore(actualScores, 'NPKP')
+          : ScoringCalculator.hitungNKKPatauNPKP(nmpn: npkpMateri, npa: npkpPaparan, nka: npkpKeaktifan);
 
-      double np = ScoringCalculator.hitungNP(nump: ujianMp, nkkp: nkkp, npkp: npkp, nkp: nkp);
+      double nkpMateri = _getScore(actualScores, 'NKP_MATERI') > 0 ? _getScore(actualScores, 'NKP_MATERI') : _getScore(actualScores, 'NMPN_NKP');
+      double nkpPaparan = _getScore(actualScores, 'NKP_PAPARAN') > 0 ? _getScore(actualScores, 'NKP_PAPARAN') : _getScore(actualScores, 'NPA_NKP');
+      double nkp = _getScore(actualScores, 'NKP') > 0
+          ? _getScore(actualScores, 'NKP')
+          : ScoringCalculator.hitungNKP(nmpn: nkpMateri, npa: nkpPaparan);
 
-      double nskAktif = _getScore(actualScores, 'KEAKTIFAN_PERSEORANGAN');
-      double nskProduk = _getScore(actualScores, 'PRODUK_PERSEORANGAN');
-      double nskRuang = _getScore(actualScores, 'TATA_RUANG_KELOMPOK');
-      double nsk = ScoringCalculator.hitungNSK(keaktifan: nskAktif, produk: nskProduk, tataRuang: nskRuang);
+      double namp = _getScore(actualScores, 'NAMP') > 0
+          ? _getScore(actualScores, 'NAMP')
+          : ScoringCalculator.hitungNP(nump: ujianMp, nkkp: nkkp, npkp: npkp, nkp: nkp);
 
-      double ntMateri = _getScore(actualScores, 'NPTT_MATERI');
-      double ntPenulisan = _getScore(actualScores, 'NPTT_PENULISAN');
-      double ntPaparan = _getScore(actualScores, 'NPTT_PAPARAN');
-      double nt = ScoringCalculator.hitungNT(nam: ntMateri, nkm: ntPenulisan, nkp: ntPaparan);
+      double nskAktif = _getScore(actualScores, 'NKAP') > 0 ? _getScore(actualScores, 'NKAP') : _getScore(actualScores, 'KEAKTIFAN_PERSEORANGAN');
+      double nskProduk = _getScore(actualScores, 'NPP') > 0 ? _getScore(actualScores, 'NPP') : _getScore(actualScores, 'PRODUK_PERSEORANGAN');
+      double nskRuang = _getScore(actualScores, 'NTR') > 0 ? _getScore(actualScores, 'NTR') : _getScore(actualScores, 'TATA_RUANG_KELOMPOK');
+      double nsk = _getScore(actualScores, 'NSK') > 0
+          ? _getScore(actualScores, 'NSK')
+          : ScoringCalculator.hitungNSK(keaktifan: nskAktif, produk: nskProduk, tataRuang: nskRuang);
+
+      double ntMateri = _getScore(actualScores, 'NAM') > 0 ? _getScore(actualScores, 'NAM') : _getScore(actualScores, 'NPTT_MATERI');
+      double ntPenulisan = _getScore(actualScores, 'NKM') > 0 ? _getScore(actualScores, 'NKM') : _getScore(actualScores, 'NPTT_PENULISAN');
+      double ntPaparan = _getScore(actualScores, 'NKP_NPTT') > 0 ? _getScore(actualScores, 'NKP_NPTT') : _getScore(actualScores, 'NPTT_PAPARAN');
+      double nt = _getScore(actualScores, 'NT') > 0
+          ? _getScore(actualScores, 'NT')
+          : ScoringCalculator.hitungNT(nam: ntMateri, nkm: ntPenulisan, nkp: ntPaparan);
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: AppDimensions.sm),
-          _SectionTitle(title: 'Nilai Pelajaran (60%)', score: np),
-          _CompetencyItem(title: 'Ujian Mata Pelajaran atau Esai (30%)', score: ujianMp),
           _ExpandableCompetencyGroup(
-            title: 'Naskah Kuliah Kerja Profesi (5%)',
-            score: nkkp,
+            title: '1 NAMP - Nilai Akhir Mata Pelajaran (60%)',
+            score: namp,
             children: [
-              _SubCompetencyItem(title: 'Materi & Penulisan (35%)', score: nkkpMateri),
-              _SubCompetencyItem(title: 'Paparan (35%)', score: nkkpPaparan),
-              _SubCompetencyItem(title: 'Keaktifan (30%)', score: nkkpKeaktifan),
-            ],
-          ),
-          _ExpandableCompetencyGroup(
-            title: 'Naskah Praktek Kerja Profesi (5%)',
-            score: npkp,
-            children: [
-              _SubCompetencyItem(title: 'Materi & Penulisan (35%)', score: npkpMateri),
-              _SubCompetencyItem(title: 'Paparan (35%)', score: npkpPaparan),
-              _SubCompetencyItem(title: 'Keaktifan (30%)', score: npkpKeaktifan),
-            ],
-          ),
-          _ExpandableCompetencyGroup(
-            title: 'Naskah Karya Perseorangan (60%)',
-            score: nkp,
-            children: [
-              _SubCompetencyItem(title: 'Materi & Penulisan (50%)', score: nkpMateri),
-              _SubCompetencyItem(title: 'Paparan (50%)', score: nkpPaparan),
+              _SubCompetencyItem(
+                title: '1.1 NUMP - Ujian Mata Pelajaran / Esai (30%)',
+                score: ujianMp,
+              ),
+              _ExpandableCompetencyGroup(
+                title: '1.2 NKKP - Naskah Kuliah Kerja Profesi (5%)',
+                score: nkkp,
+                children: [
+                  _SubCompetencyItem(title: '1.2.1 NMPN - Nilai Materi & Penulisan (35%)', score: nkkpMateri),
+                  _SubCompetencyItem(title: '1.2.2 NPa - Paparan (35%)', score: nkkpPaparan),
+                  _SubCompetencyItem(title: '1.2.3 NKa - Keaktifan (30%)', score: nkkpKeaktifan),
+                ],
+              ),
+              _ExpandableCompetencyGroup(
+                title: '1.3 NPKP - Naskah Praktik Kerja Profesi (5%)',
+                score: npkp,
+                children: [
+                  _SubCompetencyItem(title: '1.3.1 NMPN - Nilai Materi & Penulisan (35%)', score: npkpMateri),
+                  _SubCompetencyItem(title: '1.3.2 NPa - Paparan (35%)', score: npkpPaparan),
+                  _SubCompetencyItem(title: '1.3.3 NKa - Keaktifan (30%)', score: npkpKeaktifan),
+                ],
+              ),
+              _ExpandableCompetencyGroup(
+                title: '1.4 NKP - Naskah Karya Perseorangan (60%)',
+                score: nkp,
+                children: [
+                  _SubCompetencyItem(title: '1.4.1 NMPN - Nilai Materi & Penulisan (50%)', score: nkpMateri),
+                  _SubCompetencyItem(title: '1.4.2 NPa - Paparan (50%)', score: nkpPaparan),
+                ],
+              ),
             ],
           ),
 
           const SizedBox(height: AppDimensions.lg),
-          _SectionTitle(title: 'Simulasi Kepemimpinan Kontemporer (10%)', score: nsk),
           _ExpandableCompetencyGroup(
-            title: 'Simulasi Kepemimpinan',
+            title: '2 NSK - Simulasi Kepemimpinan Kontemporer (10%)',
             score: nsk,
             children: [
-              _SubCompetencyItem(title: 'Keaktifan Perseorangan (60%)', score: nskAktif),
-              _SubCompetencyItem(title: 'Produk Perseorangan (20%)', score: nskProduk),
-              _SubCompetencyItem(title: 'Tata Ruang Kelompok (20%)', score: nskRuang),
+              _SubCompetencyItem(title: '2.1 NKaP - Keaktifan Perseorangan (60%)', score: nskAktif),
+              _SubCompetencyItem(title: '2.2 NPP - Produk Perseorangan (20%)', score: nskProduk),
+              _SubCompetencyItem(title: '2.3 NTR - Tata Ruang Kelompok (20%)', score: nskRuang),
             ],
           ),
 
           const SizedBox(height: AppDimensions.lg),
-          _SectionTitle(title: 'Naskah Program Transformasi Teknis (30%)', score: nt),
           _ExpandableCompetencyGroup(
-            title: 'Program Transformasi Teknis',
+            title: '3 NT - Naskah Program Transformasi Teknis (Taskap) (30%)',
             score: nt,
             children: [
-              _SubCompetencyItem(title: 'Materi (40%)', score: ntMateri),
-              _SubCompetencyItem(title: 'Penulisan Efektif (30%)', score: ntPenulisan),
-              _SubCompetencyItem(title: 'Paparan & Diskusi (30%)', score: ntPaparan),
+              _SubCompetencyItem(title: '3.1 NAm - Materi NPTT/Taskap (40%)', score: ntMateri),
+              _SubCompetencyItem(title: '3.2 NKm - Penulisan NPTT/Taskap (30%)', score: ntPenulisan),
+              _SubCompetencyItem(title: '3.3 NKp - Paparan dan Diskusi (30%)', score: ntPaparan),
             ],
           ),
         ],
