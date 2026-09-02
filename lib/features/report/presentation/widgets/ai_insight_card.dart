@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-
 import 'package:sespimma/core/constants/app_dimensions.dart';
-import 'package:sespimma/core/utils/icon_mapper.dart';
 
 class AiInsightCard extends StatelessWidget {
   final String category;
@@ -17,84 +15,52 @@ class AiInsightCard extends StatelessWidget {
 
     String insight = _getInsight(score, isWarning, isExcellent);
 
-    Color bgColor;
     Color borderColor;
-    Color iconBgColor;
-    Color iconColor;
-    Color titleColor;
 
     if (score == 0.0) {
-      bgColor = Colors.blueGrey.shade50;
       borderColor = Colors.blueGrey.shade100;
-      iconBgColor = Colors.blueGrey.shade100;
-      iconColor = Colors.blueGrey.shade700;
-      titleColor = Colors.blueGrey.shade900;
     } else if (isWarning) {
-      bgColor = Colors.red.shade50;
-      borderColor = Colors.red.shade100;
-      iconBgColor = Colors.red.shade100;
-      iconColor = Colors.red.shade700;
-      titleColor = Colors.red.shade900;
+      borderColor = Colors.red.shade200;
     } else if (isAverage) {
-      bgColor = Colors.amber.shade50;
-      borderColor = Colors.amber.shade100;
-      iconBgColor = Colors.amber.shade100;
-      iconColor = Colors.amber.shade700;
-      titleColor = Colors.amber.shade900;
+      borderColor = Colors.amber.shade200;
     } else {
-      bgColor = Colors.green.shade50;
-      borderColor = Colors.green.shade100;
-      iconBgColor = Colors.green.shade100;
-      iconColor = Colors.green.shade700;
-      titleColor = Colors.green.shade900;
+      borderColor = Colors.green.shade200;
     }
 
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(AppDimensions.xl - 4),
       decoration: BoxDecoration(
-        color: bgColor,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(AppDimensions.radiusXl - 4),
-        border: Border.all(color: borderColor),
+        border: Border.all(color: borderColor, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: AppDimensions.radiusLg,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(AppDimensions.sm),
-            decoration: BoxDecoration(
-              color: iconBgColor,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              AppIcons.sparkleFill,
-              color: iconColor,
-              size: AppDimensions.iconSm,
+          const Text(
+            'Rekomendasi',
+            style: TextStyle(
+              color: Color(0xFF001C40),
+              fontSize: AppDimensions.fontMd,
+              fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(width: AppDimensions.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Rekomendasi',
-                  style: TextStyle(
-                    color: titleColor,
-                    fontSize: AppDimensions.fontSm,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: AppDimensions.xs),
-                Text(
-                  insight,
-                  style: TextStyle(
-                    color: Colors.blueGrey.shade700,
-                    fontSize: AppDimensions.fontXs + 2,
-                    fontWeight: FontWeight.w500,
-                    height: 1.4,
-                  ),
-                ),
-              ],
+          const SizedBox(height: AppDimensions.sm),
+          Text(
+            insight,
+            style: TextStyle(
+              color: Colors.blueGrey.shade800,
+              fontSize: AppDimensions.fontSm,
+              fontWeight: FontWeight.w500,
+              height: 1.4,
             ),
           ),
         ],
@@ -109,7 +75,7 @@ class AiInsightCard extends StatelessWidget {
 
     if (category == 'Akademik') {
       if (isWarning) {
-        return 'Berdasarkan analisis tren Akademik Anda, terdapat penurunan performa pada pemahaman NPTT / Taskap. AI menyarankan Anda untuk mengikuti sesi pendalaman materi ekstra bersama Mentor / Pengasuh.';
+        return 'Berdasarkan analisis tren Akademik Anda, terdapat penurunan performa pada pemahaman NPTT / Taskap. Disarankan Anda untuk mengikuti sesi pendalaman materi ekstra bersama Mentor / Pengasuh.';
       }
       if (isExcellent) {
         return 'Performa Akademik Anda sangat luar biasa! Anda menunjukkan pemahaman konseptual yang tajam. Pertahankan ritme belajar ini untuk bisa meraih predikat Lulusan Terbaik.';
