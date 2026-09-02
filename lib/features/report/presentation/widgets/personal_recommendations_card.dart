@@ -128,22 +128,18 @@ class PersonalRecommendationsCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: const [
-            Icon(Icons.lightbulb_rounded, color: Color(0xFFF59E0B), size: 20),
-            SizedBox(width: AppDimensions.sm),
-            Text(
-              'Rekomendasi Pembinaan Personal',
-              style: TextStyle(
-                fontSize: AppDimensions.fontLg,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF001C40),
-              ),
-            ),
-          ],
+        const Text(
+          'Rekomendasi',
+          style: TextStyle(
+            fontSize: AppDimensions.fontLg,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF001C40),
+            letterSpacing: -0.2,
+          ),
         ),
         const SizedBox(height: AppDimensions.md),
         ...items.map((item) => Container(
+              width: double.infinity,
               margin: const EdgeInsets.only(bottom: AppDimensions.md),
               padding: const EdgeInsets.all(AppDimensions.lg),
               decoration: BoxDecoration(
@@ -151,41 +147,25 @@ class PersonalRecommendationsCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
                 border: Border.all(color: item.borderColor, width: 1.5),
               ),
-              child: Row(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: item.iconColor.withValues(alpha: 0.12),
-                      shape: BoxShape.circle,
+                  Text(
+                    item.title,
+                    style: TextStyle(
+                      fontSize: AppDimensions.fontSm,
+                      fontWeight: FontWeight.w700,
+                      color: item.textColor,
                     ),
-                    child: Icon(item.icon, color: item.iconColor, size: 20),
                   ),
-                  const SizedBox(width: AppDimensions.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item.title,
-                          style: TextStyle(
-                            fontSize: AppDimensions.fontSm,
-                            fontWeight: FontWeight.w800,
-                            color: item.textColor,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          item.text,
-                          style: TextStyle(
-                            fontSize: AppDimensions.fontXs + 1,
-                            fontWeight: FontWeight.w500,
-                            color: item.textColor.withValues(alpha: 0.9),
-                            height: 1.35,
-                          ),
-                        ),
-                      ],
+                  const SizedBox(height: 4),
+                  Text(
+                    item.text,
+                    style: TextStyle(
+                      fontSize: AppDimensions.fontSm - 1,
+                      fontWeight: FontWeight.w500,
+                      color: item.textColor.withValues(alpha: 0.9),
+                      height: 1.4,
                     ),
                   ),
                 ],

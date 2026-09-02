@@ -5,6 +5,7 @@ import 'package:sespimma/core/theme/app_colors.dart';
 import 'package:sespimma/features/auth/domain/entities/user_entity.dart';
 import 'package:sespimma/features/report/presentation/widgets/detailed_competencies.dart';
 import 'package:sespimma/features/report/presentation/widgets/nak_hero_card.dart';
+import 'package:sespimma/features/report/presentation/widgets/personal_recommendations_card.dart';
 import 'package:sespimma/features/report/presentation/widgets/score_category_row.dart';
 import 'package:sespimma/features/report/presentation/widgets/report_section_header.dart';
 
@@ -76,6 +77,16 @@ class ReportContentBody extends StatelessWidget {
                 category: selectedCategory,
                 user: user,
                 rawScores: reportData['raw_scores'] != null ? Map<String, dynamic>.from(reportData['raw_scores']) : null,
+              ),
+            ),
+            const SizedBox(height: AppDimensions.xxl),
+            _buildAnimatedChild(
+              PersonalRecommendationsCard(
+                key: ValueKey<String>('recommendations_$selectedCategory'),
+                nakScore: nakScore,
+                academicScore: dynamicAcademicScore,
+                mentalScore: dynamicMentalScore,
+                physicalScore: dynamicJasmaniScore,
               ),
             ),
           ],
