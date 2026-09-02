@@ -165,7 +165,9 @@ class DetailedCompetencies extends StatelessWidget {
       final Map<String, dynamic> actualScores = rawScores ?? {};
       double kesAwal = _getScore(actualScores, 'TES_AWAL') > 0 ? _getScore(actualScores, 'TES_AWAL') : _getScore(actualScores, 'nilai_awal');
       double kesAkhir = _getScore(actualScores, 'TES_AKHIR') > 0 ? _getScore(actualScores, 'TES_AKHIR') : _getScore(actualScores, 'nilai_akhir');
-      double kesStatus = _getScore(actualScores, 'STATUS_KESEHATAN') > 0 ? _getScore(actualScores, 'STATUS_KESEHATAN') : _getScore(actualScores, 'nilai_status');
+      double kesStatus = _getScore(actualScores, 'STATUS_KESEHATAN') > 0
+          ? _getScore(actualScores, 'STATUS_KESEHATAN')
+          : (_getScore(actualScores, 'nilai_status') > 0 ? _getScore(actualScores, 'nilai_status') : 80.00);
       double calculatedKes = ScoringCalculator.hitungNKes(tesAwal: kesAwal, tesAkhir: kesAkhir, statusKesehatan: kesStatus);
       double kesehatan = _getScore(actualScores, 'kesehatan_score') > 0
           ? _getScore(actualScores, 'kesehatan_score')
