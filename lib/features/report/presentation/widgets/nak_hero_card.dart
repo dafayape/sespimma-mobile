@@ -51,10 +51,6 @@ class NakHeroCard extends StatelessWidget {
     return Colors.white24;
   }
 
-  bool get _isPassed {
-    return nakScore >= 70.0 && academicScore >= 65.0 && mentalScore >= 65.0 && physicalScore >= 65.0;
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -131,44 +127,15 @@ class NakHeroCard extends StatelessWidget {
                 ),
                 const SizedBox(height: AppDimensions.lg),
                 // Score Row
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      nakScore > 0 ? nakScore.toStringAsFixed(2) : '—',
-                      style: const TextStyle(
-                        fontSize: 44,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        height: 1.0,
-                        letterSpacing: -1.2,
-                      ),
-                    ),
-                    const SizedBox(width: AppDimensions.md),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            _isPassed ? Icons.check_circle_rounded : Icons.warning_amber_rounded,
-                            size: 16,
-                            color: _isPassed ? const Color(0xFF34D399) : const Color(0xFFFBBF24),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            _isPassed ? 'MEMENUHI SYARAT' : 'DALAM PENGAWASAN',
-                            style: TextStyle(
-                              fontSize: AppDimensions.fontXs,
-                              fontWeight: FontWeight.w700,
-                              color: _isPassed ? const Color(0xFF34D399) : const Color(0xFFFBBF24),
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                Text(
+                  nakScore > 0 ? nakScore.toStringAsFixed(2) : '—',
+                  style: const TextStyle(
+                    fontSize: 44,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    height: 1.0,
+                    letterSpacing: -1.2,
+                  ),
                 ),
               ],
             ),
