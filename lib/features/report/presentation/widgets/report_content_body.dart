@@ -10,7 +10,6 @@ import 'package:sespimma/features/report/presentation/widgets/nak_hero_card.dart
 import 'package:sespimma/features/report/presentation/widgets/personal_recommendations_card.dart';
 import 'package:sespimma/features/report/presentation/widgets/score_category_row.dart';
 import 'package:sespimma/features/report/presentation/widgets/report_section_header.dart';
-import 'package:sespimma/features/leadership_report/domain/services/score_calculator_service.dart';
 
 class ReportContentBody extends StatelessWidget {
   final UserEntity user;
@@ -30,32 +29,15 @@ class ReportContentBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final summary = reportData['summary'];
-    double dynamicMentalScore;
-    double dynamicJasmaniScore;
-    double dynamicKesehatanScore;
-    double dynamicAcademicScore;
-    double nakScore;
-
-    if (summary != null && summary is Map) {
-      dynamicMentalScore = (summary['mental_score'] as num?)?.toDouble() ?? 0.0;
-      dynamicJasmaniScore = (summary['jasmani_score'] as num?)?.toDouble() ?? (summary['physical_score'] as num?)?.toDouble() ?? 0.0;
-      dynamicKesehatanScore = (summary['kesehatan_score'] as num?)?.toDouble() ?? (summary['physical_score'] as num?)?.toDouble() ?? 80.0;
-      dynamicAcademicScore = (summary['academic_score'] as num?)?.toDouble() ?? 0.0;
-      nakScore = (summary['nak'] as num?)?.toDouble() ??
-          (dynamicAcademicScore * 0.4 + dynamicMentalScore * 0.4 + dynamicJasmaniScore * 0.2);
-    } else {
-      final allRecaps = ScoreCalculatorService.generateRealReports();
-      final finalRecap = allRecaps.firstWhere(
-        (r) => r.id == user.noSerdik,
-        orElse: () => allRecaps.first,
-      );
-      dynamicMentalScore = finalRecap.mentalScore;
-      dynamicJasmaniScore = finalRecap.physicalScore;
-      dynamicKesehatanScore = 80.0;
-      dynamicAcademicScore = user.nilaiAkademik;
-      nakScore = dynamicAcademicScore * 0.4 + dynamicMentalScore * 0.4 + dynamicJasmaniScore * 0.2;
-    }
+    final Map<String, dynamic> summary = reportData['summary'] is Map
+        ? Map<String, dynamic>.from(reportData['summary'])
+        : {};
+    final double dynamicMentalScore = (summary['mental_score'] as num?)?.toDouble() ?? 0.0;
+    final double dynamicJasmaniScore = (summary['jasmani_score'] as num?)?.toDouble() ?? (summary['physical_score'] as num?)?.toDouble() ?? 0.0;
+    final double dynamicKesehatanScore = (summary['kesehatan_score'] as num?)?.toDouble() ?? (summary['physical_score'] as num?)?.toDouble() ?? 0.0;
+    final double dynamicAcademicScore = (summary['academic_score'] as num?)?.toDouble() ?? 0.0;
+    final double nakScore = (summary['nak'] as num?)?.toDouble() ??
+        (dynamicAcademicScore * 0.4 + dynamicMentalScore * 0.4 + (dynamicJasmaniScore * 0.6 + dynamicKesehatanScore * 0.4) * 0.2);
 
     double currentScore = 0.0;
     if (selectedCategory == 'Mental Kepribadian') {

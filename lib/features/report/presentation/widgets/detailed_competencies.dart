@@ -16,12 +16,10 @@ class DetailedCompetencies extends StatelessWidget {
     this.rawScores,
   });
 
-  double _getScore(Map<String, dynamic> raw, String key, {double fallback = 0.0}) {
+  double _getScore(Map<String, dynamic> raw, String key) {
     final val = raw[key] ?? raw[key.toLowerCase()] ?? raw[key.toUpperCase()];
-    if (val == null) return fallback;
-    final double numVal = (val as num).toDouble();
-    if (numVal == 0.0 && fallback > 0.0) return fallback;
-    return numVal;
+    if (val == null) return 0.0;
+    return (val as num).toDouble();
   }
 
   @override
@@ -29,15 +27,14 @@ class DetailedCompetencies extends StatelessWidget {
     if (category == 'Mental Kepribadian') {
       final Map<String, dynamic> actualScores = rawScores ?? {};
 
-      double baseMental = user.nilaiMental > 0 ? user.nilaiMental : 80.0;
-      double moral = _getScore(actualScores, 'moral', fallback: baseMental);
-      double disiplin = _getScore(actualScores, 'disiplin', fallback: baseMental);
-      double kepemimpinan = _getScore(actualScores, 'kepemimpinan', fallback: baseMental);
-      double pengendalian = _getScore(actualScores, 'pengendalian_diri', fallback: baseMental);
-      double penampilan = _getScore(actualScores, 'penampilan', fallback: baseMental);
+      double moral = _getScore(actualScores, 'moral');
+      double disiplin = _getScore(actualScores, 'disiplin');
+      double kepemimpinan = _getScore(actualScores, 'kepemimpinan');
+      double pengendalian = _getScore(actualScores, 'pengendalian_diri');
+      double penampilan = _getScore(actualScores, 'penampilan');
       double ns = _getScore(actualScores, 'SOSIOMETRI') > 0
           ? _getScore(actualScores, 'SOSIOMETRI')
-          : _getScore(actualScores, 'NS', fallback: baseMental);
+          : _getScore(actualScores, 'NS');
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -56,40 +53,33 @@ class DetailedCompetencies extends StatelessWidget {
       );
     } else if (category == 'Akademik') {
       final Map<String, dynamic> actualScores = rawScores ?? {};
-      double baseAkademik = user.nilaiAkademik > 0 ? user.nilaiAkademik : 80.0;
 
-      double ujianMp = _getScore(actualScores, 'UJIAN_MAPEL', fallback: baseAkademik);
-      double nkkpMateri = _getScore(actualScores, 'NKKP_MATERI', fallback: baseAkademik);
-      double nkkpPaparan = _getScore(actualScores, 'NKKP_PAPARAN', fallback: baseAkademik);
-      double nkkpKeaktifan = _getScore(actualScores, 'NKKP_KEAKTIFAN', fallback: baseAkademik);
+      double ujianMp = _getScore(actualScores, 'UJIAN_MAPEL');
+      double nkkpMateri = _getScore(actualScores, 'NKKP_MATERI');
+      double nkkpPaparan = _getScore(actualScores, 'NKKP_PAPARAN');
+      double nkkpKeaktifan = _getScore(actualScores, 'NKKP_KEAKTIFAN');
       double nkkp = ScoringCalculator.hitungNKKPatauNPKP(nmpn: nkkpMateri, npa: nkkpPaparan, nka: nkkpKeaktifan);
-      if (nkkp == 0) nkkp = baseAkademik;
 
-      double npkpMateri = _getScore(actualScores, 'NPKP_MATERI', fallback: baseAkademik);
-      double npkpPaparan = _getScore(actualScores, 'NPKP_PAPARAN', fallback: baseAkademik);
-      double npkpKeaktifan = _getScore(actualScores, 'NPKP_KEAKTIFAN', fallback: baseAkademik);
+      double npkpMateri = _getScore(actualScores, 'NPKP_MATERI');
+      double npkpPaparan = _getScore(actualScores, 'NPKP_PAPARAN');
+      double npkpKeaktifan = _getScore(actualScores, 'NPKP_KEAKTIFAN');
       double npkp = ScoringCalculator.hitungNKKPatauNPKP(nmpn: npkpMateri, npa: npkpPaparan, nka: npkpKeaktifan);
-      if (npkp == 0) npkp = baseAkademik;
 
-      double nkpMateri = _getScore(actualScores, 'NKP_MATERI', fallback: baseAkademik);
-      double nkpPaparan = _getScore(actualScores, 'NKP_PAPARAN', fallback: baseAkademik);
+      double nkpMateri = _getScore(actualScores, 'NKP_MATERI');
+      double nkpPaparan = _getScore(actualScores, 'NKP_PAPARAN');
       double nkp = ScoringCalculator.hitungNKP(nmpn: nkpMateri, npa: nkpPaparan);
-      if (nkp == 0) nkp = baseAkademik;
 
       double np = ScoringCalculator.hitungNP(nump: ujianMp, nkkp: nkkp, npkp: npkp, nkp: nkp);
-      if (np == 0) np = baseAkademik;
 
-      double nskAktif = _getScore(actualScores, 'KEAKTIFAN_PERSEORANGAN', fallback: baseAkademik);
-      double nskProduk = _getScore(actualScores, 'PRODUK_PERSEORANGAN', fallback: baseAkademik);
-      double nskRuang = _getScore(actualScores, 'TATA_RUANG_KELOMPOK', fallback: baseAkademik);
+      double nskAktif = _getScore(actualScores, 'KEAKTIFAN_PERSEORANGAN');
+      double nskProduk = _getScore(actualScores, 'PRODUK_PERSEORANGAN');
+      double nskRuang = _getScore(actualScores, 'TATA_RUANG_KELOMPOK');
       double nsk = ScoringCalculator.hitungNSK(keaktifan: nskAktif, produk: nskProduk, tataRuang: nskRuang);
-      if (nsk == 0) nsk = baseAkademik;
 
-      double ntMateri = _getScore(actualScores, 'NPTT_MATERI', fallback: baseAkademik);
-      double ntPenulisan = _getScore(actualScores, 'NPTT_PENULISAN', fallback: baseAkademik);
-      double ntPaparan = _getScore(actualScores, 'NPTT_PAPARAN', fallback: baseAkademik);
+      double ntMateri = _getScore(actualScores, 'NPTT_MATERI');
+      double ntPenulisan = _getScore(actualScores, 'NPTT_PENULISAN');
+      double ntPaparan = _getScore(actualScores, 'NPTT_PAPARAN');
       double nt = ScoringCalculator.hitungNT(nam: ntMateri, nkm: ntPenulisan, nkp: ntPaparan);
-      if (nt == 0) nt = baseAkademik;
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -151,12 +141,10 @@ class DetailedCompetencies extends StatelessWidget {
       );
     } else if (category == 'Kesehatan') {
       final Map<String, dynamic> actualScores = rawScores ?? {};
-      double baseKesehatan = 80.0;
-      double kesAwal = _getScore(actualScores, 'TES_AWAL', fallback: baseKesehatan);
-      double kesAkhir = _getScore(actualScores, 'TES_AKHIR', fallback: baseKesehatan);
-      double kesStatus = _getScore(actualScores, 'STATUS_KESEHATAN', fallback: baseKesehatan);
+      double kesAwal = _getScore(actualScores, 'TES_AWAL');
+      double kesAkhir = _getScore(actualScores, 'TES_AKHIR');
+      double kesStatus = _getScore(actualScores, 'STATUS_KESEHATAN');
       double kesehatan = ScoringCalculator.hitungNKes(tesAwal: kesAwal, tesAkhir: kesAkhir, statusKesehatan: kesStatus);
-      if (kesehatan == 0) kesehatan = baseKesehatan;
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -170,17 +158,14 @@ class DetailedCompetencies extends StatelessWidget {
       );
     } else {
       final Map<String, dynamic> actualScores = rawScores ?? {};
-      double baseJasmani = user.nilaiJasmani > 0 ? user.nilaiJasmani : 80.0;
 
-      double samaptaA = _getScore(actualScores, 'SAMAPTA_A', fallback: baseJasmani);
-      double pullUp = _getScore(actualScores, 'PULL_UP', fallback: baseJasmani);
-      double sitUp = _getScore(actualScores, 'SIT_UP', fallback: baseJasmani);
-      double pushUp = _getScore(actualScores, 'PUSH_UP', fallback: baseJasmani);
-      double shuttleRun = _getScore(actualScores, 'SHUTTLE_RUN', fallback: baseJasmani);
+      double samaptaA = _getScore(actualScores, 'SAMAPTA_A');
+      double pullUp = _getScore(actualScores, 'PULL_UP');
+      double sitUp = _getScore(actualScores, 'SIT_UP');
+      double pushUp = _getScore(actualScores, 'PUSH_UP');
+      double shuttleRun = _getScore(actualScores, 'SHUTTLE_RUN');
       double samaptaB = ScoringCalculator.hitungNGB(ngb1: pullUp, ngb2: sitUp, ngb3: pushUp, ngb4: shuttleRun);
-      if (samaptaB == 0) samaptaB = baseJasmani;
       double jasmani = ScoringCalculator.hitungNJas(nga: samaptaA, ngb: samaptaB);
-      if (jasmani == 0) jasmani = baseJasmani;
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
