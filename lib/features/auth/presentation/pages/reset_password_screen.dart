@@ -117,13 +117,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
             newPassword: _passController.text,
           ),
         );
-      }
-
-      AppNotifier.showSuccess(context, 'Password berhasil diperbarui!');
-
-      if (isAuthenticated) {
-        Navigator.pop(context);
-      } else {
+        AppNotifier.showSuccess(context, 'Password berhasil diperbarui!');
         Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
       }
     }
@@ -133,7 +127,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
   Widget build(BuildContext context) {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
-        if (state is AuthFailure) {
+        if (state is PasswordChangeSuccess) {
+          AppNotifier.showSuccess(context, 'Password berhasil diperbarui! Silakan login kembali.');
+          Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+        } else if (state is AuthFailure) {
           HapticFeedback.vibrate();
           AppNotifier.showError(context, state.message);
         }

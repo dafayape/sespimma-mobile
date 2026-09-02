@@ -10,10 +10,13 @@ class LoginRequest {
   @JsonKey(name: 'fcm_token')
   final String fcmToken;
 
+  final bool force;
+
   const LoginRequest({
     required this.nrp,
     required this.password,
     required this.fcmToken,
+    this.force = false,
   });
 
   factory LoginRequest.fromJson(Map<String, dynamic> json) =>

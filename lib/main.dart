@@ -9,9 +9,12 @@ import 'package:talker_flutter/talker_flutter.dart';
 import 'package:talker_bloc_logger/talker_bloc_logger.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+
 import 'core/services/background_location_service.dart';
+import 'core/services/local_notification_service.dart';
 import 'core/utils/app_logger.dart';
-import 'core/utils/app_notifier.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/auth/presentation/bloc/auth_event.dart';
 import 'features/auth/presentation/bloc/auth_state.dart';
@@ -32,17 +35,32 @@ import 'features/leadership_report/presentation/pages/leadership_report_screen.d
 import 'features/leadership_dashboard/presentation/pages/pimpinan_home_screen.dart';
 import 'features/assessment/presentation/pages/serdik_sosiometri_screen.dart';
 import 'shared/widgets/main_nav_screen.dart';
+import 'shared/widgets/session_expired_dialog.dart';
 import 'injection_container.dart' as di;
 
-/// Lets code outside the widget tree (the top-level `AuthLoggedOut`
-/// listener below) navigate without a local BuildContext. `currentState`
-/// is only non-null once `MaterialApp` has mounted; `currentContext` is
-/// the Navigator's own (stable across route changes) context, used to
-/// resolve the app-wide `ScaffoldMessenger` for [AppNotifier].
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  developer.log("Background FCM Message: ${message.messageId}", name: 'FCM');
+}
+
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+
+  try {
+    await Firebase.initializeApp();
+    await LocalNotificationService.initialize();
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    await FirebaseMessaging.instance.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+  } catch (e) {
+    developer.log('Firebase/LocalNotif init error: $e', name: 'FCM');
+  }
 
   FlutterError.onError = (details) {
     talker.handle(details.exception, details.stack);
@@ -110,20 +128,26 @@ class MyApp extends StatelessWidget {
         listenWhen: (previous, current) => current is AuthLoggedOut,
         listener: (context, state) {
           if (state is! AuthLoggedOut) return;
-          // One single, consistent forced-logout reaction, regardless of
-          // whether ForceLogoutRequested came from the Dio interceptor's
-          // refresh-failure path or the background isolate's session-expired
-          // signal (see ForceLogoutRequested/AuthLoggedOut docs).
-          navigatorKey.currentState?.pushNamedAndRemoveUntil(
-            '/login',
-            (route) => false,
-          );
           final navContext = navigatorKey.currentContext;
           if (navContext != null) {
-            AppNotifier.showWarning(
-              navContext,
-              state.reason,
-              duration: const Duration(seconds: 4),
+            showDialog(
+              context: navContext,
+              barrierDismissible: false,
+              builder: (dialogCtx) => SessionExpiredDialog(
+                reason: state.reason,
+                onRedirect: () {
+                  Navigator.of(dialogCtx, rootNavigator: true).pop();
+                  navigatorKey.currentState?.pushNamedAndRemoveUntil(
+                    '/login',
+                    (route) => false,
+                  );
+                },
+              ),
+            );
+          } else {
+            navigatorKey.currentState?.pushNamedAndRemoveUntil(
+              '/login',
+              (route) => false,
             );
           }
         },

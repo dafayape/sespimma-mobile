@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:sespimma/injection_container.dart' as di;
+import 'package:sespimma/features/auth/domain/entities/user_entity.dart';
 import 'package:sespimma/features/auth/domain/repositories/auth_repository.dart';
 import 'package:sespimma/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:sespimma/features/auth/presentation/bloc/auth_event.dart';
@@ -25,7 +26,9 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
-    FlutterNativeSplash.remove();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FlutterNativeSplash.remove();
+    });
 
     SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.manual,
@@ -64,9 +67,16 @@ class _SplashScreenState extends State<SplashScreen>
         final isLoggedIn = await authRepository.isLoggedIn();
 
         if (isLoggedIn) {
-          final savedUser = await authRepository.getSavedUser();
-          if (savedUser != null && mounted) {
-            context.read<AuthBloc>().add(AutoLoginRequested(savedUser));
+          UserEntity? userToUse;
+          try {
+            userToUse = await authRepository.fetchFreshProfile();
+          } catch (profileError) {
+            debugPrint('Fetch fresh profile on splash error: $profileError');
+            userToUse = await authRepository.getSavedUser();
+          }
+
+          if (userToUse != null && mounted) {
+            context.read<AuthBloc>().add(AutoLoginRequested(userToUse));
             Navigator.of(context).pushReplacementNamed('/main');
             return;
           }
@@ -97,6 +107,9 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final logoSize = (size.shortestSide * 0.38).clamp(100.0, 200.0);
+
     return Scaffold(
       backgroundColor: const Color(0xFF000B1D),
       body: Center(
@@ -106,8 +119,8 @@ class _SplashScreenState extends State<SplashScreen>
             scale: _scaleAnimation,
             child: Image.asset(
               'assets/images/icon.png',
-              width: 160,
-              height: 160,
+              width: logoSize,
+              height: logoSize,
             ),
           ),
         ),

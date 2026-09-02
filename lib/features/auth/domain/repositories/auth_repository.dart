@@ -5,6 +5,7 @@ abstract class AuthRepository {
     required String nrp,
     required String password,
     required String fcmToken,
+    bool force = false,
   });
 
   Future<bool> isLoggedIn();
@@ -13,7 +14,11 @@ abstract class AuthRepository {
 
   Future<void> updateProfilePhoto(String photoPath);
 
+  Future<void> deleteProfilePhoto();
+
   Future<void> changePassword(String currentPassword, String newPassword, String confirmPassword);
 
   Future<UserEntity?> getSavedUser();
+
+  Future<UserEntity> fetchFreshProfile();
 }

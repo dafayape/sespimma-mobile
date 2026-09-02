@@ -95,6 +95,17 @@ class UserEntity extends Equatable {
     return '41';
   }
 
+  String get displayJenisKelamin {
+    final jk = jenisKelamin.trim().toLowerCase();
+    if (jk == 'male' || jk == 'l' || jk == 'laki-laki' || jk == 'pria') {
+      return 'Laki-laki';
+    }
+    if (jk == 'female' || jk == 'p' || jk == 'perempuan' || jk == 'wanita') {
+      return 'Perempuan';
+    }
+    return jenisKelamin.isEmpty ? '-' : jenisKelamin;
+  }
+
   String get displayGolongan {
     if (golongan != '-' && golongan.trim().isNotEmpty) {
       return golongan;
@@ -116,6 +127,25 @@ class UserEntity extends Equatable {
       }
     }
     return '-';
+  }
+
+  String get displayPersonel {
+    final p = personel.trim().toUpperCase();
+    if (p == 'TRUE' || p == '1' || p == 'YA' || p == 'YES') {
+      return 'YA';
+    }
+    return 'TIDAK';
+  }
+
+  String get displayJabatanSenat {
+    final j = jabatanSenat.trim();
+    if (j.isEmpty || j == '-' || j.toUpperCase() == 'TIDAK ADA') {
+      if (roleId == 'patun') return 'Perwira Penuntun';
+      if (roleId == 'korsis') return 'Anggota Korsis';
+      if (roleId == 'pimpinan') return 'Penanggung Jawab';
+      return 'Tidak Ada';
+    }
+    return j;
   }
 
   UserEntity copyWith({

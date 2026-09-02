@@ -12,7 +12,7 @@ import '../../domain/entities/user_entity.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_state.dart';
 import '../bloc/auth_event.dart';
-import 'package:sespimma/core/utils/avatar_helper.dart';
+import 'package:sespimma/shared/widgets/user_avatar.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -28,6 +28,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
   late Animation<Offset> _slideAnimation;
   final ImagePicker _picker = ImagePicker();
   File? _selectedImage;
+  bool _isPhotoRemoved = false;
   bool _isInitialized = false;
 
   static const Color _primaryNavy = Color(0xFF000B1D);
@@ -69,7 +70,10 @@ class _EditProfileScreenState extends State<EditProfileScreen>
         maxWidth: 800,
       );
       if (file != null) {
-        setState(() => _selectedImage = File(file.path));
+        setState(() {
+          _selectedImage = File(file.path);
+          _isPhotoRemoved = false;
+        });
       }
     } catch (e) {
       debugPrint('Error picking image: $e');
@@ -78,7 +82,10 @@ class _EditProfileScreenState extends State<EditProfileScreen>
 
   void _removePhoto() {
     Navigator.pop(context);
-    setState(() => _selectedImage = null);
+    setState(() {
+      _selectedImage = null;
+      _isPhotoRemoved = true;
+    });
   }
 
   String _getFullPangkat(String pangkat) {
@@ -88,10 +95,12 @@ class _EditProfileScreenState extends State<EditProfileScreen>
 
   void _showImagePickerOptions(UserEntity? user) {
     final bool hasPhoto =
-        _selectedImage != null || (user?.profilePhoto != null);
+        _selectedImage != null ||
+        (!_isPhotoRemoved && (user?.profilePhoto != null && user!.profilePhoto!.trim().isNotEmpty));
 
     showModalBottomSheet(
       context: context,
+      useSafeArea: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -188,11 +197,18 @@ class _EditProfileScreenState extends State<EditProfileScreen>
   void _saveChanges() {
     HapticFeedback.heavyImpact();
 
-    context.read<AuthBloc>().add(
-      UpdateProfilePhotoRequested(_selectedImage?.path),
-    );
+    if (_selectedImage != null && _selectedImage!.existsSync()) {
+      context.read<AuthBloc>().add(
+        UpdateProfilePhotoRequested(_selectedImage!.path),
+      );
+      AppNotifier.showSuccess(context, 'Foto profil berhasil diperbarui');
+    } else if (_isPhotoRemoved) {
+      context.read<AuthBloc>().add(
+        const UpdateProfilePhotoRequested(null),
+      );
+      AppNotifier.showSuccess(context, 'Foto profil berhasil dihapus');
+    }
 
-    AppNotifier.showSuccess(context, 'Profil berhasil diperbarui');
     Navigator.pop(context);
   }
 
@@ -203,9 +219,6 @@ class _EditProfileScreenState extends State<EditProfileScreen>
         final user = state is AuthSuccess ? state.user : null;
 
         if (user != null && !_isInitialized) {
-          if (user.profilePhoto != null && user.profilePhoto!.isNotEmpty) {
-            _selectedImage = File(user.profilePhoto!);
-          }
           _isInitialized = true;
         }
 
@@ -230,12 +243,18 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             ),
           ),
           body: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24.0,
-                vertical: 32.0,
-              ),
-              child: FadeTransition(
+            child: RefreshIndicator(
+              onRefresh: () async {
+                context.read<AuthBloc>().add(const RefreshProfileRequested());
+                await Future.delayed(const Duration(milliseconds: 600));
+              },
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24.0,
+                  vertical: 32.0,
+                ),
+                child: FadeTransition(
                 opacity: _fadeAnimation,
                 child: SlideTransition(
                   position: _slideAnimation,
@@ -269,7 +288,8 @@ class _EditProfileScreenState extends State<EditProfileScreen>
               ),
             ),
           ),
-        );
+        ),
+      );
       },
     );
   }
@@ -281,27 +301,20 @@ class _EditProfileScreenState extends State<EditProfileScreen>
         child: Stack(
           alignment: Alignment.bottomRight,
           children: [
-            Container(
-              height: 140,
-              width: 140,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                image: DecorationImage(
-                  image: _selectedImage != null
-                      ? FileImage(_selectedImage!) as ImageProvider
-                      : AvatarHelper.getAvatar(null),
-                  fit: BoxFit.cover,
+            UserAvatar(
+              name: user?.name,
+              photoUrl: _isPhotoRemoved ? null : user?.profilePhoto,
+              localFile: _selectedImage,
+              size: 140,
+              borderRadius: BorderRadius.circular(70),
+              border: Border.all(color: Colors.white, width: 4),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
                 ),
-                border: Border.all(color: Colors.white, width: 4),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
+              ],
             ),
             Container(
               padding: const EdgeInsets.all(AppDimensions.md),
@@ -406,23 +419,19 @@ class _EditProfileScreenState extends State<EditProfileScreen>
           if (user.roleId == 'siswa') ...[
             _buildInfoRow('No. Serdik', user.noSerdik),
             const SizedBox(height: AppDimensions.md),
-            _buildInfoRow('NIK', user.nik),
-            const SizedBox(height: AppDimensions.md),
             _buildInfoRow('Nama Lengkap', user.name),
             const SizedBox(height: AppDimensions.md),
             _buildInfoRow('Alamat Lengkap', user.alamatLengkap),
             const SizedBox(height: AppDimensions.md),
             _buildInfoRow('Tempat Lahir', user.tempatLahir),
             const SizedBox(height: AppDimensions.md),
-            _buildInfoRow('Jenis Kelamin', user.jenisKelamin),
+            _buildInfoRow('Jenis Kelamin', user.displayJenisKelamin),
             const SizedBox(height: AppDimensions.md),
             _buildInfoRow('Agama', user.agama),
             const SizedBox(height: AppDimensions.md),
             _buildInfoRow('Email', user.email),
             const SizedBox(height: AppDimensions.md),
             _buildInfoRow('No. Telepon', user.noTelepon),
-            const SizedBox(height: AppDimensions.md),
-            _buildInfoRow('No. Handphone', user.noHandphone),
             const SizedBox(height: AppDimensions.md),
             _buildInfoRow('Pendidikan Terakhir', user.pendidikanTerakhir),
             const SizedBox(height: AppDimensions.md),
@@ -432,13 +441,13 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             const SizedBox(height: AppDimensions.md),
             _buildInfoRow('Tahun Diktuk', user.tahunDiktuk),
             const SizedBox(height: AppDimensions.md),
-            _buildInfoRow('Personel', user.personel),
+            _buildInfoRow('Personel Polri', user.displayPersonel),
             const SizedBox(height: AppDimensions.md),
             _buildInfoRow('NRP', user.nrp),
             const SizedBox(height: AppDimensions.md),
             _buildInfoRow('Pangkat', _getFullPangkat(user.pangkat)),
             const SizedBox(height: AppDimensions.md),
-            _buildInfoRow('Jabatan Senat', user.jabatanSenat),
+            _buildInfoRow('Jabatan Senat', user.displayJabatanSenat),
             const SizedBox(height: AppDimensions.md),
             _buildInfoRow('Jabatan', user.jabatan),
             const SizedBox(height: AppDimensions.md),
@@ -457,8 +466,19 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             _buildInfoRow('Nama Lengkap', user.name),
             const SizedBox(height: AppDimensions.md),
             _buildInfoRow('Jabatan', 'Operator'),
-          ] else if (user.roleId == 'patun' ||
-              user.roleId == 'korsis' ||
+          ] else if (user.roleId == 'patun') ...[
+            _buildInfoRow(user.nrp.length > 10 ? 'NIP' : 'NRP', user.nrp),
+            const SizedBox(height: AppDimensions.md),
+            _buildInfoRow('Nama Lengkap', user.name),
+            const SizedBox(height: AppDimensions.md),
+            _buildInfoRow('Pangkat', _getFullPangkat(user.pangkat)),
+            const SizedBox(height: AppDimensions.md),
+            _buildInfoRow('Jabatan Struktural', user.jabatan),
+            const SizedBox(height: AppDimensions.md),
+            _buildInfoRow('Jabatan Kepanitiaan', user.displayJabatanSenat),
+            const SizedBox(height: AppDimensions.md),
+            _buildInfoRow('Pokjar', user.pokjar.isNotEmpty && user.pokjar != '-' ? user.pokjar : 'POKJAR I'),
+          ] else if (user.roleId == 'korsis' ||
               user.roleId == 'pimpinan' ||
               user.roleId == 'kabag_bindik') ...[
             _buildInfoRow(user.nrp.length > 10 ? 'NIP' : 'NRP', user.nrp),
@@ -469,7 +489,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             const SizedBox(height: AppDimensions.md),
             _buildInfoRow('Jabatan Struktural', user.jabatan),
             const SizedBox(height: AppDimensions.md),
-            _buildInfoRow('Jabatan Kepanitiaan', user.jabatanSenat),
+            _buildInfoRow('Jabatan Kepanitiaan', user.displayJabatanSenat),
           ] else if (user.roleId == 'gadik') ...[
             _buildInfoRow(user.nrp.length > 10 ? 'NIP' : 'NRP', user.nrp),
             const SizedBox(height: AppDimensions.md),
@@ -479,7 +499,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             const SizedBox(height: AppDimensions.md),
             _buildInfoRow('Pangkat', _getFullPangkat(user.pangkat)),
             const SizedBox(height: AppDimensions.md),
-            _buildInfoRow('Jabatan', user.jabatan),
+            _buildInfoRow('Jabatan Struktural', user.jabatan),
             const SizedBox(height: AppDimensions.md),
             _buildInfoRow('Eselon', user.eselon),
             const SizedBox(height: AppDimensions.md),

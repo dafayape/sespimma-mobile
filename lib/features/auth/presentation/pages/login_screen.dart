@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'package:sespimma/core/constants/app_dimensions.dart';
 import 'package:sespimma/core/utils/app_notifier.dart';
@@ -76,6 +77,9 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isSmallScreen = screenHeight < 700;
+
     return Scaffold(
       backgroundColor: _lightGrey,
       body: BlocListener<AuthBloc, AuthState>(
@@ -83,42 +87,144 @@ class _LoginScreenState extends State<LoginScreen>
         child: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final isSmallScreen = constraints.maxHeight < 700;
-              return SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                  child: Center(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 24.0,
-                        vertical: isSmallScreen ? 16.0 : 32.0,
-                      ),
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 420),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            LoginHeader(isSmallScreen: isSmallScreen),
-                            SizedBox(
-                              height: isSmallScreen
-                                  ? AppDimensions.lg
-                                  : AppDimensions.avatarMd,
+              final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
+              final isTablet = constraints.maxWidth >= 720;
+
+              if (isTablet) {
+                return Row(
+                  children: [
+                    Expanded(
+                      flex: 5,
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Color(0xFF001534),
+                              _primaryNavy,
+                              Color(0xFF00050E),
+                            ],
+                          ),
+                        ),
+                        child: Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(40.0),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Image.asset(
+                                  'assets/images/icon.png',
+                                  height: 160,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      const Icon(
+                                    Icons.local_police,
+                                    size: 130,
+                                    color: Color(0xFFC5A059),
+                                  ),
+                                ),
+                                const SizedBox(height: 32),
+                                const Text(
+                                  'SESPIMMA',
+                                  style: TextStyle(
+                                    fontSize: 36,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
+                                    letterSpacing: 1.0,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'SISTEM EVALUASI DAN PENGAWASAN INDIVIDU MEMBENTUK SUMBER DAYA MANUSIA MAJU',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.blueGrey.shade300,
+                                    letterSpacing: 1.2,
+                                  ),
+                                ),
+                              ],
                             ),
-                            FadeTransition(
-                              opacity: _fadeAnimation,
-                              child: SlideTransition(
-                                position: _slideAnimation,
-                                child: LoginForm(isSmallScreen: isSmallScreen),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 6,
+                      child: Container(
+                        color: _lightGrey,
+                        child: Center(
+                          child: SingleChildScrollView(
+                            physics: isKeyboardOpen
+                                ? const BouncingScrollPhysics()
+                                : const NeverScrollableScrollPhysics(),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 40.0,
+                                vertical: 32.0,
+                              ),
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(maxWidth: 420),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    LoginForm(isSmallScreen: isSmallScreen),
+                                    const SizedBox(height: 32),
+                                    LoginFooter(isSmallScreen: isSmallScreen),
+                                  ],
+                                ),
                               ),
                             ),
-                            SizedBox(
-                              height: isSmallScreen
-                                  ? AppDimensions.xl
-                                  : AppDimensions.xxl + 16,
-                            ),
-                            LoginFooter(isSmallScreen: isSmallScreen),
-                          ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }
+
+              // Content height threshold to prevent overflow on very small devices
+              final contentHeight = isSmallScreen ? 480.0 : 540.0;
+              final canScroll = isKeyboardOpen || constraints.maxHeight < contentHeight;
+              final physics = canScroll
+                  ? const BouncingScrollPhysics()
+                  : const NeverScrollableScrollPhysics();
+
+              return SingleChildScrollView(
+                physics: physics,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight,
+                  ),
+                  child: IntrinsicHeight(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24.0,
+                        vertical: 16.0,
+                      ),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 420),
+                          child: Column(
+                            children: [
+                              const Spacer(flex: 2),
+                              LoginHeader(isSmallScreen: isSmallScreen),
+                              const Spacer(flex: 2),
+                              FadeTransition(
+                                opacity: _fadeAnimation,
+                                child: SlideTransition(
+                                  position: _slideAnimation,
+                                  child: LoginForm(
+                                    isSmallScreen: isSmallScreen || isKeyboardOpen,
+                                  ),
+                                ),
+                              ),
+                              const Spacer(flex: 3),
+                              LoginFooter(isSmallScreen: isSmallScreen),
+                              const Spacer(flex: 1),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -136,7 +242,9 @@ class _LoginScreenState extends State<LoginScreen>
     if (state is AuthSuccess) {
       Navigator.pushReplacementNamed(context, '/main');
     } else if (state is AuthFailure) {
-      AppNotifier.showError(context, state.message);
+      if (!state.isSessionConflict) {
+        AppNotifier.showError(context, state.message);
+      }
     } else if (state is AuthNrpValidationSuccess) {
       Navigator.pushNamed(context, '/forgot-password', arguments: state.nrp);
     }
@@ -152,7 +260,7 @@ class LoginHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _buildAppIcon(),
+        _buildAppIcon(context),
         SizedBox(height: isSmallScreen ? AppDimensions.md : AppDimensions.lg),
         _buildAppTitle(),
         const SizedBox(height: AppDimensions.sm),
@@ -161,13 +269,15 @@ class LoginHeader extends StatelessWidget {
     );
   }
 
-  Widget _buildAppIcon() {
+  Widget _buildAppIcon(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final logoSize = (screenSize.shortestSide * 0.28).clamp(80.0, 140.0);
     return Image.asset(
       'assets/images/icon.png',
-      height: isSmallScreen ? 100 : 140,
+      height: isSmallScreen ? 90 : logoSize,
       errorBuilder: (context, error, stackTrace) => Icon(
         Icons.local_police,
-        size: isSmallScreen ? 80 : 120,
+        size: isSmallScreen ? 70 : logoSize * 0.8,
         color: _primaryNavy,
       ),
     );
@@ -285,30 +395,123 @@ class _LoginFormState extends State<LoginForm> {
     }
   }
 
-  void _submitLogin() {
+  Future<void> _submitLogin({bool force = false}) async {
     FocusScope.of(context).unfocus();
     if (_formKey.currentState!.validate()) {
       _handleRememberMeStorage();
+
+      String fcmToken = 'DUMMY_TOKEN';
+      try {
+        fcmToken = (await FirebaseMessaging.instance.getToken()) ?? 'DUMMY_TOKEN';
+      } catch (e) {
+        debugPrint('FCM Token error: $e');
+      }
+
+      if (!mounted) return;
       context.read<AuthBloc>().add(
         LoginSubmitted(
           nrp: _nrpController.text.trim(),
           password: _passwordController.text,
-          fcmToken: 'DUMMY_TOKEN',
+          fcmToken: fcmToken,
+          force: force,
         ),
       );
     }
   }
 
+  void _showActiveSessionDialog(String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+          ),
+          title: Row(
+            children: [
+              Icon(
+                AppIcons.shieldAlert,
+                color: Colors.amber.shade800,
+                size: AppDimensions.iconLg,
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Sesi Aktif Terdeteksi',
+                  style: TextStyle(
+                    fontSize: AppDimensions.fontLg,
+                    fontWeight: FontWeight.bold,
+                    color: _primaryNavy,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            'Akun Anda terdeteksi masih terhubung di perangkat lain.\n\n'
+            'Apakah Anda ingin mengeluarkan sesi lain dan melanjutkan masuk di perangkat ini?',
+            style: TextStyle(
+              fontSize: AppDimensions.fontDefault,
+              color: Colors.grey.shade800,
+              height: 1.4,
+            ),
+          ),
+          actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(
+                'Batal',
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _primaryNavy,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+                ),
+              ),
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                _submitLogin(force: true);
+              },
+              child: const Text(
+                'Keluarkan dan Masuk',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(
-        widget.isSmallScreen ? AppDimensions.lg : AppDimensions.xxl + 4,
-      ),
-      decoration: _buildCardDecoration(),
-      child: Form(
-        key: _formKey,
-        autovalidateMode: AutovalidateMode.onUserInteraction,
+    return BlocListener<AuthBloc, AuthState>(
+      listener: (context, state) {
+        if (state is AuthFailure) {
+          if (state.isSessionConflict) {
+            _showActiveSessionDialog(state.message);
+          } else {
+            AppNotifier.showError(context, state.message);
+          }
+        }
+      },
+      child: Container(
+        padding: EdgeInsets.all(
+          widget.isSmallScreen ? AppDimensions.lg : AppDimensions.xxl + 4,
+        ),
+        decoration: _buildCardDecoration(),
+        child: Form(
+          key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -344,8 +547,9 @@ class _LoginFormState extends State<LoginForm> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   BoxDecoration _buildCardDecoration() {
     return BoxDecoration(
@@ -449,74 +653,45 @@ class _LoginFormState extends State<LoginForm> {
   }
 
   Widget _buildFormActions(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        _buildRememberMeCheckbox(),
-        _buildForgotPasswordButton(context),
-      ],
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: _buildRememberMeCheckbox(),
     );
   }
 
   Widget _buildRememberMeCheckbox() {
-    return Expanded(
-      child: Row(
-        children: [
-          SizedBox(
-            height: 24,
-            width: 24,
-            child: Checkbox(
-              value: _rememberMe,
-              onChanged: (value) =>
-                  setState(() => _rememberMe = value ?? false),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppDimensions.radiusXs),
+    return InkWell(
+      onTap: () => setState(() => _rememberMe = !_rememberMe),
+      borderRadius: BorderRadius.circular(AppDimensions.radiusXs),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 2.0),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              height: 24,
+              width: 24,
+              child: Checkbox(
+                value: _rememberMe,
+                onChanged: (value) =>
+                    setState(() => _rememberMe = value ?? false),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusXs),
+                ),
+                side: BorderSide(color: Colors.grey.shade400),
+                activeColor: _primaryNavy,
               ),
-              side: BorderSide(color: Colors.grey.shade400),
-              activeColor: _primaryNavy,
             ),
-          ),
-          const SizedBox(width: AppDimensions.sm),
-          Flexible(
-            child: Text(
+            const SizedBox(width: AppDimensions.sm),
+            Text(
               'Ingat Saya',
               style: TextStyle(
                 fontSize: AppDimensions.fontDefault,
                 color: Colors.grey.shade600,
                 fontWeight: FontWeight.w500,
               ),
-              overflow: TextOverflow.ellipsis,
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildForgotPasswordButton(BuildContext context) {
-    return TextButton(
-      onPressed: () {
-        final nrp = _nrpController.text.trim();
-        if (nrp.isEmpty) {
-          AppNotifier.showError(
-            context,
-            '${_isNip ? 'NIP' : 'NRP'} tidak boleh kosong',
-          );
-        } else {
-          context.read<AuthBloc>().add(VerifyNrpRequested(nrp));
-        }
-      },
-      style: TextButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        minimumSize: const Size(44, 44),
-        tapTargetSize: MaterialTapTargetSize.padded,
-      ),
-      child: const Text(
-        'Lupa Password?',
-        style: TextStyle(
-          fontSize: AppDimensions.fontDefault,
-          fontWeight: FontWeight.w700,
-          color: _primaryNavy,
+          ],
         ),
       ),
     );
@@ -629,6 +804,7 @@ class LoginFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       '© ${DateTime.now().year} SESPIMMA LEMDIKLAT POLRI. ALL RIGHTS RESERVED.',
+      textAlign: TextAlign.center,
       style: TextStyle(
         fontSize: isSmallScreen
             ? AppDimensions.fontSm

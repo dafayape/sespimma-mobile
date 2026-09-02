@@ -11,6 +11,11 @@ import 'pimpinan_real_data.dart';
 
 class AuthRemoteDataSourceMock implements AuthRemoteDataSource {
   @override
+  Future<LoginResponse> getProfile() async {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<void> logout() async {
     await Future.delayed(const Duration(milliseconds: 100));
   }
@@ -489,6 +494,11 @@ class AuthRemoteDataSourceMock implements AuthRemoteDataSource {
 
   @override
   Future<void> updateProfilePhoto(String photoPath) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+  }
+
+  @override
+  Future<void> deleteProfilePhoto() async {
     await Future.delayed(const Duration(milliseconds: 500));
   }
 

@@ -55,6 +55,8 @@ class _HomeScreenState extends State<HomeScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchInboxData();
       _fetchDashboardData();
+      NotificationMockData.fetchApiNotifications();
+      NotificationMockData.startPeriodicSync();
     });
   }
 
@@ -288,6 +290,7 @@ class _HomeScreenState extends State<HomeScreen>
                   await Future.wait([
                     _fetchInboxData(),
                     _fetchDashboardData(),
+                    NotificationMockData.fetchApiNotifications(),
                   ]);
                   if (mounted) setState(() {});
                 },

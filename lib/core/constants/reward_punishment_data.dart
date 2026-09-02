@@ -48,7 +48,7 @@ class RewardPunishmentData {
       aspect: 'MORAL',
       description: 'Memberikan Santunan (panti asuhan, warga dll)',
       point: 0.40,
-      note: 'MAXS 3X',
+      note: 'Maksimal 3x',
     ),
     RewardPunishmentItem(
       id: 'R_M_05',
@@ -56,7 +56,7 @@ class RewardPunishmentData {
       aspect: 'MORAL',
       description: 'Memberikan Sumbangan Ke Masjid, Gereja, Pure',
       point: 0.38,
-      note: 'MAXS 3X',
+      note: 'Maksimal 3x',
     ),
     RewardPunishmentItem(
       id: 'R_M_06',
@@ -64,7 +64,7 @@ class RewardPunishmentData {
       aspect: 'MORAL',
       description: 'Memberikan Sumbangan Buku Ke Perpustakaan',
       point: 0.30,
-      note: 'MAXS 3X',
+      note: 'Maksimal 3x',
     ),
     RewardPunishmentItem(
       id: 'R_M_07',
@@ -72,7 +72,7 @@ class RewardPunishmentData {
       aspect: 'MORAL',
       description: 'Reward Pejabat Upacara',
       point: 0.30,
-      note: 'MAXS 3X',
+      note: 'Maksimal 3x',
     ),
     RewardPunishmentItem(
       id: 'R_M_08',
@@ -604,22 +604,46 @@ class RewardPunishmentData {
       }
 
       for (var p in prestasis) {
+        String? ket = p['keterangan'] ?? p['note'] ?? p['specialRule'];
+        if (ket == null || ket == '-') {
+          final maxCount = p['maxCount'];
+          if (maxCount != null && maxCount is int && maxCount > 0) {
+            ket = 'Maksimal ${maxCount}x';
+          }
+        }
+        final aspectName = (p['aspek'] != null && (p['aspek'] as String).isNotEmpty)
+            ? (p['aspek'] as String)
+            : mapAspect(p['mentalComponentId']);
+
         newRules.add(RewardPunishmentItem(
           id: p['id'].toString(),
           type: 'REWARD',
-          aspect: mapAspect(p['mentalComponentId']),
-          description: p['description'] ?? '',
+          aspect: aspectName,
+          description: p['name'] ?? p['description'] ?? p['kegiatan'] ?? '',
           point: (p['points'] as num).toDouble(),
+          note: ket != null && ket != '-' ? ket : null,
         ));
       }
 
       for (var p in pelanggarans) {
+        String? ket = p['keterangan'] ?? p['note'] ?? p['specialRule'];
+        if (ket == null || ket == '-') {
+          final maxCount = p['maxCount'];
+          if (maxCount != null && maxCount is int && maxCount > 0) {
+            ket = 'Maksimal ${maxCount}x';
+          }
+        }
+        final aspectName = (p['aspek'] != null && (p['aspek'] as String).isNotEmpty)
+            ? (p['aspek'] as String)
+            : mapAspect(p['mentalComponentId']);
+
         newRules.add(RewardPunishmentItem(
           id: p['id'].toString(),
           type: 'PUNISHMENT',
-          aspect: mapAspect(p['mentalComponentId']),
-          description: p['description'] ?? '',
+          aspect: aspectName,
+          description: p['name'] ?? p['description'] ?? p['activity'] ?? '',
           point: (p['points'] as num).toDouble(),
+          note: ket != null && ket != '-' ? ket : null,
         ));
       }
 

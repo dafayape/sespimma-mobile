@@ -19,6 +19,7 @@ abstract final class AppIcons {
   static const IconData lockFill = Icons.lock;
   static const IconData caretRightBold = Icons.chevron_right;
   static const IconData shieldCheckFill = Icons.health_and_safety;
+  static const IconData shieldAlert = Icons.shield;
   static const IconData lockKeyFill = Icons.lock;
   static const IconData cloudCheckFill = Icons.cloud_done;
   static const IconData camera = Icons.camera_alt_outlined;

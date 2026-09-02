@@ -3,11 +3,13 @@ import 'dart:developer' as developer;
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/services/background_location_service.dart';
+import '../../../../core/services/session_heartbeat_service.dart';
 import '../../domain/entities/user_entity.dart';
 import '../../domain/usecases/login_usecase.dart';
 import '../../domain/repositories/auth_repository.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
+import '../../data/datasources/auth_remote_data_source.dart';
 import '../../data/datasources/serdik_real_data.dart';
 import '../../data/datasources/patun_real_data.dart';
 import '../../data/datasources/gadik_real_data.dart';
@@ -28,14 +30,27 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<VerifyNrpRequested>(_onVerifyNrpRequested);
     on<AutoLoginRequested>(_onAutoLoginRequested);
     on<ForceLogoutRequested>(_onForceLogoutRequested);
+    on<LogoutRequested>(_onLogoutRequested);
+    on<RefreshProfileRequested>(_onRefreshProfileRequested);
   }
 
-  void _onAutoLoginRequested(
+  Future<void> _onAutoLoginRequested(
     AutoLoginRequested event,
     Emitter<AuthState> emit,
-  ) {
+  ) async {
     emit(AuthSuccess(event.user));
     _startTrackingSession(event.user);
+    SessionHeartbeatService.start();
+
+    try {
+      final freshUser = await authRepository.fetchFreshProfile();
+      emit(AuthSuccess(freshUser));
+    } catch (e) {
+      developer.log(
+        'AutoLogin: fetchFreshProfile failed: $e',
+        name: 'AuthBloc',
+      );
+    }
   }
 
   Future<void> _onLoginSubmitted(
@@ -49,13 +64,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         nrp: event.nrp,
         password: event.password,
         fcmToken: event.fcmToken,
+        force: event.force,
       );
 
       emit(AuthSuccess(user));
       _startTrackingSession(user);
+      SessionHeartbeatService.start();
     } catch (e) {
       final errorMessage = e.toString().replaceAll('Exception: ', '');
-      emit(AuthFailure(errorMessage));
+      final isConflict = e is ActiveSessionException ||
+          errorMessage.toLowerCase().contains('sedang digunakan') ||
+          errorMessage.toLowerCase().contains('is_active_session');
+      emit(AuthFailure(errorMessage, isSessionConflict: isConflict));
     }
   }
 
@@ -91,6 +111,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     ForceLogoutRequested event,
     Emitter<AuthState> emit,
   ) async {
+    if (state is! AuthSuccess) return;
+
+    SessionHeartbeatService.stop();
     try {
       await authRepository.logout();
     } catch (e) {
@@ -100,6 +123,53 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       );
     }
     emit(AuthLoggedOut(event.reason));
+  }
+
+  Future<void> _onLogoutRequested(
+    LogoutRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    SessionHeartbeatService.stop();
+    try {
+      await authRepository.logout();
+    } catch (e) {
+      developer.log(
+        'LogoutRequested: logout() failed: $e',
+        name: 'AuthBloc',
+      );
+    }
+    emit(AuthInitial());
+  }
+
+  Future<void> _onRefreshProfileRequested(
+    RefreshProfileRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    if (state is AuthSuccess) {
+      final currentUser = (state as AuthSuccess).user;
+      try {
+        final freshUser = await authRepository.fetchFreshProfile();
+        if (freshUser != currentUser) {
+          developer.log('Profile updated from server', name: 'AuthBloc');
+          emit(AuthSuccess(freshUser));
+        }
+      } catch (e) {
+        final errStr = e.toString();
+        if (errStr.contains('401') || errStr.toLowerCase().contains('unauthorized')) {
+          developer.log(
+            'RefreshProfile: 401 detected, triggering force logout',
+            name: 'AuthBloc',
+          );
+          SessionHeartbeatService.stop();
+          add(const ForceLogoutRequested());
+        } else {
+          developer.log(
+            'RefreshProfile: fetchFreshProfile error: $e',
+            name: 'AuthBloc',
+          );
+        }
+      }
+    }
   }
 
   Future<void> _onUpdateProfilePhotoRequested(
@@ -115,6 +185,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       try {
         if (event.photoPath != null) {
           await authRepository.updateProfilePhoto(event.photoPath!);
+        } else {
+          await authRepository.deleteProfilePhoto();
         }
 
         final updatedUser = currentUser.copyWith(
@@ -122,7 +194,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           clearProfilePhoto: event.photoPath == null,
         );
 
-        emit(AuthSuccess(updatedUser));
+        try {
+          final freshUser = await authRepository.fetchFreshProfile();
+          emit(AuthSuccess(freshUser));
+        } catch (_) {
+          emit(AuthSuccess(updatedUser));
+        }
       } catch (e) {
         emit(AuthFailure(e.toString().replaceAll('Exception: ', '')));
         emit(currentState);
@@ -135,7 +212,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     if (state is AuthSuccess) {
-      final currentUser = (state as AuthSuccess).user;
       final currentState = state;
 
       emit(AuthLoading());
@@ -146,7 +222,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           event.newPassword,
           event.newPassword,
         );
-        emit(AuthSuccess(currentUser));
+        SessionHeartbeatService.stop();
+        try {
+          await authRepository.logout();
+        } catch (_) {}
+        emit(PasswordChangeSuccess());
+        emit(AuthInitial());
       } catch (e) {
         emit(AuthFailure(e.toString().replaceAll('Exception: ', '')));
         emit(currentState);

@@ -24,6 +24,8 @@ abstract class AuthLocalDataSource {
   Future<void> saveUserJson(String userJson);
 
   Future<String?> getUserJson();
+
+  Future<void> clearSavedPassword();
 }
 
 class AuthLocalDataSourceImpl implements AuthLocalDataSource {
@@ -90,5 +92,12 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
     } catch (_) {
       return null;
     }
+  }
+
+  @override
+  Future<void> clearSavedPassword() async {
+    try {
+      await secureStorage.delete(key: 'saved_password');
+    } catch (_) {}
   }
 }

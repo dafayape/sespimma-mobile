@@ -14,8 +14,13 @@ import 'package:sespimma/core/utils/avatar_helper.dart';
 import 'package:sespimma/features/assessment/data/models/korsis_inbox_mock_data.dart';
 import 'package:sespimma/features/assessment/data/datasources/assessment_remote_data_source.dart';
 import 'package:sespimma/features/assessment/data/datasources/inbox_remote_data_source.dart';
-import 'package:sespimma/injection_container.dart';
 import 'package:sespimma/core/constants/reward_punishment_data.dart';
+import 'package:sespimma/injection_container.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:sespimma/shared/widgets/user_avatar.dart';
+import 'package:sespimma/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:sespimma/features/auth/presentation/bloc/auth_state.dart';
+import 'package:sespimma/features/auth/domain/entities/user_entity.dart';
 
 class KorsisMentalMonitoringScreen extends StatefulWidget {
   const KorsisMentalMonitoringScreen({super.key});
@@ -26,7 +31,12 @@ class KorsisMentalMonitoringScreen extends StatefulWidget {
 }
 
 class _KorsisMentalMonitoringScreenState
-    extends State<KorsisMentalMonitoringScreen> {
+    extends State<KorsisMentalMonitoringScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
   static const Color _primaryNavy = AppColors.primaryNavy;
   static const Color _lightGrey = Color(0xFFF8F9FA);
 
@@ -96,7 +106,29 @@ class _KorsisMentalMonitoringScreenState
   @override
   void initState() {
     super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+    );
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0.0, 0.05), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Curves.easeOutQuart,
+          ),
+        );
+
+    _animationController.forward();
     _fetchData();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchData() async {
@@ -318,82 +350,162 @@ class _KorsisMentalMonitoringScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _lightGrey,
-      appBar: AppBar(
-        backgroundColor: _primaryNavy,
-        elevation: 0,
-        centerTitle: true,
-        automaticallyImplyLeading: false,
-        title: const Text(
-          'Monitoring Mental',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w700,
-            fontSize: AppDimensions.fontXxl,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.description_rounded, color: Colors.white),
-            tooltip: 'Generate Laporan',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      const KorsisGenerateMentalReportScreen(),
-                ),
-              );
-            },
-          ),
-          const SizedBox(width: AppDimensions.sm),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: null,
-        onPressed: () => _showInputBottomSheet(context),
-        backgroundColor: _primaryNavy,
-        elevation: 6,
-        icon: const Icon(Icons.add_rounded, color: Colors.white, size: 22),
-        label: const Text(
-          'Input Nilai',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w700,
-            fontSize: AppDimensions.fontMd,
-          ),
-        ),
-      ),
-      body: RefreshIndicator(
-        onRefresh: _fetchData,
-        color: _primaryNavy,
-        child: _isLoading
-            ? const Center(
-                child: CircularProgressIndicator(
-                  color: _primaryNavy,
-                ),
-              )
-            : SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppDimensions.xl,
-                    vertical: AppDimensions.lg,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildNilaiMentalSection(),
-                      const SizedBox(height: AppDimensions.xxl),
-                      _buildProgressSerdikSection(),
-                      const SizedBox(height: AppDimensions.xxl),
-                      _buildRankingSerdikSection(),
-                      const SizedBox(height: AppDimensions.xxl),
-                    ],
-                  ),
-                ),
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, authState) {
+        final user = authState is AuthSuccess ? authState.user : null;
+
+        return Scaffold(
+          backgroundColor: _lightGrey,
+          appBar: AppBar(
+            backgroundColor: _primaryNavy,
+            elevation: 0,
+            centerTitle: true,
+            automaticallyImplyLeading: false,
+            title: const Text(
+              'Monitoring Mental',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: AppDimensions.fontXxl,
               ),
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.description_rounded, color: Colors.white),
+                tooltip: 'Generate Laporan',
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          const KorsisGenerateMentalReportScreen(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: AppDimensions.sm),
+            ],
+          ),
+          floatingActionButton: FloatingActionButton.extended(
+            heroTag: null,
+            onPressed: () => _showInputBottomSheet(context),
+            backgroundColor: _primaryNavy,
+            elevation: 6,
+            icon: const Icon(Icons.add_rounded, color: Colors.white, size: 22),
+            label: const Text(
+              'Input Nilai',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: AppDimensions.fontMd,
+              ),
+            ),
+          ),
+          body: RefreshIndicator(
+            onRefresh: _fetchData,
+            color: _primaryNavy,
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      color: _primaryNavy,
+                    ),
+                  )
+                : SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: SlideTransition(
+                        position: _slideAnimation,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (user != null) _buildTopHeader(user),
+                            Transform.translate(
+                              offset: const Offset(0, -20),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppDimensions.xl,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    _buildNilaiMentalSection(),
+                                    const SizedBox(height: AppDimensions.xxl),
+                                    _buildProgressSerdikSection(),
+                                    const SizedBox(height: AppDimensions.xxl),
+                                    _buildRankingSerdikSection(),
+                                    const SizedBox(height: AppDimensions.xxl),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTopHeader(UserEntity user) {
+    final String roleLabel = user.roleId == 'korsis'
+        ? 'KORSIS'
+        : (user.roleId == 'pimpinan' ? 'KASESPIMMA' : user.roleId.toUpperCase());
+    final Color badgeColor = user.roleId == 'pimpinan'
+        ? const Color(0xFFFFAC1C)
+        : const Color(0xFF16A085);
+
+    return Container(
+      width: double.infinity,
+      color: _primaryNavy,
+      padding: const EdgeInsets.only(bottom: 36, top: 12),
+      child: Column(
+        children: [
+          UserAvatar(
+            name: user.name,
+            photoUrl: user.profilePhoto,
+            size: 64,
+            borderRadius: BorderRadius.circular(AppDimensions.radiusXl),
+          ),
+          const SizedBox(height: AppDimensions.sm),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppDimensions.xl),
+            child: Text(
+              user.name.toUpperCase(),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: AppDimensions.fontLg,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: badgeColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
+              border: Border.all(
+                color: badgeColor.withValues(alpha: 0.4),
+                width: 1,
+              ),
+            ),
+            child: Text(
+              roleLabel,
+              style: TextStyle(
+                color: badgeColor.withValues(alpha: 0.9),
+                fontSize: AppDimensions.fontXs + 1,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.8,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

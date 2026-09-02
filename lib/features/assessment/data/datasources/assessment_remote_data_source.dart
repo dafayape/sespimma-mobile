@@ -5,13 +5,16 @@ class AssessmentRemoteDataSource {
 
   AssessmentRemoteDataSource({required this.dio});
 
-  Future<List<Map<String, dynamic>>> getStudents({String? search, String? pokjar}) async {
+  Future<List<Map<String, dynamic>>> getStudents({String? search, String? pokjar, int? onlyActiveAngkatan}) async {
     try {
       final params = <String, dynamic>{
         'limit': 1000,
       };
       if (search != null && search.isNotEmpty) {
         params['search'] = search;
+      }
+      if (onlyActiveAngkatan != null) {
+        params['only_active_angkatan'] = onlyActiveAngkatan;
       }
       final response = await dio.get('/students', queryParameters: params);
       if (response.statusCode == 200) {
@@ -130,5 +133,115 @@ class AssessmentRemoteDataSource {
     } catch (e) {
       throw Exception(e.toString());
     }
+  }
+
+  Future<void> submitPrestasiInput({
+    required List<int> userIds,
+    required List<int> itemIds,
+    required String notes,
+    required dynamic file,
+  }) async {
+    try {
+      MultipartFile? multipartFile;
+      if (file is String) {
+        multipartFile = await MultipartFile.fromFile(
+          file,
+          filename: file.split('/').last,
+        );
+      } else if (file != null && file.path is String) {
+        multipartFile = await MultipartFile.fromFile(
+          file.path,
+          filename: (file.path as String).split('/').last,
+        );
+      }
+
+      final mapData = <String, dynamic>{
+        'targets': '[${userIds.join(",")}]',
+        'items': '[${itemIds.join(",")}]',
+        'notes': notes,
+      };
+      if (multipartFile != null) {
+        mapData['file'] = multipartFile;
+      }
+
+      final formData = FormData.fromMap(mapData);
+
+      final response = await dio.post('/mental/prestasi/input', data: formData);
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception(response.data?['message'] ?? 'Gagal menyimpan prestasi');
+      }
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
+  Future<void> submitPelanggaranInput({
+    required List<int> userIds,
+    required List<int> itemIds,
+    required String notes,
+    required dynamic file,
+  }) async {
+    try {
+      MultipartFile? multipartFile;
+      if (file is String) {
+        multipartFile = await MultipartFile.fromFile(
+          file,
+          filename: file.split('/').last,
+        );
+      } else if (file != null && file.path is String) {
+        multipartFile = await MultipartFile.fromFile(
+          file.path,
+          filename: (file.path as String).split('/').last,
+        );
+      }
+
+      final mapData = <String, dynamic>{
+        'targets': '[${userIds.join(",")}]',
+        'items': '[${itemIds.join(",")}]',
+        'notes': notes,
+      };
+      if (multipartFile != null) {
+        mapData['file'] = multipartFile;
+      }
+
+      final formData = FormData.fromMap(mapData);
+
+      final response = await dio.post('/mental/pelanggaran/input', data: formData);
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception(response.data?['message'] ?? 'Gagal menyimpan pelanggaran');
+      }
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
+  Future<Map<String, double>> getMentalRecapMap() async {
+    try {
+      final response = await dio.get(
+        '/mental/prestasi/recap',
+        queryParameters: {'limit': 1000, 'fast': 1},
+        options: Options(
+          receiveTimeout: const Duration(seconds: 3),
+          sendTimeout: const Duration(seconds: 3),
+        ),
+      );
+      if (response.statusCode == 200 && response.data is Map) {
+        final List<dynamic> list = response.data['data'] ?? [];
+        final map = <String, double>{};
+        for (var item in list) {
+          if (item is Map) {
+            final uid = (item['user_id'] ?? item['serdik_id'] ?? item['id'])?.toString();
+            final score = (item['nilai_mental'] ?? item['na'] ?? item['nilai_akhir'] ?? item['mental_score']) as num?;
+            if (uid != null && score != null) {
+              map[uid] = score.toDouble();
+            }
+          }
+        }
+        return map;
+      }
+    } catch (e) {
+      // Gracefully ignore timeout or error, background load won't block UI
+    }
+    return {};
   }
 }

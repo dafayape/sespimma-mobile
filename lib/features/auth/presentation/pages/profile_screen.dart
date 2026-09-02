@@ -1,17 +1,15 @@
 import 'package:sespimma/core/constants/app_dimensions.dart';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:sespimma/core/utils/icon_mapper.dart';
-import 'package:sespimma/injection_container.dart' as di;
-import 'package:sespimma/features/auth/domain/repositories/auth_repository.dart';
 
 import '../../domain/entities/user_entity.dart';
 import '../bloc/auth_bloc.dart';
+import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
 
-import 'package:sespimma/core/utils/avatar_helper.dart';
+import 'package:sespimma/shared/widgets/user_avatar.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -82,8 +80,14 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
               iconTheme: const IconThemeData(color: Colors.white),
             ),
-            body: SingleChildScrollView(
-              child: FadeTransition(
+            body: RefreshIndicator(
+              onRefresh: () async {
+                context.read<AuthBloc>().add(const RefreshProfileRequested());
+                await Future.delayed(const Duration(milliseconds: 600));
+              },
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: FadeTransition(
                 opacity: _fadeAnimation,
                 child: SlideTransition(
                   position: _slideAnimation,
@@ -99,10 +103,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                             children: [
                               if (user.roleId != 'operator')
                                 _buildStatCards(user),
-                              if (user.roleId != 'pimpinan' &&
-                                  user.roleId != 'patun' &&
-                                  user.roleId != 'korsis' &&
-                                  user.roleId != 'kabag_bindik' &&
+                              if (user.roleId != 'kabag_bindik' &&
                                   user.roleId != 'medis' &&
                                   user.roleId != 'operator') ...[
                                 const SizedBox(height: AppDimensions.lg),
@@ -127,7 +128,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                 ),
               ),
             ),
-          );
+          ),
+        );
         }
         return const Scaffold(
           backgroundColor: _lightGrey,
@@ -138,12 +140,14 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   String _getRoleLabel(UserEntity user) {
-    if ((user.roleId == 'pimpinan' ||
-            user.roleId == 'patun' ||
-            user.roleId == 'korsis') &&
-        user.jabatanSenat.isNotEmpty &&
-        user.jabatanSenat != '-') {
-      return user.jabatanSenat.toUpperCase();
+    if (user.roleId == 'patun') {
+      return 'PERWIRA PENUNTUN';
+    }
+    if (user.roleId == 'korsis') {
+      return 'KORSIS';
+    }
+    if (user.roleId == 'pimpinan') {
+      return 'KASESPIMMA';
     }
     if (user.roleId == 'pimpinan') {
       return 'PIMPINAN';
@@ -164,9 +168,9 @@ class _ProfileScreenState extends State<ProfileScreen>
       return 'OPERATOR';
     }
     if (user.roleId.startsWith('gadik')) {
-      return 'GADIK';
+      return 'TENAGA PENDIDIK';
     }
-    return 'SERDIK';
+    return 'PESERTA DIDIK';
   }
 
   Color _getRoleBadgeColor(String roleId) {
@@ -235,9 +239,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
           const SizedBox(height: AppDimensions.sm),
           Text(
-            user.roleId == 'siswa'
-                ? 'NOSIS: ${user.noSerdik}'
-                : '${user.nrp.length > 10 ? 'NIP' : 'NRP'}: ${user.nrp}',
+            user.roleId == 'siswa' ? user.noSerdik : user.nrp,
             style: TextStyle(
               color: Colors.blueGrey.shade200,
               fontSize: AppDimensions.fontDefault,
@@ -250,26 +252,18 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Widget _buildAvatar(UserEntity user) {
-    return Container(
-      height: 100,
-      width: 100,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusXxl),
-        image: DecorationImage(
-          image: (user.profilePhoto != null && user.profilePhoto!.isNotEmpty)
-              ? FileImage(File(user.profilePhoto!)) as ImageProvider
-              : AvatarHelper.getAvatar(null),
-          fit: BoxFit.cover,
+    return UserAvatar(
+      name: user.name,
+      photoUrl: user.profilePhoto,
+      size: 100,
+      borderRadius: BorderRadius.circular(AppDimensions.radiusXxl),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.15),
+          blurRadius: 12,
+          offset: const Offset(0, 6),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -287,7 +281,14 @@ class _ProfileScreenState extends State<ProfileScreen>
           if (isSiswa)
             Expanded(child: _buildStatCard('KELOMPOK', user.pokjar))
           else
-            Expanded(child: _buildStatCard('JABATAN', user.jabatan)),
+            Expanded(
+              child: _buildStatCard(
+                (user.roleId == 'gadik' || user.roleId == 'patun' || user.roleId == 'korsis' || user.roleId == 'pimpinan')
+                    ? 'JABATAN STRUKTURAL'
+                    : 'JABATAN',
+                user.jabatan,
+              ),
+            ),
         ],
       ),
     );
@@ -342,31 +343,49 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   Widget _buildFormalDataCard(UserEntity user) {
     final isSiswa = user.roleId == 'siswa';
-    final senatRole =
-        isSiswa && user.jabatanSenat.isNotEmpty && user.jabatanSenat != '-'
-        ? user.jabatanSenat
-        : null;
 
     List<Widget> rows;
 
     if (isSiswa) {
+      final senatRole = user.displayJabatanSenat;
       rows = [
-        if (senatRole != null)
+        if (senatRole != 'Tidak Ada' && senatRole.isNotEmpty)
           _buildDetailRow(AppIcons.starFill, 'JABATAN SENAT', senatRole),
         _buildDetailRow(AppIcons.medal, 'ANGKATAN', user.angkatan),
         _buildDetailRow(AppIcons.cake, 'UMUR', '${user.displayUmur} Tahun'),
         _buildDetailRow(
           AppIcons.identificationCard,
           'JENIS KELAMIN',
-          user.jenisKelamin,
+          user.displayJenisKelamin,
         ),
         _buildDetailRow(AppIcons.bookOpen, 'AGAMA', user.agama),
       ];
-    } else if (user.roleId == 'gadik') {
+    } else if (user.roleId == 'gadik' || user.roleId == 'tenaga_pendidik') {
       rows = [
         _buildDetailRow(AppIcons.bookOpen, 'AGAMA', user.agama),
         _buildDetailRow(AppIcons.chartBar, 'ESELON', user.eselon),
         _buildDetailRow(AppIcons.chartBar, 'GOLONGAN', user.displayGolongan),
+      ];
+    } else if (user.roleId == 'patun') {
+      rows = [
+        _buildDetailRow(
+          AppIcons.starFill,
+          'JABATAN KEPANITIAAN',
+          user.displayJabatanSenat,
+        ),
+        _buildDetailRow(
+          AppIcons.usersFill,
+          'POKJAR',
+          user.pokjar.isNotEmpty && user.pokjar != '-' ? user.pokjar : 'POKJAR I',
+        ),
+      ];
+    } else if (user.roleId == 'korsis' || user.roleId == 'pimpinan') {
+      rows = [
+        _buildDetailRow(
+          AppIcons.starFill,
+          'JABATAN KEPANITIAAN',
+          user.displayJabatanSenat,
+        ),
       ];
     } else if (user.roleId == 'medis') {
       rows = [
@@ -405,7 +424,6 @@ class _ProfileScreenState extends State<ProfileScreen>
           'NO SERDIK',
           user.noSerdik,
         ),
-        _buildDetailRow(AppIcons.identificationCard, 'NIK', user.nik),
         _buildDetailRow(AppIcons.user, 'NAMA LENGKAP', user.name),
         _buildDetailRow(AppIcons.mapPin, 'TEMPAT LAHIR', user.tempatLahir),
         _buildDetailRow(
@@ -422,8 +440,8 @@ class _ProfileScreenState extends State<ProfileScreen>
         _buildDetailRow(AppIcons.bookOpen, 'AGAMA', user.agama),
         _buildDetailRow(
           AppIcons.deviceMobileSpeakerFill,
-          'NO HANDPHONE',
-          user.noHandphone,
+          'NO TELEPON',
+          user.noTelepon,
         ),
         _buildDetailRow(
           AppIcons.bookOpen,
@@ -444,14 +462,14 @@ class _ProfileScreenState extends State<ProfileScreen>
           'TAHUN DIKTUK',
           user.tahunDiktuk,
         ),
-        _buildDetailRow(AppIcons.user, 'PERSONEL (YA/TIDAK)', user.personel),
+        _buildDetailRow(AppIcons.user, 'PERSONEL POLRI', user.displayPersonel),
         _buildDetailRow(AppIcons.identificationCard, 'NRP', user.nrp),
         _buildDetailRow(
           AppIcons.medal,
           'PANGKAT',
           _getFullPangkat(user.pangkat),
         ),
-        _buildDetailRow(AppIcons.starFill, 'JABATAN SENAT', user.jabatanSenat),
+        _buildDetailRow(AppIcons.starFill, 'JABATAN SENAT', user.displayJabatanSenat),
         _buildDetailRow(AppIcons.clipboardText, 'JABATAN', user.jabatan),
         _buildDetailRow(AppIcons.buildingsFill, 'SATKER', user.satker),
       ];
@@ -629,7 +647,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         ),
         icon: const Icon(AppIcons.signOut, size: AppDimensions.iconDefault + 2),
         label: const Text(
-          'Keluar Aplikasi',
+          'Keluar',
           style: TextStyle(
             fontWeight: FontWeight.w800,
             fontSize: AppDimensions.fontLg,
@@ -641,16 +659,22 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   void _showLogoutConfirmationSheet(BuildContext context) {
+    final authBloc = context.read<AuthBloc>();
+    final navigator = Navigator.of(context);
+
     showModalBottomSheet(
       context: context,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
-      builder: (BuildContext context) {
-        return Container(
-          padding: const EdgeInsets.all(AppDimensions.lg),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-          ),
+      builder: (BuildContext sheetContext) {
+        return SafeArea(
+          top: false,
+          child: Container(
+            padding: const EdgeInsets.all(AppDimensions.lg),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+            ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -703,7 +727,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                     child: OutlinedButton(
                       onPressed: () {
                         HapticFeedback.selectionClick();
-                        Navigator.pop(context);
+                        Navigator.pop(sheetContext);
                       },
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -727,12 +751,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                   const SizedBox(width: AppDimensions.md),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () async {
+                      onPressed: () {
                         HapticFeedback.heavyImpact();
-                        final navigator = Navigator.of(context);
-                        try {
-                          await di.sl<AuthRepository>().logout();
-                        } catch (_) {}
+                        authBloc.add(const LogoutRequested());
                         navigator.pushNamedAndRemoveUntil(
                           '/login',
                           (route) => false,
@@ -762,8 +783,9 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
             ],
           ),
-        );
-      },
-    );
+        ),
+      );
+    },
+  );
   }
 }

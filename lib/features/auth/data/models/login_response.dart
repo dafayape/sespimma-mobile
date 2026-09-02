@@ -91,6 +91,9 @@ class LoginResponse {
   @JsonKey(name: 'serdik_id')
   final String? serdikId;
 
+  @JsonKey(name: 'profile_photo', defaultValue: '')
+  final String profilePhoto;
+
   @JsonKey(name: 'access_token')
   final String accessToken;
 
@@ -131,6 +134,7 @@ class LoginResponse {
     required this.nilaiMental,
     required this.nilaiJasmani,
     this.serdikId,
+    this.profilePhoto = '',
     required this.accessToken,
     required this.refreshToken,
   });

@@ -11,6 +11,7 @@ import 'package:geolocator/geolocator.dart';
 
 import '../../features/auth/data/datasources/auth_local_data_source.dart' show kAuthAccessTokenStorageKey;
 import '../local_database_helper.dart';
+import 'local_notification_service.dart';
 
 /// Owns the ONE sender of realtime location pings to `POST /mobile/location`.
 ///
@@ -69,23 +70,10 @@ class BackgroundLocationService {
         autoStart: false,
         autoStartOnBoot: false,
         isForegroundMode: true,
-        initialNotificationTitle: 'SESPIMMA Aktif',
-        initialNotificationContent: 'Melacak lokasi untuk keperluan presensi...',
-        // Matches android/app/src/main/AndroidManifest.xml's
-        // foregroundServiceType="location" on the BackgroundService entry
-        // (required by Android 14/API 34+ to call startForeground() with a
-        // matching type flag).
+        notificationChannelId: 'sespimma_location_silent',
+        initialNotificationTitle: 'Layanan Lokasi',
+        initialNotificationContent: 'Penggunaan kebutuhan posisi untuk keperluan presensi',
         foregroundServiceTypes: [AndroidForegroundType.location],
-        // Deliberately NOT setting notificationChannelId: the app manifest
-        // declares no custom notification channel for this service (only
-        // the <service> element itself), so there is nothing to "match".
-        // The plugin auto-creates its own default channel
-        // ("FOREGROUND_DEFAULT" / "Background Service") only when
-        // notificationChannelId is left null; passing a custom id here
-        // without separately creating that channel (e.g. via
-        // flutter_local_notifications, which isn't a dependency of this
-        // app) risks the foreground notification silently failing to post
-        // on Android 8+.
       ),
       iosConfiguration: IosConfiguration(
         autoStart: false,
@@ -456,8 +444,50 @@ void _onStart(ServiceInstance service) async {
     }
   });
 
+  final Set<String> shownBgNotifIds = {};
+
+  Future<void> checkNotifications() async {
+    try {
+      final token = await secureStorage.read(key: kAuthAccessTokenStorageKey);
+      if (token == null || token.isEmpty) return;
+
+      final res = await dio.get(
+        '/notifications?limit=20',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      if (res.data != null && res.data['success'] == true && res.data['data'] != null) {
+        final List rawItems = res.data['data']['items'] ?? [];
+        for (var item in rawItems) {
+          final String notifId = item['id'].toString();
+          final bool isRead = item['is_read'] == true;
+          final String title = item['title'] ?? 'Pemberitahuan';
+          final String body = item['body'] ?? '-';
+          final DateTime dt = item['created_at'] != null
+              ? DateTime.parse(item['created_at'].toString())
+              : DateTime.now();
+
+          if (!isRead && !shownBgNotifIds.contains(notifId)) {
+            shownBgNotifIds.add(notifId);
+            final isRecent = DateTime.now().difference(dt.toLocal()).abs().inMinutes < 3;
+            if (isRecent) {
+              final int numericId = int.tryParse(notifId) ?? (DateTime.now().millisecondsSinceEpoch % 100000);
+              LocalNotificationService.showNotification(
+                id: numericId,
+                title: title,
+                body: body,
+              );
+            }
+          }
+        }
+      }
+    } catch (e) {
+      developer.log('BackgroundLocation: checkNotifications error: $e', name: 'BackgroundLocation');
+    }
+  }
+
   flushTimer = Timer.periodic(_flushMinInterval, (timer) {
     flushOutbox();
+    checkNotifications();
   });
 
   service.on('stopService').listen((event) async {

@@ -26,7 +26,7 @@ class ScoreCategoryRow extends StatelessWidget {
           child: ScoreSummaryCard(
             label: 'Akademik',
             score: nilaiAkademik,
-            weight: '70%',
+            weight: '40%',
             isSelected: selectedCategory == 'Akademik',
             onTap: () => onCategoryChanged('Akademik'),
           ),
@@ -36,7 +36,7 @@ class ScoreCategoryRow extends StatelessWidget {
           child: ScoreSummaryCard(
             label: 'Mental Kepribadian',
             score: nilaiMental,
-            weight: '20%',
+            weight: '40%',
             isSelected: selectedCategory == 'Mental Kepribadian',
             onTap: () => onCategoryChanged('Mental Kepribadian'),
           ),
@@ -46,7 +46,7 @@ class ScoreCategoryRow extends StatelessWidget {
           child: ScoreSummaryCard(
             label: 'Jasmani',
             score: nilaiJasmani,
-            weight: '10%',
+            weight: '20%',
             isSelected: selectedCategory == 'Jasmani',
             onTap: () => onCategoryChanged('Jasmani'),
           ),

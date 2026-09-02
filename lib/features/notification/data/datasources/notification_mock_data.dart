@@ -1,4 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
+import 'package:get_it/get_it.dart';
+import '../../../../core/services/local_notification_service.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../assessment/data/models/korsis_inbox_mock_data.dart';
 import '../../../attendance/domain/models/map_tile_mode.dart';
@@ -7,12 +11,29 @@ import '../../../auth/data/datasources/korsis_real_data.dart';
 import '../../../auth/data/datasources/patun_real_data.dart';
 import '../../../auth/data/datasources/operator_real_data.dart';
 import '../../../leadership_report/domain/services/score_calculator_service.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_state.dart';
 
 class NotificationMockData {
   NotificationMockData._();
 
   static final ValueNotifier<int> unreadCountNotifier = ValueNotifier<int>(0);
   static final List<Map<String, dynamic>> items = [];
+  static final Set<String> _shownNotificationIds = {};
+  static bool _isFirstFetch = true;
+  static Timer? _syncTimer;
+
+  static void startPeriodicSync() {
+    _syncTimer?.cancel();
+    _syncTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      fetchApiNotifications();
+    });
+  }
+
+  static void stopPeriodicSync() {
+    _syncTimer?.cancel();
+    _syncTimer = null;
+  }
 
   static String _getFullName(String name) {
     String lower = name.toLowerCase();
@@ -131,6 +152,80 @@ class NotificationMockData {
           (b['dateTime'] as DateTime).compareTo(a['dateTime'] as DateTime),
     );
     unreadCountNotifier.value = unread;
+    fetchApiNotifications();
+  }
+
+  static Future<void> fetchApiNotifications({bool triggerBanner = false}) async {
+    try {
+      if (GetIt.instance.isRegistered<AuthBloc>()) {
+        final authBloc = GetIt.instance<AuthBloc>();
+        if (authBloc.state is! AuthSuccess) return;
+      }
+      final dio = GetIt.instance<Dio>();
+      final response = await dio.get('/notifications?limit=50');
+      final data = response.data;
+      if (data != null && data['success'] == true && data['data'] != null) {
+        final List rawItems = data['data']['items'] ?? [];
+
+        final apiItems = <Map<String, dynamic>>[];
+        for (var item in rawItems) {
+          final DateTime dt = item['created_at'] != null
+              ? DateTime.parse(item['created_at'].toString())
+              : DateTime.now();
+          final String notifId = item['id'].toString();
+          final bool isRead = item['is_read'] == true;
+          final String title = item['title'] ?? 'Pemberitahuan';
+          final String message = item['body'] ?? '-';
+
+          apiItems.add({
+            'id': notifId,
+            'title': title,
+            'message': message,
+            'dateTime': dt,
+            'isRead': isRead,
+            'type': (item['modul'] ?? 'info').toString().toLowerCase(),
+            'person': item['action_label'] ?? 'Operator',
+          });
+
+          if (triggerBanner) {
+            if (_isFirstFetch) {
+              _shownNotificationIds.add(notifId);
+            } else {
+              if (!isRead && !_shownNotificationIds.contains(notifId)) {
+                _shownNotificationIds.add(notifId);
+                final isRecent = DateTime.now().difference(dt).inMinutes < 5;
+                if (isRecent) {
+                  final int numericId = int.tryParse(notifId) ?? DateTime.now().millisecondsSinceEpoch % 100000;
+                  LocalNotificationService.showNotification(
+                    id: numericId,
+                    title: title,
+                    body: message,
+                  );
+                }
+              }
+            }
+          } else {
+            _shownNotificationIds.add(notifId);
+          }
+        }
+
+        _isFirstFetch = false;
+
+        if (apiItems.isNotEmpty) {
+          final existingIds = apiItems.map((i) => i['id']).toSet();
+          items.removeWhere((i) => existingIds.contains(i['id']));
+          items.insertAll(0, apiItems);
+
+          items.sort(
+            (a, b) =>
+                (b['dateTime'] as DateTime).compareTo(a['dateTime'] as DateTime),
+          );
+          unreadCountNotifier.value = items.where((i) => !i['isRead']).length;
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching notifications API: $e');
+    }
   }
 
   static void markAsRead(String id) {
@@ -138,6 +233,13 @@ class NotificationMockData {
     if (index != -1 && items[index]['isRead'] == false) {
       items[index]['isRead'] = true;
       unreadCountNotifier.value = (unreadCountNotifier.value - 1).clamp(0, 999);
+
+      if (int.tryParse(id) != null) {
+        try {
+          final dio = GetIt.instance<Dio>();
+          dio.put('/notifications/$id/read');
+        } catch (_) {}
+      }
     }
   }
 
@@ -146,5 +248,9 @@ class NotificationMockData {
       item['isRead'] = true;
     }
     unreadCountNotifier.value = 0;
+    try {
+      final dio = GetIt.instance<Dio>();
+      dio.put('/notifications/read-all');
+    } catch (_) {}
   }
 }

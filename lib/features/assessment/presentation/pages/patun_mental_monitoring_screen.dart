@@ -15,6 +15,8 @@ import 'package:sespimma/features/assessment/presentation/widgets/assessment_act
 import 'package:sespimma/features/assessment/presentation/widgets/numeric_input_dialog_sheet.dart';
 import 'package:sespimma/injection_container.dart';
 import 'package:sespimma/core/utils/app_notifier.dart';
+import 'package:sespimma/shared/widgets/user_avatar.dart';
+import 'package:sespimma/features/auth/domain/entities/user_entity.dart';
 
 class PatunMentalMonitoringScreen extends StatefulWidget {
   const PatunMentalMonitoringScreen({super.key});
@@ -25,7 +27,12 @@ class PatunMentalMonitoringScreen extends StatefulWidget {
 }
 
 class _PatunMentalMonitoringScreenState
-    extends State<PatunMentalMonitoringScreen> {
+    extends State<PatunMentalMonitoringScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
   static const Color _primaryNavy = Color(0xFF000B1D);
   static const Color _lightGrey = Color(0xFFF8F9FA);
 
@@ -41,11 +48,28 @@ class _PatunMentalMonitoringScreenState
   @override
   void initState() {
     super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+    );
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0.0, 0.05), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Curves.easeOutQuart,
+          ),
+        );
+
+    _animationController.forward();
     _fetchData();
   }
 
   @override
   void dispose() {
+    _animationController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -540,30 +564,41 @@ class _PatunMentalMonitoringScreenState
                 ),
               ),
             ),
-            body: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildHeaderBlock(userPokjar, baseList.length),
-                Divider(
-                  height: AppDimensions.dividerHeight,
-                  color: Colors.grey.shade200,
-                  thickness: AppDimensions.dividerHeight,
-                ),
-                Expanded(
-                  child: RefreshIndicator(
-                    onRefresh: _fetchData,
-                    color: _primaryNavy,
-                    child: filteredList.isEmpty
-                        ? CustomScrollView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            slivers: [
-                              SliverFillRemaining(child: _buildEmptyState()),
-                            ],
-                          )
-                        : _buildSerdikList(filteredList),
+            body: RefreshIndicator(
+              onRefresh: _fetchData,
+              color: _primaryNavy,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: SlideTransition(
+                    position: _slideAnimation,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildTopHeader(user),
+                        Transform.translate(
+                          offset: const Offset(0, -20),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _buildHeaderBlock(userPokjar, baseList.length),
+                                const SizedBox(height: AppDimensions.md),
+                                if (filteredList.isEmpty)
+                                  _buildEmptyState()
+                                else
+                                  _buildSerdikList(filteredList),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ],
+              ),
             ),
           );
         }
@@ -573,6 +608,66 @@ class _PatunMentalMonitoringScreenState
           ),
         );
       },
+    );
+  }
+
+  Widget _buildTopHeader(UserEntity user) {
+    final String roleLabel = user.roleId == 'patun'
+        ? 'PERWIRA PENUNTUN'
+        : (user.roleId.startsWith('gadik') ? 'TENAGA PENDIDIK' : user.roleId.toUpperCase());
+    final Color badgeColor = user.roleId == 'patun'
+        ? const Color(0xFF8E44AD)
+        : const Color(0xFF2980B9);
+
+    return Container(
+      width: double.infinity,
+      color: _primaryNavy,
+      padding: const EdgeInsets.only(bottom: 36, top: 12),
+      child: Column(
+        children: [
+          UserAvatar(
+            name: user.name,
+            photoUrl: user.profilePhoto,
+            size: 64,
+            borderRadius: BorderRadius.circular(AppDimensions.radiusXxl),
+          ),
+          const SizedBox(height: AppDimensions.sm),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppDimensions.xl),
+            child: Text(
+              user.name.toUpperCase(),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: AppDimensions.fontLg,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: badgeColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
+              border: Border.all(
+                color: badgeColor.withValues(alpha: 0.4),
+                width: 1,
+              ),
+            ),
+            child: Text(
+              roleLabel,
+              style: TextStyle(
+                color: badgeColor.withValues(alpha: 0.9),
+                fontSize: AppDimensions.fontXs + 1,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.8,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

@@ -21,10 +21,25 @@ class AuthRepositoryImpl implements AuthRepository {
     required String nrp,
     required String password,
     required String fcmToken,
+    bool force = false,
   }) async {
     final loginResponse = await remoteDataSource.login(
-      LoginRequest(nrp: nrp, password: password, fcmToken: fcmToken),
+      LoginRequest(
+        nrp: nrp,
+        password: password,
+        fcmToken: fcmToken,
+        force: force,
+      ),
     );
+
+    const allowedMobileRoles = {'siswa', 'serdik', 'gadik', 'patun', 'korsis', 'pimpinan'};
+    final role = loginResponse.roleId.toLowerCase();
+
+    if (!allowedMobileRoles.contains(role)) {
+      throw Exception(
+        'Akun ini hanya dapat diakses melalui web.',
+      );
+    }
 
     await localDataSource.saveTokens(
       accessToken: loginResponse.accessToken,
@@ -65,6 +80,7 @@ class AuthRepositoryImpl implements AuthRepository {
       nilaiMental: loginResponse.nilaiMental,
       nilaiJasmani: loginResponse.nilaiJasmani,
       serdikId: loginResponse.serdikId,
+      profilePhoto: loginResponse.profilePhoto,
     );
 
     try {
@@ -103,8 +119,14 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<void> deleteProfilePhoto() async {
+    await remoteDataSource.deleteProfilePhoto();
+  }
+
+  @override
   Future<void> changePassword(String currentPassword, String newPassword, String confirmPassword) async {
     await remoteDataSource.changePassword(currentPassword, newPassword, confirmPassword);
+    await localDataSource.clearSavedPassword();
   }
 
   @override
@@ -113,10 +135,64 @@ class AuthRepositoryImpl implements AuthRepository {
       final userJson = await localDataSource.getUserJson();
       if (userJson != null) {
         final map = json.decode(userJson) as Map<String, dynamic>;
-        return _userFromMap(map);
+        final user = _userFromMap(map);
+        const allowedMobileRoles = {'siswa', 'serdik', 'gadik', 'patun', 'korsis', 'pimpinan'};
+        if (allowedMobileRoles.contains(user.roleId.toLowerCase())) {
+          return user;
+        } else {
+          await localDataSource.clearTokens();
+        }
       }
     } catch (_) {}
     return null;
+  }
+
+  @override
+  Future<UserEntity> fetchFreshProfile() async {
+    final loginResponse = await remoteDataSource.getProfile();
+
+    final user = UserEntity(
+      userId: loginResponse.userId,
+      name: loginResponse.name,
+      roleId: loginResponse.roleId,
+      pokjar: loginResponse.pokjar,
+      nrp: loginResponse.nrp,
+      nosis: loginResponse.nosis,
+      pangkat: loginResponse.pangkat,
+      angkatan: loginResponse.angkatan,
+      agama: loginResponse.agama,
+      jenisKelamin: loginResponse.jenisKelamin,
+      jabatan: loginResponse.jabatan,
+      tanggalLahir: loginResponse.tanggalLahir,
+      noSerdik: loginResponse.noSerdik,
+      nik: loginResponse.nik,
+      jabatanSenat: loginResponse.jabatanSenat,
+      tempatLahir: loginResponse.tempatLahir,
+      noHandphone: loginResponse.noHandphone,
+      pendidikanTerakhir: loginResponse.pendidikanTerakhir,
+      alamatLengkap: loginResponse.alamatLengkap,
+      email: loginResponse.email,
+      noTelepon: loginResponse.noTelepon,
+      kelompok: loginResponse.kelompok,
+      diktukAwal: loginResponse.diktukAwal,
+      tahunDiktuk: loginResponse.tahunDiktuk,
+      personel: loginResponse.personel,
+      satker: loginResponse.satker,
+      eselon: loginResponse.eselon,
+      golongan: loginResponse.golongan,
+      isNakApproved: loginResponse.isNakApproved,
+      nilaiAkademik: loginResponse.nilaiAkademik,
+      nilaiMental: loginResponse.nilaiMental,
+      nilaiJasmani: loginResponse.nilaiJasmani,
+      serdikId: loginResponse.serdikId,
+      profilePhoto: loginResponse.profilePhoto,
+    );
+
+    try {
+      await localDataSource.saveUserJson(json.encode(_userToMap(user)));
+    } catch (_) {}
+
+    return user;
   }
 
   Map<String, dynamic> _userToMap(UserEntity user) {

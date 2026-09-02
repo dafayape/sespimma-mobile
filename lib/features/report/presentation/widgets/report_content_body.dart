@@ -5,6 +5,8 @@ import 'package:sespimma/core/theme/app_colors.dart';
 import 'package:sespimma/features/auth/domain/entities/user_entity.dart';
 import 'package:sespimma/features/report/presentation/widgets/ai_insight_card.dart';
 import 'package:sespimma/features/report/presentation/widgets/detailed_competencies.dart';
+import 'package:sespimma/features/report/presentation/widgets/ews_warning_banner.dart';
+import 'package:sespimma/features/report/presentation/widgets/nak_hero_card.dart';
 import 'package:sespimma/features/report/presentation/widgets/score_category_row.dart';
 import 'package:sespimma/features/report/presentation/widgets/score_line_chart.dart';
 import 'package:sespimma/features/report/presentation/widgets/report_section_header.dart';
@@ -32,11 +34,14 @@ class ReportContentBody extends StatelessWidget {
     double dynamicMentalScore;
     double dynamicJasmaniScore;
     double dynamicAcademicScore;
+    double nakScore;
 
     if (summary != null && summary is Map) {
       dynamicMentalScore = (summary['mental_score'] as num?)?.toDouble() ?? 0.0;
       dynamicJasmaniScore = (summary['physical_score'] as num?)?.toDouble() ?? 0.0;
       dynamicAcademicScore = (summary['academic_score'] as num?)?.toDouble() ?? 0.0;
+      nakScore = (summary['nak'] as num?)?.toDouble() ??
+          (dynamicAcademicScore * 0.4 + dynamicMentalScore * 0.4 + dynamicJasmaniScore * 0.2);
     } else {
       final allRecaps = ScoreCalculatorService.generateRealReports();
       final finalRecap = allRecaps.firstWhere(
@@ -46,6 +51,7 @@ class ReportContentBody extends StatelessWidget {
       dynamicMentalScore = finalRecap.mentalScore;
       dynamicJasmaniScore = finalRecap.physicalScore;
       dynamicAcademicScore = user.nilaiAkademik;
+      nakScore = dynamicAcademicScore * 0.4 + dynamicMentalScore * 0.4 + dynamicJasmaniScore * 0.2;
     }
 
     double currentScore = 0.0;
@@ -73,6 +79,18 @@ class ReportContentBody extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            NakHeroCard(
+              nakScore: nakScore,
+              academicScore: dynamicAcademicScore,
+              mentalScore: dynamicMentalScore,
+              physicalScore: dynamicJasmaniScore,
+            ),
+            const SizedBox(height: AppDimensions.lg),
+            EwsWarningBanner(
+              academicScore: dynamicAcademicScore,
+              mentalScore: dynamicMentalScore,
+              physicalScore: dynamicJasmaniScore,
+            ),
             ScoreCategoryRow(
               nilaiAkademik: dynamicAcademicScore,
               nilaiMental: dynamicMentalScore,

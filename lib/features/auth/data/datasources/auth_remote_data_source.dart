@@ -3,10 +3,20 @@ import 'package:dio/dio.dart';
 import '../models/login_request.dart';
 import '../models/login_response.dart';
 
+class ActiveSessionException implements Exception {
+  final String message;
+  ActiveSessionException(this.message);
+
+  @override
+  String toString() => message;
+}
+
 abstract class AuthRemoteDataSource {
   Future<LoginResponse> login(LoginRequest request);
+  Future<LoginResponse> getProfile();
   Future<void> logout();
   Future<void> updateProfilePhoto(String photoPath);
+  Future<void> deleteProfilePhoto();
   Future<void> changePassword(
     String currentPassword,
     String newPassword,
@@ -24,7 +34,13 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     try {
       final response = await dio.post(
         '/auth/login',
-        data: {'nrp_nip': request.nrp, 'password': request.password},
+        data: {
+          'nrp_nip': request.nrp,
+          'password': request.password,
+          if (request.fcmToken.isNotEmpty) 'fcm_token': request.fcmToken,
+          'device': 'MOBILE',
+          'force': request.force,
+        },
       );
 
       final data = response.data;
@@ -41,7 +57,14 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     } on DioException catch (e) {
       if (e.response != null && e.response?.data is Map) {
         final data = e.response!.data as Map;
-        throw Exception(data['error'] ?? data['message'] ?? 'Server error');
+        final errorMsg = (data['error'] ?? data['message'] ?? 'Server error').toString();
+        final isConflict = e.response?.statusCode == 409 ||
+            data['is_active_session'] == true ||
+            errorMsg.contains('sedang digunakan');
+        if (isConflict) {
+          throw ActiveSessionException(errorMsg);
+        }
+        throw Exception(errorMsg);
       }
 
       if (e.type == DioExceptionType.connectionTimeout ||
@@ -49,6 +72,41 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         throw Exception('Connection timeout');
       }
 
+      throw Exception(e.message ?? 'Network error');
+    } catch (e) {
+      if (e is ActiveSessionException) rethrow;
+      throw Exception(e.toString());
+    }
+  }
+
+  @override
+  Future<LoginResponse> getProfile() async {
+    try {
+      final response = await dio.get('/profile');
+      final data = response.data;
+      if (response.statusCode == 200 && data is Map) {
+        final userMap = (data['user'] as Map?) ?? const {};
+        final dataMap = (data['data'] as Map?) ?? const {};
+
+        final photo = userMap['foto_profil'] ?? dataMap['foto_profil'] ?? dataMap['profile_photo'] ?? '';
+
+        final merged = <String, dynamic>{
+          'user': {
+            ...dataMap,
+            ...userMap,
+            'foto_profil': photo,
+            'profile_photo': photo,
+          }
+        };
+
+        return LoginResponse.fromJson(_normalize(merged));
+      }
+      throw Exception('Gagal memuat profil terbaru');
+    } on DioException catch (e) {
+      if (e.response != null && e.response?.data is Map) {
+        final data = e.response!.data as Map;
+        throw Exception(data['error'] ?? data['message'] ?? 'Server error');
+      }
       throw Exception(e.message ?? 'Network error');
     } catch (e) {
       throw Exception(e.toString());
@@ -92,6 +150,23 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
+  Future<void> deleteProfilePhoto() async {
+    try {
+      await dio.delete('/profile/foto');
+    } on DioException catch (e) {
+      if (e.response != null && e.response?.data is Map) {
+        final data = e.response!.data as Map;
+        throw Exception(
+          data['error'] ?? data['message'] ?? 'Gagal menghapus foto profil',
+        );
+      }
+      throw Exception(e.message ?? 'Network error');
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
+  @override
   Future<void> changePassword(
     String currentPassword,
     String newPassword,
@@ -120,37 +195,51 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   Map<String, dynamic> _normalize(Map data) {
-    final user = (data['user'] as Map?) ?? const {};
+    final userMap = (data['user'] as Map?) ?? const {};
+    final dataMap = (data['data'] as Map?) ?? const {};
+    final roleDataMap = (data['role_data'] as Map?) ?? const {};
     final token = data['access_token'] ?? data['token'];
+
+    final user = <String, dynamic>{
+      ...roleDataMap,
+      ...dataMap,
+      ...userMap,
+    };
 
     final roleRaw = (user['role'] ?? user['role_id'])?.toString();
     final roleMapped = _mapRole(roleRaw);
 
+    final String jabatanVal = (user['jabatan'] ??
+            user['jabatan_struktural'] ??
+            user['jabatan_kepanitiaan'])
+        ?.toString() ??
+        '-';
+
     return {
       'user_id': (user['user_id'] ?? user['id'])?.toString() ?? '-',
-      'name': user['name'] ?? user['email'] ?? '-',
+      'name': user['nama_lengkap'] ?? user['nama'] ?? user['name'] ?? user['email'] ?? '-',
       'role_id': roleMapped,
-      'pokjar': user['pokjar'] ?? '-',
+      'pokjar': user['pokjar'] ?? user['kelompok_kelas'] ?? '-',
       'nrp': user['nrp'] ?? user['nrp_nip'] ?? '-',
       'nosis': user['nosis'] ?? '-',
       'pangkat': user['pangkat'] ?? '-',
       'angkatan': user['angkatan'] ?? '-',
       'agama': user['agama'] ?? '-',
       'jenis_kelamin': user['jenis_kelamin'] ?? '-',
-      'jabatan': user['jabatan'] ?? '-',
+      'jabatan': jabatanVal,
       'no_serdik': user['no_serdik'] ?? user['nosis'] ?? '-',
       'nik': user['nik'] ?? '-',
-      'jabatan_senat': user['jabatan_senat'] ?? '-',
+      'jabatan_senat': user['jabatan_senat'] ?? user['peran_pengasuhan'] ?? user['jabatan_kepanitiaan'] ?? '-',
       'tempat_lahir': user['tempat_lahir'] ?? '-',
       'no_handphone': user['no_handphone'] ?? '-',
       'pendidikan_terakhir': user['pendidikan_terakhir'] ?? '-',
       'alamat_lengkap': user['alamat_lengkap'] ?? user['alamat'] ?? '-',
       'email': user['email'] ?? '-',
       'no_telepon': user['no_telepon'] ?? '-',
-      'kelompok': user['kelompok'] ?? user['pokjar'] ?? '-',
+      'kelompok': user['kelompok'] ?? user['pokjar'] ?? user['kelompok_kelas'] ?? '-',
       'diktuk_awal': user['diktuk_awal'] ?? '-',
       'tahun_diktuk': user['tahun_diktuk']?.toString() ?? '-',
-      'personel': user['personel']?.toString() ?? '-',
+      'personel': (user['personel'] ?? user['is_personel'])?.toString() ?? '-',
       'satker': user['satker'] ?? '-',
       'tanggal_lahir': user['tanggal_lahir'] ?? '1990-01-01',
       'eselon': user['eselon'] ?? '-',
@@ -160,6 +249,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       'nilai_mental': (user['nilai_mental'] as num?)?.toDouble() ?? 0.0,
       'nilai_jasmani': (user['nilai_jasmani'] as num?)?.toDouble() ?? 0.0,
       'serdik_id': user['serdik_id']?.toString(),
+      'profile_photo': user['profile_photo'] ?? user['foto_profil'] ?? user['profilePhoto'] ?? '',
       'access_token': token,
       'refresh_token': data['refresh_token'] ?? token,
     };

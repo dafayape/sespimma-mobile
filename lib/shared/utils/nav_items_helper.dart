@@ -7,17 +7,9 @@ import '../../features/attendance/presentation/pages/attendance_screen.dart';
 import '../../features/dashboard/presentation/pages/home_screen.dart';
 import 'package:sespimma/features/assessment/presentation/pages/medis_health_monitoring_screen.dart';
 import 'package:sespimma/features/assessment/presentation/pages/operator_jasmani_screen.dart';
-import '../../features/assessment/presentation/pages/patun_physical_monitoring_screen.dart';
 import 'package:sespimma/features/assessment/presentation/pages/operator_sociometry_screen.dart';
-import '../../features/assessment/presentation/pages/korsis_inbox_screen.dart';
-import '../../features/assessment/presentation/pages/korsis_mental_monitoring_screen.dart';
-import '../../features/assessment/presentation/pages/patun_mental_monitoring_screen.dart';
-import '../../features/assessment/presentation/pages/gadik_assessment_screen.dart';
-
-import '../../features/leadership_dashboard/presentation/pages/pimpinan_home_screen.dart';
-import '../../features/attendance/presentation/pages/pimpinan_attendance_monitoring_screen.dart';
-import '../../features/attendance/presentation/pages/patun_attendance_monitoring_screen.dart';
 import '../../features/attendance/presentation/pages/korsis_zone_screen.dart';
+import 'package:sespimma/features/assessment/presentation/pages/monitoring_mental_screen.dart';
 
 class NavItem {
   final String label;
@@ -38,16 +30,10 @@ List<NavItem> getNavItemsByRole(String roleId) {
     case 'pimpinan':
       return const [
         NavItem(
-          label: 'Beranda',
-          icon: AppIcons.house,
-          activeIcon: AppIcons.houseFill,
-          screen: PimpinanHomeScreen(),
-        ),
-        NavItem(
-          label: 'Absen',
-          icon: AppIcons.mapPin,
-          activeIcon: AppIcons.mapPinFill,
-          screen: PimpinanAttendanceMonitoringScreen(),
+          label: 'Mental',
+          icon: AppIcons.shieldCheck,
+          activeIcon: AppIcons.shieldCheckFill,
+          screen: MonitoringMentalScreen(),
         ),
         NavItem(
           label: 'Profil',
@@ -59,10 +45,10 @@ List<NavItem> getNavItemsByRole(String roleId) {
     case 'gadik':
       return const [
         NavItem(
-          label: 'Penilaian',
+          label: 'Mental',
           icon: AppIcons.shieldCheck,
           activeIcon: AppIcons.shieldCheckFill,
-          screen: GadikAssessmentScreen(),
+          screen: MonitoringMentalScreen(),
         ),
         NavItem(
           label: 'Profil',
@@ -77,19 +63,7 @@ List<NavItem> getNavItemsByRole(String roleId) {
           label: 'Mental',
           icon: AppIcons.shieldCheck,
           activeIcon: AppIcons.shieldCheckFill,
-          screen: PatunMentalMonitoringScreen(),
-        ),
-        NavItem(
-          label: 'Jasmani',
-          icon: AppIcons.barbellFill,
-          activeIcon: AppIcons.barbellFill,
-          screen: PatunPhysicalMonitoringScreen(),
-        ),
-        NavItem(
-          label: 'Absen',
-          icon: AppIcons.mapPin,
-          activeIcon: AppIcons.mapPinFill,
-          screen: PatunAttendanceMonitoringScreen(),
+          screen: MonitoringMentalScreen(),
         ),
         NavItem(
           label: 'Profil',
@@ -116,28 +90,10 @@ List<NavItem> getNavItemsByRole(String roleId) {
     case 'korsis':
       return const [
         NavItem(
-          label: 'Inbox',
-          icon: AppIcons.archive,
-          activeIcon: AppIcons.archive,
-          screen: KorsisInboxScreen(),
-        ),
-        NavItem(
           label: 'Mental',
           icon: AppIcons.shieldCheck,
           activeIcon: AppIcons.shieldCheckFill,
-          screen: KorsisMentalMonitoringScreen(),
-        ),
-        NavItem(
-          label: 'Jasmani',
-          icon: AppIcons.barbellFill,
-          activeIcon: AppIcons.barbellFill,
-          screen: PatunPhysicalMonitoringScreen(),
-        ),
-        NavItem(
-          label: 'Zona',
-          icon: AppIcons.mapPin,
-          activeIcon: AppIcons.mapPinFill,
-          screen: KorsisZoneScreen(),
+          screen: MonitoringMentalScreen(),
         ),
         NavItem(
           label: 'Profil',

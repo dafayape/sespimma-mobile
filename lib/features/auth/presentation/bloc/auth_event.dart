@@ -12,15 +12,17 @@ class LoginSubmitted extends AuthEvent {
   final String nrp;
   final String password;
   final String fcmToken;
+  final bool force;
 
   const LoginSubmitted({
     required this.nrp,
     required this.password,
     required this.fcmToken,
+    this.force = false,
   });
 
   @override
-  List<Object> get props => [nrp, password, fcmToken];
+  List<Object> get props => [nrp, password, fcmToken, force];
 }
 
 class UpdateProfilePhotoRequested extends AuthEvent {
@@ -94,4 +96,12 @@ class ForceLogoutRequested extends AuthEvent {
 
   @override
   List<Object> get props => [reason];
+}
+
+class LogoutRequested extends AuthEvent {
+  const LogoutRequested();
+}
+
+class RefreshProfileRequested extends AuthEvent {
+  const RefreshProfileRequested();
 }

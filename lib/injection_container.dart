@@ -24,6 +24,7 @@ import 'features/auth/domain/repositories/auth_repository.dart';
 import 'features/auth/domain/usecases/login_usecase.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/auth/presentation/bloc/auth_event.dart';
+import 'features/auth/presentation/bloc/auth_state.dart';
 
 final sl = GetIt.instance;
 
@@ -37,7 +38,10 @@ final sl = GetIt.instance;
 /// and has no BuildContext, so GetIt is the only way to reach it.
 void _forceLogout() {
   try {
-    sl<AuthBloc>().add(const ForceLogoutRequested());
+    final authBloc = sl<AuthBloc>();
+    if (authBloc.state is AuthSuccess) {
+      authBloc.add(const ForceLogoutRequested());
+    }
   } catch (e) {
     developer.log(
       '_forceLogout: failed to dispatch ForceLogoutRequested: $e',

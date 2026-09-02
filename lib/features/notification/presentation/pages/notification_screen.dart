@@ -39,6 +39,9 @@ class _NotificationScreenState extends State<NotificationScreen>
         NotificationMockData.initialize(user);
       });
       _isDataPopulated = true;
+      NotificationMockData.fetchApiNotifications().then((_) {
+        if (mounted) setState(() {});
+      });
     }
   }
 
@@ -203,9 +206,13 @@ class _NotificationScreenState extends State<NotificationScreen>
                 ),
                 onSelected: (value) {
                   if (value == 'refresh') {
-                    setState(() {
-                      _animController.reset();
-                      _animController.forward();
+                    NotificationMockData.fetchApiNotifications().then((_) {
+                      if (mounted) {
+                        setState(() {
+                          _animController.reset();
+                          _animController.forward();
+                        });
+                      }
                     });
                   } else if (value == 'read_all') {
                     setState(() {

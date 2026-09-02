@@ -24,11 +24,12 @@ class AuthSuccess extends AuthState {
 
 class AuthFailure extends AuthState {
   final String message;
+  final bool isSessionConflict;
 
-  const AuthFailure(this.message);
+  const AuthFailure(this.message, {this.isSessionConflict = false});
 
   @override
-  List<Object> get props => [message];
+  List<Object> get props => [message, isSessionConflict];
 }
 
 class AuthNrpValidationSuccess extends AuthState {
@@ -52,3 +53,5 @@ class AuthLoggedOut extends AuthState {
   @override
   List<Object> get props => [reason];
 }
+
+class PasswordChangeSuccess extends AuthState {}
