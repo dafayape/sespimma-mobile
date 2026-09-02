@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -25,37 +26,57 @@ class _ReportScreenState extends State<ReportScreen> {
   Map<String, dynamic>? _reportData;
   bool _isLoadingReport = false;
   String? _reportError;
+  Timer? _autoSyncTimer;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadReportData();
+      _startAutoSyncTimer();
     });
   }
 
-  void _loadReportData() {
+  @override
+  void dispose() {
+    _autoSyncTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startAutoSyncTimer() {
+    _autoSyncTimer?.cancel();
+    // Silent realtime sync every 8 seconds
+    _autoSyncTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+      if (mounted) {
+        _loadReportData(isSilent: true);
+      }
+    });
+  }
+
+  void _loadReportData({bool isSilent = false}) {
     if (widget.targetUser != null) {
       final u = widget.targetUser!;
       final serdikId = u.serdikId ?? (u.userId.isNotEmpty ? u.userId : u.noSerdik);
-      _fetchReportData(serdikId);
+      _fetchReportData(serdikId, isSilent: isSilent);
     } else {
       final authState = context.read<AuthBloc>().state;
       if (authState is AuthSuccess) {
         final u = authState.user;
         final serdikId = u.serdikId ?? (u.userId.isNotEmpty ? u.userId : u.noSerdik);
         if (serdikId.isNotEmpty) {
-          _fetchReportData(serdikId);
+          _fetchReportData(serdikId, isSilent: isSilent);
         }
       }
     }
   }
 
-  Future<void> _fetchReportData(String serdikId) async {
-    setState(() {
-      _isLoadingReport = true;
-      _reportError = null;
-    });
+  Future<void> _fetchReportData(String serdikId, {bool isSilent = false}) async {
+    if (!isSilent && _reportData == null) {
+      setState(() {
+        _isLoadingReport = true;
+        _reportError = null;
+      });
+    }
     try {
       final data = await sl<ReportRemoteDataSource>().getLaporanPerkembangan(serdikId);
       if (mounted) {
@@ -65,7 +86,7 @@ class _ReportScreenState extends State<ReportScreen> {
         });
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && !isSilent) {
         setState(() {
           _reportError = e.toString().replaceAll('Exception: ', '');
           _isLoadingReport = false;
