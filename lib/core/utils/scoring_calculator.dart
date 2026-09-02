@@ -89,7 +89,22 @@ class ScoringCalculator {
     required double tesAkhir,
     required double statusKesehatan,
   }) {
-    return (tesAwal + tesAkhir + statusKesehatan) / 3;
+    double sum = 0.0;
+    int count = 0;
+    if (tesAwal > 0) {
+      sum += tesAwal;
+      count++;
+    }
+    if (tesAkhir > 0) {
+      sum += tesAkhir;
+      count++;
+    }
+    if (statusKesehatan > 0) {
+      sum += statusKesehatan;
+      count++;
+    }
+    if (count == 0) return 0.0;
+    return sum / count;
   }
 
   static double hitungNGB({

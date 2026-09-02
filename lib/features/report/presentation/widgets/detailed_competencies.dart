@@ -167,7 +167,9 @@ class DetailedCompetencies extends StatelessWidget {
       double kesAkhir = _getScore(actualScores, 'TES_AKHIR') > 0 ? _getScore(actualScores, 'TES_AKHIR') : _getScore(actualScores, 'nilai_akhir');
       double kesStatus = _getScore(actualScores, 'STATUS_KESEHATAN') > 0 ? _getScore(actualScores, 'STATUS_KESEHATAN') : _getScore(actualScores, 'nilai_status');
       double calculatedKes = ScoringCalculator.hitungNKes(tesAwal: kesAwal, tesAkhir: kesAkhir, statusKesehatan: kesStatus);
-      double kesehatan = calculatedKes > 0 ? calculatedKes : _getScore(actualScores, 'kesehatan_score');
+      double kesehatan = _getScore(actualScores, 'kesehatan_score') > 0
+          ? _getScore(actualScores, 'kesehatan_score')
+          : calculatedKes;
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
