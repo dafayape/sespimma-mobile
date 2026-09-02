@@ -9,6 +9,7 @@ class ScoreCategoryRow extends StatelessWidget {
   final double nilaiKesehatan;
   final String selectedCategory;
   final ValueChanged<String> onCategoryChanged;
+  final Map<String, dynamic>? bobot;
 
   const ScoreCategoryRow({
     super.key,
@@ -18,10 +19,17 @@ class ScoreCategoryRow extends StatelessWidget {
     required this.nilaiKesehatan,
     required this.selectedCategory,
     required this.onCategoryChanged,
+    this.bobot,
   });
 
   @override
   Widget build(BuildContext context) {
+    final double akBobot = (bobot?['akademik'] as num?)?.toDouble() ?? 40.0;
+    final double menBobot = (bobot?['mental'] as num?)?.toDouble() ?? 40.0;
+    final double kesjasBobot = (bobot?['kesjas'] as num?)?.toDouble() ?? 20.0;
+    final double jasBobot = (kesjasBobot * 0.6).roundToDouble();
+    final double kesBobot = kesjasBobot - jasBobot;
+
     return Column(
       children: [
         Row(
@@ -30,7 +38,7 @@ class ScoreCategoryRow extends StatelessWidget {
               child: ScoreSummaryCard(
                 label: 'Akademik',
                 score: nilaiAkademik,
-                weight: '40%',
+                weight: '${akBobot.toInt()}%',
                 isSelected: selectedCategory == 'Akademik',
                 onTap: () => onCategoryChanged('Akademik'),
               ),
@@ -40,7 +48,7 @@ class ScoreCategoryRow extends StatelessWidget {
               child: ScoreSummaryCard(
                 label: 'Mental',
                 score: nilaiMental,
-                weight: '40%',
+                weight: '${menBobot.toInt()}%',
                 isSelected: selectedCategory == 'Mental' || selectedCategory == 'Mental Kepribadian',
                 onTap: () => onCategoryChanged('Mental'),
               ),
@@ -54,7 +62,7 @@ class ScoreCategoryRow extends StatelessWidget {
               child: ScoreSummaryCard(
                 label: 'Jasmani',
                 score: nilaiJasmani,
-                weight: '12%',
+                weight: '${jasBobot.toInt()}%',
                 isSelected: selectedCategory == 'Jasmani',
                 onTap: () => onCategoryChanged('Jasmani'),
               ),
@@ -64,7 +72,7 @@ class ScoreCategoryRow extends StatelessWidget {
               child: ScoreSummaryCard(
                 label: 'Kesehatan',
                 score: nilaiKesehatan,
-                weight: '8%',
+                weight: '${kesBobot.toInt()}%',
                 isSelected: selectedCategory == 'Kesehatan',
                 onTap: () => onCategoryChanged('Kesehatan'),
               ),

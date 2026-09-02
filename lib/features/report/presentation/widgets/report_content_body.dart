@@ -66,6 +66,9 @@ class ReportContentBody extends StatelessWidget {
               nilaiKesehatan: dynamicKesehatanScore,
               selectedCategory: selectedCategory,
               onCategoryChanged: onCategoryChanged,
+              bobot: reportData['summary'] != null && reportData['summary']['bobot'] != null
+                  ? Map<String, dynamic>.from(reportData['summary']['bobot'])
+                  : null,
             ),
             const SizedBox(height: 28.0),
             const ReportSectionHeader(judul: 'Rincian Kompetensi'),
