@@ -33,12 +33,14 @@ class ReportContentBody extends StatelessWidget {
     final summary = reportData['summary'];
     double dynamicMentalScore;
     double dynamicJasmaniScore;
+    double dynamicKesehatanScore;
     double dynamicAcademicScore;
     double nakScore;
 
     if (summary != null && summary is Map) {
       dynamicMentalScore = (summary['mental_score'] as num?)?.toDouble() ?? 0.0;
-      dynamicJasmaniScore = (summary['physical_score'] as num?)?.toDouble() ?? 0.0;
+      dynamicJasmaniScore = (summary['jasmani_score'] as num?)?.toDouble() ?? (summary['physical_score'] as num?)?.toDouble() ?? 0.0;
+      dynamicKesehatanScore = (summary['kesehatan_score'] as num?)?.toDouble() ?? (summary['physical_score'] as num?)?.toDouble() ?? 80.0;
       dynamicAcademicScore = (summary['academic_score'] as num?)?.toDouble() ?? 0.0;
       nakScore = (summary['nak'] as num?)?.toDouble() ??
           (dynamicAcademicScore * 0.4 + dynamicMentalScore * 0.4 + dynamicJasmaniScore * 0.2);
@@ -50,6 +52,7 @@ class ReportContentBody extends StatelessWidget {
       );
       dynamicMentalScore = finalRecap.mentalScore;
       dynamicJasmaniScore = finalRecap.physicalScore;
+      dynamicKesehatanScore = 80.0;
       dynamicAcademicScore = user.nilaiAkademik;
       nakScore = dynamicAcademicScore * 0.4 + dynamicMentalScore * 0.4 + dynamicJasmaniScore * 0.2;
     }
@@ -59,6 +62,8 @@ class ReportContentBody extends StatelessWidget {
       currentScore = dynamicMentalScore;
     } else if (selectedCategory == 'Akademik') {
       currentScore = dynamicAcademicScore;
+    } else if (selectedCategory == 'Kesehatan') {
+      currentScore = dynamicKesehatanScore;
     } else {
       currentScore = dynamicJasmaniScore;
     }
@@ -95,6 +100,7 @@ class ReportContentBody extends StatelessWidget {
               nilaiAkademik: dynamicAcademicScore,
               nilaiMental: dynamicMentalScore,
               nilaiJasmani: dynamicJasmaniScore,
+              nilaiKesehatan: dynamicKesehatanScore,
               selectedCategory: selectedCategory,
               onCategoryChanged: onCategoryChanged,
             ),

@@ -6,6 +6,7 @@ class ScoreCategoryRow extends StatelessWidget {
   final double nilaiAkademik;
   final double nilaiMental;
   final double nilaiJasmani;
+  final double nilaiKesehatan;
   final String selectedCategory;
   final ValueChanged<String> onCategoryChanged;
 
@@ -14,42 +15,61 @@ class ScoreCategoryRow extends StatelessWidget {
     required this.nilaiAkademik,
     required this.nilaiMental,
     required this.nilaiJasmani,
+    required this.nilaiKesehatan,
     required this.selectedCategory,
     required this.onCategoryChanged,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: ScoreSummaryCard(
-            label: 'Akademik',
-            score: nilaiAkademik,
-            weight: '40%',
-            isSelected: selectedCategory == 'Akademik',
-            onTap: () => onCategoryChanged('Akademik'),
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: ScoreSummaryCard(
+                label: 'Akademik',
+                score: nilaiAkademik,
+                weight: '40%',
+                isSelected: selectedCategory == 'Akademik',
+                onTap: () => onCategoryChanged('Akademik'),
+              ),
+            ),
+            const SizedBox(width: AppDimensions.md),
+            Expanded(
+              child: ScoreSummaryCard(
+                label: 'Mental Kepribadian',
+                score: nilaiMental,
+                weight: '40%',
+                isSelected: selectedCategory == 'Mental Kepribadian',
+                onTap: () => onCategoryChanged('Mental Kepribadian'),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: AppDimensions.md),
-        Expanded(
-          child: ScoreSummaryCard(
-            label: 'Mental Kepribadian',
-            score: nilaiMental,
-            weight: '40%',
-            isSelected: selectedCategory == 'Mental Kepribadian',
-            onTap: () => onCategoryChanged('Mental Kepribadian'),
-          ),
-        ),
-        const SizedBox(width: AppDimensions.md),
-        Expanded(
-          child: ScoreSummaryCard(
-            label: 'Jasmani',
-            score: nilaiJasmani,
-            weight: '20%',
-            isSelected: selectedCategory == 'Jasmani',
-            onTap: () => onCategoryChanged('Jasmani'),
-          ),
+        const SizedBox(height: AppDimensions.md),
+        Row(
+          children: [
+            Expanded(
+              child: ScoreSummaryCard(
+                label: 'Jasmani',
+                score: nilaiJasmani,
+                weight: '12%',
+                isSelected: selectedCategory == 'Jasmani',
+                onTap: () => onCategoryChanged('Jasmani'),
+              ),
+            ),
+            const SizedBox(width: AppDimensions.md),
+            Expanded(
+              child: ScoreSummaryCard(
+                label: 'Kesehatan',
+                score: nilaiKesehatan,
+                weight: '8%',
+                isSelected: selectedCategory == 'Kesehatan',
+                onTap: () => onCategoryChanged('Kesehatan'),
+              ),
+            ),
+          ],
         ),
       ],
     );
