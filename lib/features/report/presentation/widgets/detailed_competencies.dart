@@ -181,11 +181,26 @@ class DetailedCompetencies extends StatelessWidget {
     } else {
       final Map<String, dynamic> actualScores = rawScores ?? {};
 
-      double samaptaA = _getScore(actualScores, 'SAMAPTA_A') > 0 ? _getScore(actualScores, 'SAMAPTA_A') : _getScore(actualScores, 'P1');
-      double pullUp = _getScore(actualScores, 'PULL_UP') > 0 ? _getScore(actualScores, 'PULL_UP') : _getScore(actualScores, 'P21');
-      double sitUp = _getScore(actualScores, 'SIT_UP') > 0 ? _getScore(actualScores, 'SIT_UP') : _getScore(actualScores, 'P22');
-      double pushUp = _getScore(actualScores, 'PUSH_UP') > 0 ? _getScore(actualScores, 'PUSH_UP') : _getScore(actualScores, 'P23');
-      double shuttleRun = _getScore(actualScores, 'SHUTTLE_RUN') > 0 ? _getScore(actualScores, 'SHUTTLE_RUN') : _getScore(actualScores, 'P24');
+      double samaptaA = _getScore(actualScores, 'SAMAPTA_A') > 0
+          ? _getScore(actualScores, 'SAMAPTA_A')
+          : (_getScore(actualScores, 'NGA') > 0 ? _getScore(actualScores, 'NGA') : _getScore(actualScores, 'P1'));
+
+      double pullUp = _getScore(actualScores, 'PULL_UP') > 0
+          ? _getScore(actualScores, 'PULL_UP')
+          : (_getScore(actualScores, 'NGB1') > 0 ? _getScore(actualScores, 'NGB1') : _getScore(actualScores, 'P21'));
+
+      double sitUp = _getScore(actualScores, 'SIT_UP') > 0
+          ? _getScore(actualScores, 'SIT_UP')
+          : (_getScore(actualScores, 'NGB2') > 0 ? _getScore(actualScores, 'NGB2') : _getScore(actualScores, 'P22'));
+
+      double pushUp = _getScore(actualScores, 'PUSH_UP') > 0
+          ? _getScore(actualScores, 'PUSH_UP')
+          : (_getScore(actualScores, 'NGB3') > 0 ? _getScore(actualScores, 'NGB3') : _getScore(actualScores, 'P23'));
+
+      double shuttleRun = _getScore(actualScores, 'SHUTTLE_RUN') > 0
+          ? _getScore(actualScores, 'SHUTTLE_RUN')
+          : (_getScore(actualScores, 'NGB4') > 0 ? _getScore(actualScores, 'NGB4') : _getScore(actualScores, 'P24'));
+
       double samaptaB = ScoringCalculator.hitungNGB(ngb1: pullUp, ngb2: sitUp, ngb3: pushUp, ngb4: shuttleRun);
       double jasmani = ScoringCalculator.hitungNJas(nga: samaptaA, ngb: samaptaB);
 
