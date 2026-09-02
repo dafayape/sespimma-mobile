@@ -61,6 +61,7 @@ class ScoreSummaryCard extends StatelessWidget {
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
+      height: 116.0,
       decoration: BoxDecoration(
         color: cardBgColor,
         borderRadius: BorderRadius.circular(AppDimensions.radiusXl),
@@ -85,15 +86,15 @@ class ScoreSummaryCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppDimensions.radiusXl),
           child: Padding(
             padding: const EdgeInsets.symmetric(
-              vertical: AppDimensions.xl,
-              horizontal: AppDimensions.sm,
+              vertical: 10,
+              horizontal: 10,
             ),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: AppDimensions.sm,
+                    horizontal: 8,
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
@@ -103,34 +104,34 @@ class ScoreSummaryCard extends StatelessWidget {
                   child: Text(
                     weight,
                     style: TextStyle(
-                      fontSize: AppDimensions.fontXs,
+                      fontSize: AppDimensions.fontXs - 1,
                       fontWeight: FontWeight.w700,
                       color: badgeTextColor,
                     ),
                   ),
                 ),
-                const SizedBox(height: AppDimensions.lg),
+                const SizedBox(height: 6),
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
                     score > 0 ? score.toStringAsFixed(2) : '-',
                     style: TextStyle(
-                      fontSize: AppDimensions.fontXxl + 4,
+                      fontSize: 26,
                       fontWeight: FontWeight.w800,
                       color: scoreColor,
                     ),
                   ),
                 ),
-                const SizedBox(height: AppDimensions.sm),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: AppDimensions.fontSm,
-                      fontWeight: FontWeight.w600,
-                      color: labelColor,
-                    ),
+                const SizedBox(height: 4),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: AppDimensions.fontSm - 1,
+                    fontWeight: FontWeight.w600,
+                    color: labelColor,
                   ),
                 ),
               ],

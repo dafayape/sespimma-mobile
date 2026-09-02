@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:sespimma/core/constants/app_dimensions.dart';
 import 'package:sespimma/core/theme/app_colors.dart';
 import 'package:sespimma/features/auth/domain/entities/user_entity.dart';
 import 'package:sespimma/features/report/presentation/widgets/detailed_competencies.dart';
@@ -47,8 +46,8 @@ class ReportContentBody extends StatelessWidget {
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.symmetric(
-          horizontal: AppDimensions.xl,
-          vertical: AppDimensions.xxl,
+          horizontal: 20.0,
+          vertical: 20.0,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -59,7 +58,7 @@ class ReportContentBody extends StatelessWidget {
               mentalScore: dynamicMentalScore,
               physicalScore: dynamicJasmaniScore,
             ),
-            const SizedBox(height: AppDimensions.lg),
+            const SizedBox(height: 16.0),
             ScoreCategoryRow(
               nilaiAkademik: dynamicAcademicScore,
               nilaiMental: dynamicMentalScore,
@@ -68,9 +67,9 @@ class ReportContentBody extends StatelessWidget {
               selectedCategory: selectedCategory,
               onCategoryChanged: onCategoryChanged,
             ),
-            const SizedBox(height: AppDimensions.xxl + AppDimensions.md),
+            const SizedBox(height: 28.0),
             const ReportSectionHeader(judul: 'Rincian Kompetensi'),
-            const SizedBox(height: AppDimensions.md),
+            const SizedBox(height: 12.0),
             _buildAnimatedChild(
               DetailedCompetencies(
                 key: ValueKey<String>('details_$selectedCategory'),
@@ -79,7 +78,7 @@ class ReportContentBody extends StatelessWidget {
                 rawScores: reportData['raw_scores'] != null ? Map<String, dynamic>.from(reportData['raw_scores']) : null,
               ),
             ),
-            const SizedBox(height: AppDimensions.xxl),
+            const SizedBox(height: 28.0),
             _buildAnimatedChild(
               PersonalRecommendationsCard(
                 key: ValueKey<String>('recommendations_$selectedCategory'),
