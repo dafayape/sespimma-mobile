@@ -3,10 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:sespimma/core/constants/app_dimensions.dart';
 import 'package:sespimma/core/theme/app_colors.dart';
 import 'package:sespimma/features/auth/domain/entities/user_entity.dart';
-import 'package:sespimma/features/report/presentation/widgets/ai_insight_card.dart';
 import 'package:sespimma/features/report/presentation/widgets/detailed_competencies.dart';
 import 'package:sespimma/features/report/presentation/widgets/nak_hero_card.dart';
-import 'package:sespimma/features/report/presentation/widgets/personal_recommendations_card.dart';
 import 'package:sespimma/features/report/presentation/widgets/score_category_row.dart';
 import 'package:sespimma/features/report/presentation/widgets/report_section_header.dart';
 
@@ -37,17 +35,6 @@ class ReportContentBody extends StatelessWidget {
     final double dynamicAcademicScore = (summary['academic_score'] as num?)?.toDouble() ?? 0.0;
     final double nakScore = (summary['nak'] as num?)?.toDouble() ??
         (dynamicAcademicScore * 0.4 + dynamicMentalScore * 0.4 + (dynamicJasmaniScore * 0.6 + dynamicKesehatanScore * 0.4) * 0.2);
-
-    double currentScore = 0.0;
-    if (selectedCategory == 'Mental Kepribadian') {
-      currentScore = dynamicMentalScore;
-    } else if (selectedCategory == 'Akademik') {
-      currentScore = dynamicAcademicScore;
-    } else if (selectedCategory == 'Kesehatan') {
-      currentScore = dynamicKesehatanScore;
-    } else {
-      currentScore = dynamicJasmaniScore;
-    }
 
     return RefreshIndicator(
       color: AppColors.primaryNavy,
@@ -89,24 +76,6 @@ class ReportContentBody extends StatelessWidget {
                 category: selectedCategory,
                 user: user,
                 rawScores: reportData['raw_scores'] != null ? Map<String, dynamic>.from(reportData['raw_scores']) : null,
-              ),
-            ),
-            const SizedBox(height: AppDimensions.xxl),
-            _buildAnimatedChild(
-              PersonalRecommendationsCard(
-                key: ValueKey<String>('recommendations_$selectedCategory'),
-                nakScore: nakScore,
-                academicScore: dynamicAcademicScore,
-                mentalScore: dynamicMentalScore,
-                physicalScore: dynamicJasmaniScore,
-              ),
-            ),
-            const SizedBox(height: AppDimensions.xxl),
-            _buildAnimatedChild(
-              AiInsightCard(
-                key: ValueKey<String>('insight_$selectedCategory'),
-                category: selectedCategory,
-                score: currentScore,
               ),
             ),
           ],
