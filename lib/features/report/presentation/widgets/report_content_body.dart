@@ -7,8 +7,8 @@ import 'package:sespimma/features/report/presentation/widgets/ai_insight_card.da
 import 'package:sespimma/features/report/presentation/widgets/detailed_competencies.dart';
 import 'package:sespimma/features/report/presentation/widgets/ews_warning_banner.dart';
 import 'package:sespimma/features/report/presentation/widgets/nak_hero_card.dart';
+import 'package:sespimma/features/report/presentation/widgets/personal_recommendations_card.dart';
 import 'package:sespimma/features/report/presentation/widgets/score_category_row.dart';
-import 'package:sespimma/features/report/presentation/widgets/score_line_chart.dart';
 import 'package:sespimma/features/report/presentation/widgets/report_section_header.dart';
 import 'package:sespimma/features/leadership_report/domain/services/score_calculator_service.dart';
 
@@ -99,18 +99,6 @@ class ReportContentBody extends StatelessWidget {
               onCategoryChanged: onCategoryChanged,
             ),
             const SizedBox(height: AppDimensions.xxl + AppDimensions.md),
-            const ReportSectionHeader(judul: 'Tren Perkembangan Terpadu'),
-            const SizedBox(height: AppDimensions.md),
-            ScoreLineChart(
-              key: const ValueKey('integrated_trend_chart'),
-              nilaiAkademik: dynamicAcademicScore,
-              nilaiMental: dynamicMentalScore,
-              nilaiJasmani: dynamicJasmaniScore,
-              selectedCategory: selectedCategory,
-              noSerdik: user.noSerdik,
-              trendList: reportData['trend'] != null ? List<Map<String, dynamic>>.from(reportData['trend']) : null,
-            ),
-            const SizedBox(height: AppDimensions.xxl + AppDimensions.md),
             const ReportSectionHeader(judul: 'Rincian Kompetensi'),
             const SizedBox(height: AppDimensions.md),
             _buildAnimatedChild(
@@ -119,6 +107,16 @@ class ReportContentBody extends StatelessWidget {
                 category: selectedCategory,
                 user: user,
                 rawScores: reportData['raw_scores'] != null ? Map<String, dynamic>.from(reportData['raw_scores']) : null,
+              ),
+            ),
+            const SizedBox(height: AppDimensions.xxl),
+            _buildAnimatedChild(
+              PersonalRecommendationsCard(
+                key: ValueKey<String>('recommendations_$selectedCategory'),
+                nakScore: nakScore,
+                academicScore: dynamicAcademicScore,
+                mentalScore: dynamicMentalScore,
+                physicalScore: dynamicJasmaniScore,
               ),
             ),
             const SizedBox(height: AppDimensions.xxl),

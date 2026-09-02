@@ -29,14 +29,22 @@ class _ReportScreenState extends State<ReportScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadReportData();
+    });
+  }
+
+  void _loadReportData() {
     if (widget.targetUser != null) {
-      final serdikId = widget.targetUser!.serdikId ?? widget.targetUser!.noSerdik;
+      final u = widget.targetUser!;
+      final serdikId = u.serdikId ?? (u.userId.isNotEmpty ? u.userId : u.noSerdik);
       _fetchReportData(serdikId);
     } else {
       final authState = context.read<AuthBloc>().state;
       if (authState is AuthSuccess) {
-        final serdikId = authState.user.serdikId;
-        if (serdikId != null && serdikId.isNotEmpty) {
+        final u = authState.user;
+        final serdikId = u.serdikId ?? (u.userId.isNotEmpty ? u.userId : u.noSerdik);
+        if (serdikId.isNotEmpty) {
           _fetchReportData(serdikId);
         }
       }
