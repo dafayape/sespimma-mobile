@@ -99,37 +99,40 @@ class DetailedCompetencies extends StatelessWidget {
         children: [
           const SizedBox(height: AppDimensions.sm),
           _ExpandableCompetencyGroup(
-            title: '1 NAMP - Nilai Akhir Mata Pelajaran (60%)',
+            title: 'NAMP - Nilai Akhir Mata Pelajaran (60%)',
             score: namp,
             children: [
-              _SubCompetencyItem(
-                title: '1.1 NUMP - Ujian Mata Pelajaran / Esai (30%)',
+              _CompetencyItem(
+                title: 'NUMP - Ujian Mata Pelajaran / Esai (30%)',
                 score: ujianMp,
               ),
+              const SizedBox(height: AppDimensions.sm),
               _ExpandableCompetencyGroup(
-                title: '1.2 NKKP - Naskah Kuliah Kerja Profesi (5%)',
+                title: 'NKKP - Naskah Kuliah Kerja Profesi (5%)',
                 score: nkkp,
                 children: [
-                  _SubCompetencyItem(title: '1.2.1 NMPN - Nilai Materi & Penulisan (35%)', score: nkkpMateri),
-                  _SubCompetencyItem(title: '1.2.2 NPa - Paparan (35%)', score: nkkpPaparan),
-                  _SubCompetencyItem(title: '1.2.3 NKa - Keaktifan (30%)', score: nkkpKeaktifan),
+                  _SubCompetencyItem(title: 'NMPN - Nilai Materi & Penulisan (35%)', score: nkkpMateri),
+                  _SubCompetencyItem(title: 'NPa - Paparan (35%)', score: nkkpPaparan),
+                  _SubCompetencyItem(title: 'NKa - Keaktifan (30%)', score: nkkpKeaktifan),
                 ],
               ),
+              const SizedBox(height: AppDimensions.sm),
               _ExpandableCompetencyGroup(
-                title: '1.3 NPKP - Naskah Praktik Kerja Profesi (5%)',
+                title: 'NPKP - Naskah Praktik Kerja Profesi (5%)',
                 score: npkp,
                 children: [
-                  _SubCompetencyItem(title: '1.3.1 NMPN - Nilai Materi & Penulisan (35%)', score: npkpMateri),
-                  _SubCompetencyItem(title: '1.3.2 NPa - Paparan (35%)', score: npkpPaparan),
-                  _SubCompetencyItem(title: '1.3.3 NKa - Keaktifan (30%)', score: npkpKeaktifan),
+                  _SubCompetencyItem(title: 'NMPN - Nilai Materi & Penulisan (35%)', score: npkpMateri),
+                  _SubCompetencyItem(title: 'NPa - Paparan (35%)', score: npkpPaparan),
+                  _SubCompetencyItem(title: 'NKa - Keaktifan (30%)', score: npkpKeaktifan),
                 ],
               ),
+              const SizedBox(height: AppDimensions.sm),
               _ExpandableCompetencyGroup(
-                title: '1.4 NKP - Naskah Karya Perseorangan (60%)',
+                title: 'NKP - Naskah Karya Perseorangan (60%)',
                 score: nkp,
                 children: [
-                  _SubCompetencyItem(title: '1.4.1 NMPN - Nilai Materi & Penulisan (50%)', score: nkpMateri),
-                  _SubCompetencyItem(title: '1.4.2 NPa - Paparan (50%)', score: nkpPaparan),
+                  _SubCompetencyItem(title: 'NMPN - Nilai Materi & Penulisan (50%)', score: nkpMateri),
+                  _SubCompetencyItem(title: 'NPa - Paparan (50%)', score: nkpPaparan),
                 ],
               ),
             ],
@@ -137,23 +140,23 @@ class DetailedCompetencies extends StatelessWidget {
 
           const SizedBox(height: AppDimensions.lg),
           _ExpandableCompetencyGroup(
-            title: '2 NSK - Simulasi Kepemimpinan Kontemporer (10%)',
+            title: 'NSK - Simulasi Kepemimpinan Kontemporer (10%)',
             score: nsk,
             children: [
-              _SubCompetencyItem(title: '2.1 NKaP - Keaktifan Perseorangan (60%)', score: nskAktif),
-              _SubCompetencyItem(title: '2.2 NPP - Produk Perseorangan (20%)', score: nskProduk),
-              _SubCompetencyItem(title: '2.3 NTR - Tata Ruang Kelompok (20%)', score: nskRuang),
+              _SubCompetencyItem(title: 'NKaP - Keaktifan Perseorangan (60%)', score: nskAktif),
+              _SubCompetencyItem(title: 'NPP - Produk Perseorangan (20%)', score: nskProduk),
+              _SubCompetencyItem(title: 'NTR - Tata Ruang Kelompok (20%)', score: nskRuang),
             ],
           ),
 
           const SizedBox(height: AppDimensions.lg),
           _ExpandableCompetencyGroup(
-            title: '3 NT - Naskah Program Transformasi Teknis (Taskap) (30%)',
+            title: 'NT - Naskah Program Transformasi Teknis (Taskap) (30%)',
             score: nt,
             children: [
-              _SubCompetencyItem(title: '3.1 NAm - Materi NPTT/Taskap (40%)', score: ntMateri),
-              _SubCompetencyItem(title: '3.2 NKm - Penulisan NPTT/Taskap (30%)', score: ntPenulisan),
-              _SubCompetencyItem(title: '3.3 NKp - Paparan dan Diskusi (30%)', score: ntPaparan),
+              _SubCompetencyItem(title: 'NAm - Materi NPTT/Taskap (40%)', score: ntMateri),
+              _SubCompetencyItem(title: 'NKm - Penulisan NPTT/Taskap (30%)', score: ntPenulisan),
+              _SubCompetencyItem(title: 'NKp - Paparan dan Diskusi (30%)', score: ntPaparan),
             ],
           ),
         ],
