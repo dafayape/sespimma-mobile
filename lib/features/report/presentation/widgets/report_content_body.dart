@@ -83,6 +83,7 @@ class ReportContentBody extends StatelessWidget {
             _buildAnimatedChild(
               PersonalRecommendationsCard(
                 key: ValueKey<String>('recommendations_$selectedCategory'),
+                category: selectedCategory,
                 nakScore: nakScore,
                 academicScore: dynamicAcademicScore,
                 mentalScore: dynamicMentalScore,

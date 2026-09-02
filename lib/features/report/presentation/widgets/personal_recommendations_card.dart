@@ -22,6 +22,7 @@ class RecommendationItemData {
 }
 
 class PersonalRecommendationsCard extends StatelessWidget {
+  final String category;
   final double nakScore;
   final double academicScore;
   final double mentalScore;
@@ -29,6 +30,7 @@ class PersonalRecommendationsCard extends StatelessWidget {
 
   const PersonalRecommendationsCard({
     super.key,
+    required this.category,
     required this.nakScore,
     required this.academicScore,
     required this.mentalScore,
@@ -38,78 +40,87 @@ class PersonalRecommendationsCard extends StatelessWidget {
   List<RecommendationItemData> _buildRecommendations() {
     final list = <RecommendationItemData>[];
 
-    // 1. Rekomendasi NAK (Nilai Akhir Kumulatif)
-    if (nakScore >= 80.0) {
+    if (category == 'Akademik') {
+      if (academicScore >= 80.0) {
+        list.add(RecommendationItemData(
+          title: 'Penguasaan Materi Akademik Sangat Baik',
+          text: 'Nilai Akademik Anda (${academicScore.toStringAsFixed(2)}) berada dalam tingkat Sangat Memuaskan. Pertahankan kedalaman analisis pada NPTT/Taskap dan Simulasi Kepemimpinan.',
+          icon: Icons.workspace_premium_rounded,
+          bgColor: const Color(0xFFF0FDF4),
+          borderColor: const Color(0xFFBBF7D0),
+          iconColor: const Color(0xFF16A34A),
+          textColor: const Color(0xFF15803D),
+        ));
+      } else if (academicScore >= 70.0) {
+        list.add(RecommendationItemData(
+          title: 'Peningkatan Hasil Belajar Akademik',
+          text: 'Nilai Akademik Anda (${academicScore.toStringAsFixed(2)}) telah memenuhi standar. Fokus tingkatkan pendalaman materi Ujian Mata Pelajaran dan Produk Perseorangan.',
+          icon: Icons.trending_up_rounded,
+          bgColor: const Color(0xFFFEFCE8),
+          borderColor: const Color(0xFFFEF08A),
+          iconColor: const Color(0xFFCA8A04),
+          textColor: const Color(0xFFA16207),
+        ));
+      } else if (academicScore > 0) {
+        list.add(RecommendationItemData(
+          title: 'Pendalaman Ekstra Materi Akademik',
+          text: 'Nilai Akademik Anda (${academicScore.toStringAsFixed(2)}) memerlukan bimbingan ekstra. Disarankan mengikuti pendalaman materi bersama Mentor/Dosen Pengampu.',
+          icon: Icons.gavel_rounded,
+          bgColor: const Color(0xFFFEF2F2),
+          borderColor: const Color(0xFFFECACA),
+          iconColor: const Color(0xFFDC2626),
+          textColor: const Color(0xFFB91C1C),
+        ));
+      }
+    } else if (category == 'Mental Kepribadian') {
+      if (mentalScore >= 80.0) {
+        list.add(RecommendationItemData(
+          title: 'Integritas & Kepemimpinan Prima',
+          text: 'Nilai Mental Kepribadian Anda (${mentalScore.toStringAsFixed(2)}) sangat tinggi. Pertahankan sikap keteladanan, moralitas, dan Sosiometri positif.',
+          icon: Icons.verified_user_rounded,
+          bgColor: const Color(0xFFF0FDF4),
+          borderColor: const Color(0xFFBBF7D0),
+          iconColor: const Color(0xFF16A34A),
+          textColor: const Color(0xFF15803D),
+        ));
+      } else if (mentalScore > 0) {
+        list.add(RecommendationItemData(
+          title: 'Penguatan Kedisiplinan & Interaksi Rekan',
+          text: 'Nilai Mental Kepribadian Anda (${mentalScore.toStringAsFixed(2)}) perlu ditingkatkan. Hindari pelanggaran tata tertib dan tingkatkan inisiatif sosial.',
+          icon: Icons.report_problem_rounded,
+          bgColor: const Color(0xFFFEFCE8),
+          borderColor: const Color(0xFFFEF08A),
+          iconColor: const Color(0xFFCA8A04),
+          textColor: const Color(0xFFA16207),
+        ));
+      }
+    } else if (category == 'Jasmani') {
+      if (physicalScore >= 80.0) {
+        list.add(RecommendationItemData(
+          title: 'Kebugaran Fisik & Samapta Prima',
+          text: 'Nilai Kesamaptaan Jasmani Anda (${physicalScore.toStringAsFixed(2)}) sangat baik. Pertahankan porsi latihan Samapta A dan B secara konsisten.',
+          icon: Icons.fitness_center_rounded,
+          bgColor: const Color(0xFFF0FDF4),
+          borderColor: const Color(0xFFBBF7D0),
+          iconColor: const Color(0xFF16A34A),
+          textColor: const Color(0xFF15803D),
+        ));
+      } else if (physicalScore > 0) {
+        list.add(RecommendationItemData(
+          title: 'Pembinaan Latihan Fisik Mandiri',
+          text: 'Nilai Jasmani Anda (${physicalScore.toStringAsFixed(2)}) perlu peningkatan. Lakukan latihan lari 12 menit dan penguatan otot lengan/perut rutin sore hari.',
+          icon: Icons.directions_run_rounded,
+          bgColor: const Color(0xFFFEF2F2),
+          borderColor: const Color(0xFFFECACA),
+          iconColor: const Color(0xFFDC2626),
+          textColor: const Color(0xFFB91C1C),
+        ));
+      }
+    } else if (category == 'Kesehatan') {
       list.add(RecommendationItemData(
-        title: 'Capaian Prestasi Sangat Baik',
-        text: 'Nilai Akhir Kumulatif Anda (${nakScore.toStringAsFixed(2)}) berada di kategori Sangat Memuaskan. Pertahankan performa konsisten ini hingga akhir pendidikan.',
-        icon: Icons.workspace_premium_rounded,
-        bgColor: const Color(0xFFF0FDF4),
-        borderColor: const Color(0xFFBBF7D0),
-        iconColor: const Color(0xFF16A34A),
-        textColor: const Color(0xFF15803D),
-      ));
-    } else if (nakScore >= 70.0) {
-      list.add(RecommendationItemData(
-        title: 'Capaian Prestasi Memenuhi Syarat',
-        text: 'Nilai Akhir Kumulatif Anda (${nakScore.toStringAsFixed(2)}) sudah memenuhi standar minimum. Tingkatkan aspek yang masih lemah untuk menaikkan peringkat.',
-        icon: Icons.trending_up_rounded,
-        bgColor: const Color(0xFFFEFCE8),
-        borderColor: const Color(0xFFFEF08A),
-        iconColor: const Color(0xFFCA8A04),
-        textColor: const Color(0xFFA16207),
-      ));
-    } else if (nakScore > 0) {
-      list.add(RecommendationItemData(
-        title: 'Perlunya Akselerasi Nilai Akhir',
-        text: 'Nilai Akhir Kumulatif Anda (${nakScore.toStringAsFixed(2)}) masih di bawah rata-rata kelulusan. Diperlukan konseling dan pembinaan intensif.',
-        icon: Icons.gavel_rounded,
-        bgColor: const Color(0xFFFEF2F2),
-        borderColor: const Color(0xFFFECACA),
-        iconColor: const Color(0xFFDC2626),
-        textColor: const Color(0xFFB91C1C),
-      ));
-    }
-
-    // 2. Rekomendasi Mental Kepribadian
-    if (mentalScore >= 80.0) {
-      list.add(RecommendationItemData(
-        title: 'Disiplin & Mental Terjaga Baik',
-        text: 'Nilai Mental Kepribadian (${mentalScore.toStringAsFixed(2)}) menunjukkan sikap integritas dan kepemimpinan yang tinggi.',
-        icon: Icons.verified_user_rounded,
-        bgColor: const Color(0xFFF0FDF4),
-        borderColor: const Color(0xFFBBF7D0),
-        iconColor: const Color(0xFF16A34A),
-        textColor: const Color(0xFF15803D),
-      ));
-    } else if (mentalScore > 0 && mentalScore < 75.0) {
-      list.add(RecommendationItemData(
-        title: 'Evaluasi Kedisiplinan & Poin Pelanggaran',
-        text: 'Nilai Mental Kepribadian Anda (${mentalScore.toStringAsFixed(2)}) memerlukan perhatian. Hindari catatan pelanggaran disiplin dan tingkatkan giat positif.',
-        icon: Icons.report_problem_rounded,
-        bgColor: const Color(0xFFFEFCE8),
-        borderColor: const Color(0xFFFEF08A),
-        iconColor: const Color(0xFFCA8A04),
-        textColor: const Color(0xFFA16207),
-      ));
-    }
-
-    // 3. Rekomendasi Jasmani & Samapta
-    if (physicalScore > 0 && physicalScore < 70.0) {
-      list.add(RecommendationItemData(
-        title: 'Pembinaan Kesamaptaan Jasmani',
-        text: 'Nilai Jasmani Anda (${physicalScore.toStringAsFixed(2)}) masih kurang. Lakukan latihan mandiri Samapta A (Lari) dan Samapta B secara rutin.',
-        icon: Icons.directions_run_rounded,
-        bgColor: const Color(0xFFFEF2F2),
-        borderColor: const Color(0xFFFECACA),
-        iconColor: const Color(0xFFDC2626),
-        textColor: const Color(0xFFB91C1C),
-      ));
-    } else if (physicalScore >= 80.0) {
-      list.add(RecommendationItemData(
-        title: 'Kebugaran Fisik Prima',
-        text: 'Nilai Jasmani (${physicalScore.toStringAsFixed(2)}) sangat mendukung kesiapan fisik pendidikan.',
-        icon: Icons.fitness_center_rounded,
+        title: 'Pemeliharaan Kesehatan & Stamina',
+        text: 'Jaga kebugaran tubuh, pola istirahat teratur, serta pantau hasil Tes Kesehatan (MCU) berkala untuk mendukung kelancaran seluruh kegiatan pendidikan.',
+        icon: Icons.health_and_safety_rounded,
         bgColor: const Color(0xFFF0FDF4),
         borderColor: const Color(0xFFBBF7D0),
         iconColor: const Color(0xFF16A34A),
