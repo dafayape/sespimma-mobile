@@ -116,48 +116,52 @@ class NakHeroCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header Row
+                // Header Title
+                const Text(
+                  'NILAI AKHIR KUMULATIF (NAK)',
+                  style: TextStyle(
+                    fontSize: AppDimensions.fontXs + 1,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white70,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                const SizedBox(height: AppDimensions.lg),
+                // Score & Predikat Row
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    const Text(
-                      'NILAI AKHIR KUMULATIF (NAK)',
-                      style: TextStyle(
-                        fontSize: AppDimensions.fontXs + 1,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white70,
-                        letterSpacing: 0.8,
+                    Text(
+                      nakScore > 0 ? nakScore.toStringAsFixed(2) : '—',
+                      style: const TextStyle(
+                        fontSize: 44,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        height: 1.0,
+                        letterSpacing: -1.2,
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: _predikatBgColor,
-                        borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
-                        border: Border.all(color: _predikatBorderColor, width: 1),
-                      ),
-                      child: Text(
-                        _predikatLabel,
-                        style: TextStyle(
-                          fontSize: AppDimensions.fontXs,
-                          fontWeight: FontWeight.w700,
-                          color: _predikatTextColor,
+                    const SizedBox(width: AppDimensions.md),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _predikatBgColor,
+                          borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
+                          border: Border.all(color: _predikatBorderColor, width: 1),
+                        ),
+                        child: Text(
+                          _predikatLabel,
+                          style: TextStyle(
+                            fontSize: AppDimensions.fontXs,
+                            fontWeight: FontWeight.w700,
+                            color: _predikatTextColor,
+                          ),
                         ),
                       ),
                     ),
                   ],
-                ),
-                const SizedBox(height: AppDimensions.lg),
-                // Score Row
-                Text(
-                  nakScore > 0 ? nakScore.toStringAsFixed(2) : '—',
-                  style: const TextStyle(
-                    fontSize: 44,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
-                    height: 1.0,
-                    letterSpacing: -1.2,
-                  ),
                 ),
               ],
             ),
