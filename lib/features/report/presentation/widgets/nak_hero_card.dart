@@ -51,6 +51,28 @@ class NakHeroCard extends StatelessWidget {
     return Colors.white24;
   }
 
+  bool get _isPassed {
+    return nakScore >= 70.0 && academicScore >= 65.0 && mentalScore >= 65.0 && physicalScore >= 65.0;
+  }
+
+  IconData get _watermarkIcon {
+    if (nakScore <= 0) return Icons.military_tech_rounded;
+    if (!_isPassed || nakScore < 65.0) {
+      return Icons.warning_amber_rounded;
+    }
+    if (nakScore >= 85.0) return Icons.workspace_premium_rounded;
+    if (nakScore >= 75.0) return Icons.military_tech_rounded;
+    return Icons.verified_rounded;
+  }
+
+  Color get _watermarkColor {
+    if (nakScore <= 0) return Colors.white.withValues(alpha: 0.035);
+    if (!_isPassed || nakScore < 65.0) {
+      return const Color(0xFFEF4444).withValues(alpha: 0.08);
+    }
+    return Colors.white.withValues(alpha: 0.035);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -84,9 +106,9 @@ class NakHeroCard extends StatelessWidget {
             right: -15,
             top: -15,
             child: Icon(
-              Icons.military_tech_rounded,
+              _watermarkIcon,
               size: 130,
-              color: Colors.white.withValues(alpha: 0.035),
+              color: _watermarkColor,
             ),
           ),
           Padding(
