@@ -163,10 +163,11 @@ class DetailedCompetencies extends StatelessWidget {
       );
     } else if (category == 'Kesehatan') {
       final Map<String, dynamic> actualScores = rawScores ?? {};
-      double kesAwal = _getScore(actualScores, 'TES_AWAL');
-      double kesAkhir = _getScore(actualScores, 'TES_AKHIR');
-      double kesStatus = _getScore(actualScores, 'STATUS_KESEHATAN');
-      double kesehatan = ScoringCalculator.hitungNKes(tesAwal: kesAwal, tesAkhir: kesAkhir, statusKesehatan: kesStatus);
+      double kesAwal = _getScore(actualScores, 'TES_AWAL') > 0 ? _getScore(actualScores, 'TES_AWAL') : _getScore(actualScores, 'nilai_awal');
+      double kesAkhir = _getScore(actualScores, 'TES_AKHIR') > 0 ? _getScore(actualScores, 'TES_AKHIR') : _getScore(actualScores, 'nilai_akhir');
+      double kesStatus = _getScore(actualScores, 'STATUS_KESEHATAN') > 0 ? _getScore(actualScores, 'STATUS_KESEHATAN') : _getScore(actualScores, 'nilai_status');
+      double calculatedKes = ScoringCalculator.hitungNKes(tesAwal: kesAwal, tesAkhir: kesAkhir, statusKesehatan: kesStatus);
+      double kesehatan = calculatedKes > 0 ? calculatedKes : _getScore(actualScores, 'kesehatan_score');
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
