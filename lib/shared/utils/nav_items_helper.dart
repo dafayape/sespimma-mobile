@@ -146,8 +146,8 @@ List<NavItem> getNavItemsByRole(String roleId) {
         ),
         NavItem(
           label: 'Absen',
-          icon: AppIcons.mapPin,
-          activeIcon: AppIcons.mapPinFill,
+          icon: Icons.qr_code_scanner_rounded,
+          activeIcon: Icons.qr_code_scanner_rounded,
           screen: AttendanceScreen(),
         ),
         NavItem(
