@@ -358,11 +358,11 @@ class _ProfileScreenState extends State<ProfileScreen>
           'JENIS KELAMIN',
           user.displayJenisKelamin,
         ),
-        _buildDetailRow(AppIcons.bookOpen, 'AGAMA', user.agama),
+        _buildDetailRow(AppIcons.bookOpen, 'AGAMA', user.displayAgama),
       ];
     } else if (user.roleId == 'gadik' || user.roleId == 'tenaga_pendidik') {
       rows = [
-        _buildDetailRow(AppIcons.bookOpen, 'AGAMA', user.agama),
+        _buildDetailRow(AppIcons.bookOpen, 'AGAMA', user.displayAgama),
         _buildDetailRow(AppIcons.chartBar, 'ESELON', user.eselon),
         _buildDetailRow(AppIcons.chartBar, 'GOLONGAN', user.displayGolongan),
       ];
@@ -437,7 +437,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           'JENIS KELAMIN',
           user.jenisKelamin,
         ),
-        _buildDetailRow(AppIcons.bookOpen, 'AGAMA', user.agama),
+        _buildDetailRow(AppIcons.bookOpen, 'AGAMA', user.displayAgama),
         _buildDetailRow(
           AppIcons.deviceMobileSpeakerFill,
           'NO TELEPON',

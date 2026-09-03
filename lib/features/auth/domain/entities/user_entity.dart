@@ -137,6 +137,16 @@ class UserEntity extends Equatable {
     return 'TIDAK';
   }
 
+  String get displayAgama {
+    final a = agama.trim();
+    if (a.isEmpty || a == '-') return '-';
+    final words = a.split(RegExp(r'\s+'));
+    return words.map((w) {
+      if (w.isEmpty) return w;
+      return w[0].toUpperCase() + w.substring(1).toLowerCase();
+    }).join(' ');
+  }
+
   String get displayJabatanSenat {
     final j = jabatanSenat.trim();
     if (j.isEmpty || j == '-' || j.toUpperCase() == 'TIDAK ADA') {
