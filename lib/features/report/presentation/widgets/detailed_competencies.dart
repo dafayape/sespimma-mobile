@@ -435,7 +435,7 @@ class _CompetencyItem extends StatelessWidget {
                       if (rawText != null && rawText!.isNotEmpty) ...[
                         const SizedBox(height: 2),
                         Text(
-                          'Capaian Mentah: $rawText',
+                          rawText!,
                           style: TextStyle(
                             fontSize: AppDimensions.fontXs,
                             fontWeight: FontWeight.w600,
@@ -805,7 +805,7 @@ class _SubCompetencyItem extends StatelessWidget {
                             if (rawText != null && rawText!.isNotEmpty) ...[
                               const SizedBox(height: 1),
                               Text(
-                                'Capaian Mentah: $rawText',
+                                rawText!,
                                 style: TextStyle(
                                   fontSize: AppDimensions.fontXs - 1,
                                   fontWeight: FontWeight.w600,
