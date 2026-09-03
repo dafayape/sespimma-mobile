@@ -27,6 +27,7 @@ class PersonalRecommendationsCard extends StatelessWidget {
   final double academicScore;
   final double mentalScore;
   final double physicalScore;
+  final double kesehatanScore;
   final Map<String, dynamic>? rawScores;
 
   const PersonalRecommendationsCard({
@@ -36,6 +37,7 @@ class PersonalRecommendationsCard extends StatelessWidget {
     required this.academicScore,
     required this.mentalScore,
     required this.physicalScore,
+    required this.kesehatanScore,
     this.rawScores,
   });
 
@@ -205,88 +207,112 @@ class PersonalRecommendationsCard extends StatelessWidget {
       final sitUp = _getAnyScore(['SIT_UP', 'NGB2', 'P22']);
       final pushUp = _getAnyScore(['PUSH_UP', 'NGB3', 'P23']);
       final shuttleRun = _getAnyScore(['SHUTTLE_RUN', 'NGB4', 'P24']);
+      final hasAnyJasmaniData = physicalScore > 0 || samaptaA > 0 || pullUp > 0 || sitUp > 0 || pushUp > 0 || shuttleRun > 0;
 
-      final rawLari = _getRawVal(['SAMAPTA_A', 'P1']);
-      final rawPullUp = _getRawVal(['PULL_UP', 'P21']);
-      final rawPushUp = _getRawVal(['PUSH_UP', 'P23']);
-      final rawSitUp = _getRawVal(['SIT_UP', 'P22']);
+      if (!hasAnyJasmaniData) {
+        list.add(RecommendationItemData(
+          title: 'Belum Ada Penilaian Jasmani',
+          text: 'Data Kesamaptaan Jasmani belum terisi. Rekomendasi fisik akan ditampilkan setelah tes Samapta A dan B dilaksanakan.',
+          icon: Icons.info_outline_rounded,
+          bgColor: const Color(0xFFF8FAFC),
+          borderColor: const Color(0xFFE2E8F0),
+          iconColor: const Color(0xFF64748B),
+          textColor: const Color(0xFF334155),
+        ));
+      } else {
+        final rawLari = _getRawVal(['SAMAPTA_A', 'P1']);
+        final rawPullUp = _getRawVal(['PULL_UP', 'P21']);
+        final rawPushUp = _getRawVal(['PUSH_UP', 'P23']);
+        final rawSitUp = _getRawVal(['SIT_UP', 'P22']);
 
-      if (samaptaA > 0 && samaptaA < 80.0) {
-        list.add(RecommendationItemData(
-          title: 'Latihan Aerobik & Lari (Samapta A)',
-          text: 'Nilai Samapta A (Lari) Anda (${samaptaA.toStringAsFixed(2)}${rawLari > 0 ? ' • ${rawLari.toInt()}m' : ''}) memerlukan penguatan. Lakukan latihan lari 12 menit atau tempo run rutin sore hari.',
-          icon: Icons.directions_run_rounded,
-          bgColor: const Color(0xFFFEFCE8),
-          borderColor: const Color(0xFFFEF08A),
-          iconColor: const Color(0xFFCA8A04),
-          textColor: const Color(0xFFA16207),
-        ));
-      }
-      if (pullUp > 0 && pullUp < 80.0) {
-        list.add(RecommendationItemData(
-          title: 'Penguatan Otot Lengan (Pull Up)',
-          text: 'Nilai Pull Up Anda (${pullUp.toStringAsFixed(2)}${rawPullUp > 0 ? ' • ${rawPullUp.toInt()} kali' : ''}) perlu ditingkatkan. Lakukan latihan chin-up dan penguatan triceps teratur.',
-          icon: Icons.fitness_center_rounded,
-          bgColor: const Color(0xFFFEFCE8),
-          borderColor: const Color(0xFFFEF08A),
-          iconColor: const Color(0xFFCA8A04),
-          textColor: const Color(0xFFA16207),
-        ));
-      }
-      if (pushUp > 0 && pushUp < 80.0) {
-        list.add(RecommendationItemData(
-          title: 'Penguatan Otot Dada (Push Up)',
-          text: 'Nilai Push Up Anda (${pushUp.toStringAsFixed(2)}${rawPushUp > 0 ? ' • ${rawPushUp.toInt()} kali' : ''}) perlu ditingkatkan. Lakukan latihan rutin variasi set push-up pagi dan sore.',
-          icon: Icons.fitness_center_rounded,
-          bgColor: const Color(0xFFFEFCE8),
-          borderColor: const Color(0xFFFEF08A),
-          iconColor: const Color(0xFFCA8A04),
-          textColor: const Color(0xFFA16207),
-        ));
-      }
-      if (sitUp > 0 && sitUp < 80.0) {
-        list.add(RecommendationItemData(
-          title: 'Penguatan Otot Core & Perut (Sit Up)',
-          text: 'Nilai Sit Up Anda (${sitUp.toStringAsFixed(2)}${rawSitUp > 0 ? ' • ${rawSitUp.toInt()} kali' : ''}) perlu ditingkatkan. Lakukan latihan core plank dan crunches harian.',
-          icon: Icons.fitness_center_rounded,
-          bgColor: const Color(0xFFFEFCE8),
-          borderColor: const Color(0xFFFEF08A),
-          iconColor: const Color(0xFFCA8A04),
-          textColor: const Color(0xFFA16207),
-        ));
-      }
-      if (shuttleRun > 0 && shuttleRun < 80.0) {
-        list.add(RecommendationItemData(
-          title: 'Kelincahan & Agility (Shuttle Run)',
-          text: 'Nilai Shuttle Run Anda (${shuttleRun.toStringAsFixed(2)}) perlu ditingkatkan. Lakukan latihan kelincahan dan koordinasi gerak kaki (footwork) berkala.',
-          icon: Icons.directions_run_rounded,
-          bgColor: const Color(0xFFFEFCE8),
-          borderColor: const Color(0xFFFEF08A),
-          iconColor: const Color(0xFFCA8A04),
-          textColor: const Color(0xFFA16207),
-        ));
-      }
+        if (samaptaA > 0 && samaptaA < 80.0) {
+          list.add(RecommendationItemData(
+            title: 'Latihan Aerobik & Lari (Samapta A)',
+            text: 'Nilai Samapta A (Lari) Anda (${samaptaA.toStringAsFixed(2)}${rawLari > 0 ? ' • ${rawLari.toInt()}m' : ''}) memerlukan penguatan. Lakukan latihan lari 12 menit atau tempo run rutin sore hari.',
+            icon: Icons.directions_run_rounded,
+            bgColor: const Color(0xFFFEFCE8),
+            borderColor: const Color(0xFFFEF08A),
+            iconColor: const Color(0xFFCA8A04),
+            textColor: const Color(0xFFA16207),
+          ));
+        }
+        if (pullUp > 0 && pullUp < 80.0) {
+          list.add(RecommendationItemData(
+            title: 'Penguatan Otot Lengan (Pull Up)',
+            text: 'Nilai Pull Up Anda (${pullUp.toStringAsFixed(2)}${rawPullUp > 0 ? ' • ${rawPullUp.toInt()} kali' : ''}) perlu ditingkatkan. Lakukan latihan chin-up dan penguatan triceps teratur.',
+            icon: Icons.fitness_center_rounded,
+            bgColor: const Color(0xFFFEFCE8),
+            borderColor: const Color(0xFFFEF08A),
+            iconColor: const Color(0xFFCA8A04),
+            textColor: const Color(0xFFA16207),
+          ));
+        }
+        if (pushUp > 0 && pushUp < 80.0) {
+          list.add(RecommendationItemData(
+            title: 'Penguatan Otot Dada (Push Up)',
+            text: 'Nilai Push Up Anda (${pushUp.toStringAsFixed(2)}${rawPushUp > 0 ? ' • ${rawPushUp.toInt()} kali' : ''}) perlu ditingkatkan. Lakukan latihan rutin variasi set push-up pagi dan sore.',
+            icon: Icons.fitness_center_rounded,
+            bgColor: const Color(0xFFFEFCE8),
+            borderColor: const Color(0xFFFEF08A),
+            iconColor: const Color(0xFFCA8A04),
+            textColor: const Color(0xFFA16207),
+          ));
+        }
+        if (sitUp > 0 && sitUp < 80.0) {
+          list.add(RecommendationItemData(
+            title: 'Penguatan Otot Core & Perut (Sit Up)',
+            text: 'Nilai Sit Up Anda (${sitUp.toStringAsFixed(2)}${rawSitUp > 0 ? ' • ${rawSitUp.toInt()} kali' : ''}) perlu ditingkatkan. Lakukan latihan core plank dan crunches harian.',
+            icon: Icons.fitness_center_rounded,
+            bgColor: const Color(0xFFFEFCE8),
+            borderColor: const Color(0xFFFEF08A),
+            iconColor: const Color(0xFFCA8A04),
+            textColor: const Color(0xFFA16207),
+          ));
+        }
+        if (shuttleRun > 0 && shuttleRun < 80.0) {
+          list.add(RecommendationItemData(
+            title: 'Kelincahan & Agility (Shuttle Run)',
+            text: 'Nilai Shuttle Run Anda (${shuttleRun.toStringAsFixed(2)}) perlu ditingkatkan. Lakukan latihan kelincahan dan koordinasi gerak kaki (footwork) berkala.',
+            icon: Icons.directions_run_rounded,
+            bgColor: const Color(0xFFFEFCE8),
+            borderColor: const Color(0xFFFEF08A),
+            iconColor: const Color(0xFFCA8A04),
+            textColor: const Color(0xFFA16207),
+          ));
+        }
 
-      if (list.isEmpty) {
-        list.add(RecommendationItemData(
-          title: 'Kebugaran Fisik & Samapta Prima',
-          text: 'Nilai Kesamaptaan Jasmani Anda (${physicalScore.toStringAsFixed(2)}) sangat baik. Pertahankan porsi latihan Samapta A dan B serta pemanasan teratur.',
-          icon: Icons.fitness_center_rounded,
-          bgColor: const Color(0xFFF0FDF4),
-          borderColor: const Color(0xFFBBF7D0),
-          iconColor: const Color(0xFF16A34A),
-          textColor: const Color(0xFF15803D),
-        ));
+        if (list.isEmpty) {
+          list.add(RecommendationItemData(
+            title: 'Kebugaran Fisik & Samapta Prima',
+            text: 'Nilai Kesamaptaan Jasmani Anda (${physicalScore.toStringAsFixed(2)}) sangat baik. Pertahankan porsi latihan Samapta A dan B serta pemanasan teratur.',
+            icon: Icons.fitness_center_rounded,
+            bgColor: const Color(0xFFF0FDF4),
+            borderColor: const Color(0xFFBBF7D0),
+            iconColor: const Color(0xFF16A34A),
+            textColor: const Color(0xFF15803D),
+          ));
+        }
       }
     } else if (category == 'Kesehatan') {
       final kesAwal = _getAnyScore(['TES_AWAL', 'nilai_awal']);
       final kesAkhir = _getAnyScore(['TES_AKHIR', 'nilai_akhir']);
       final kesStatus = _getAnyScore(['STATUS_KESEHATAN', 'nilai_status']);
+      final effectiveKesScore = kesehatanScore > 0 ? kesehatanScore : (kesStatus > 0 ? kesStatus : 80.0);
 
-      if (kesStatus > 0 && kesStatus < 80.0) {
+      if (effectiveKesScore < 70.0) {
+        list.add(RecommendationItemData(
+          title: 'Pemeriksaan & Bimbingan Kesehatan Ekstra',
+          text: 'Nilai Kesehatan Anda (${effectiveKesScore.toStringAsFixed(2)}) berada di bawah batas lulus (70.00). Segera konsultasi dengan tim medis Poliklinik dan ikuti pemeriksaan kesehatan (MCU) lanjutan.',
+          icon: Icons.health_and_safety_rounded,
+          bgColor: const Color(0xFFFEF2F2),
+          borderColor: const Color(0xFFFECACA),
+          iconColor: const Color(0xFFDC2626),
+          textColor: const Color(0xFFB91C1C),
+        ));
+      } else if (effectiveKesScore < 80.0 || (kesStatus > 0 && kesStatus < 80.0)) {
         list.add(RecommendationItemData(
           title: 'Minimalkan Faktor Kunjungan Berobat',
-          text: 'Status Kesehatan Anda (${kesStatus.toStringAsFixed(2)}) terpengaruh riwayat kesehatan/kunjungan poliklinik. Jaga kebersihan diri, tidur cukup, dan konsumsi suplemen.',
+          text: 'Nilai Kesehatan Anda (${effectiveKesScore.toStringAsFixed(2)}) memerlukan perhatian. Jaga kebersihan diri, tidur cukup, dan konsumsi suplemen.',
           icon: Icons.medical_services_rounded,
           bgColor: const Color(0xFFFEFCE8),
           borderColor: const Color(0xFFFEF08A),
@@ -294,22 +320,23 @@ class PersonalRecommendationsCard extends StatelessWidget {
           textColor: const Color(0xFFA16207),
         ));
       }
+
       if (kesAkhir > 0 && kesAwal > 0 && kesAkhir < kesAwal) {
         list.add(RecommendationItemData(
           title: 'Pemeriksaan Kesehatan Berkala',
           text: 'Nilai Tes Kesehatan Akhir (${kesAkhir.toStringAsFixed(2)}) mengalami penurunan dari Tes Awal (${kesAwal.toStringAsFixed(2)}). Segera konsultasi dengan tim medis poliklinik.',
           icon: Icons.health_and_safety_rounded,
-          bgColor: const Color(0xFFFEF2F2),
-          borderColor: const Color(0xFFFECACA),
-          iconColor: const Color(0xFFDC2626),
-          textColor: const Color(0xFFB91C1C),
+          bgColor: const Color(0xFFFEFCE8),
+          borderColor: const Color(0xFFFEF08A),
+          iconColor: const Color(0xFFCA8A04),
+          textColor: const Color(0xFFA16207),
         ));
       }
 
       if (list.isEmpty) {
         list.add(RecommendationItemData(
           title: 'Pemeliharaan Kesehatan & Stamina',
-          text: 'Status Kesehatan Anda (${(kesStatus > 0 ? kesStatus : 80.0).toStringAsFixed(2)}) dalam kondisi prima. Jaga kebugaran tubuh, hidrasi cukup, dan pola istirahat teratur.',
+          text: 'Nilai Kesehatan Anda (${effectiveKesScore.toStringAsFixed(2)}) dalam kondisi prima. Jaga kebugaran tubuh, hidrasi cukup, dan pola istirahat teratur.',
           icon: Icons.health_and_safety_rounded,
           bgColor: const Color(0xFFF0FDF4),
           borderColor: const Color(0xFFBBF7D0),
