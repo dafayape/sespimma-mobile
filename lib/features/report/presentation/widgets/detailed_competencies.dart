@@ -19,7 +19,34 @@ class DetailedCompetencies extends StatelessWidget {
   double _getScore(Map<String, dynamic> raw, String key) {
     final val = raw[key] ?? raw[key.toLowerCase()] ?? raw[key.toUpperCase()];
     if (val == null) return 0.0;
-    return (val as num).toDouble();
+    if (val is num) return val.toDouble();
+    if (val is String) return double.tryParse(val) ?? 0.0;
+    return 0.0;
+  }
+
+  double _getAnyScore(Map<String, dynamic> raw, List<String> keys) {
+    for (final key in keys) {
+      final val = _getScore(raw, key);
+      if (val > 0) return val;
+    }
+    return 0.0;
+  }
+
+  String? _getRawText(Map<String, dynamic> raw, List<String> keys, String unit) {
+    for (final key in keys) {
+      final rawKey = '${key}_raw';
+      final val = raw[rawKey] ?? raw[rawKey.toLowerCase()] ?? raw[rawKey.toUpperCase()];
+      if (val != null) {
+        final numVal = val is num ? val.toDouble() : (double.tryParse(val.toString()) ?? 0.0);
+        if (numVal > 0) {
+          if (unit == 'Detik') {
+            return '${numVal.toStringAsFixed(1)} Detik';
+          }
+          return '${numVal.toInt()} $unit';
+        }
+      }
+    }
+    return null;
   }
 
   @override
@@ -181,39 +208,22 @@ class DetailedCompetencies extends StatelessWidget {
     } else {
       final Map<String, dynamic> actualScores = rawScores ?? {};
 
-      double samaptaA = _getScore(actualScores, 'SAMAPTA_A') > 0
-          ? _getScore(actualScores, 'SAMAPTA_A')
-          : (_getScore(actualScores, 'NGA') > 0 ? _getScore(actualScores, 'NGA') : _getScore(actualScores, 'P1'));
+      double samaptaA = _getAnyScore(actualScores, ['SAMAPTA_A', 'LARI', 'NGA', 'P1', 'JALAN_KAKI']);
+      double pullUp = _getAnyScore(actualScores, ['PULL_UP', 'CHINNING', 'NGB1', 'P21']);
+      double sitUp = _getAnyScore(actualScores, ['SIT_UP', 'NGB2', 'P22']);
+      double pushUp = _getAnyScore(actualScores, ['PUSH_UP', 'NGB3', 'P23']);
+      double shuttleRun = _getAnyScore(actualScores, ['SHUTTLE_RUN', 'NGB4', 'P24']);
 
-      double pullUp = _getScore(actualScores, 'PULL_UP') > 0
-          ? _getScore(actualScores, 'PULL_UP')
-          : (_getScore(actualScores, 'NGB1') > 0 ? _getScore(actualScores, 'NGB1') : _getScore(actualScores, 'P21'));
+      String? textSamaptaA = _getRawText(actualScores, ['SAMAPTA_A', 'LARI', 'NGA', 'P1', 'JALAN_KAKI'], 'Meter');
+      String? textPullUp = _getRawText(actualScores, ['PULL_UP', 'CHINNING', 'NGB1', 'P21'], 'Kali');
+      String? textSitUp = _getRawText(actualScores, ['SIT_UP', 'NGB2', 'P22'], 'Kali');
+      String? textPushUp = _getRawText(actualScores, ['PUSH_UP', 'NGB3', 'P23'], 'Kali');
+      String? textShuttleRun = _getRawText(actualScores, ['SHUTTLE_RUN', 'NGB4', 'P24'], 'Detik');
 
-      double sitUp = _getScore(actualScores, 'SIT_UP') > 0
-          ? _getScore(actualScores, 'SIT_UP')
-          : (_getScore(actualScores, 'NGB2') > 0 ? _getScore(actualScores, 'NGB2') : _getScore(actualScores, 'P22'));
-
-      double pushUp = _getScore(actualScores, 'PUSH_UP') > 0
-          ? _getScore(actualScores, 'PUSH_UP')
-          : (_getScore(actualScores, 'NGB3') > 0 ? _getScore(actualScores, 'NGB3') : _getScore(actualScores, 'P23'));
-
-      double shuttleRun = _getScore(actualScores, 'SHUTTLE_RUN') > 0
-          ? _getScore(actualScores, 'SHUTTLE_RUN')
-          : (_getScore(actualScores, 'NGB4') > 0 ? _getScore(actualScores, 'NGB4') : _getScore(actualScores, 'P24'));
-
-      double rawSamaptaA = _getScore(actualScores, 'SAMAPTA_A_raw') > 0 ? _getScore(actualScores, 'SAMAPTA_A_raw') : _getScore(actualScores, 'P1_raw');
-      double rawPullUp = _getScore(actualScores, 'PULL_UP_raw') > 0 ? _getScore(actualScores, 'PULL_UP_raw') : _getScore(actualScores, 'P21_raw');
-      double rawSitUp = _getScore(actualScores, 'SIT_UP_raw') > 0 ? _getScore(actualScores, 'SIT_UP_raw') : _getScore(actualScores, 'P22_raw');
-      double rawPushUp = _getScore(actualScores, 'PUSH_UP_raw') > 0 ? _getScore(actualScores, 'PUSH_UP_raw') : _getScore(actualScores, 'P23_raw');
-      double rawShuttleRun = _getScore(actualScores, 'SHUTTLE_RUN_raw') > 0 ? _getScore(actualScores, 'SHUTTLE_RUN_raw') : _getScore(actualScores, 'P24_raw');
-
-      String? textSamaptaA = rawSamaptaA > 0 ? '${rawSamaptaA.toInt()} Meter' : null;
-      String? textPullUp = rawPullUp > 0 ? '${rawPullUp.toInt()} Kali' : null;
-      String? textSitUp = rawSitUp > 0 ? '${rawSitUp.toInt()} Kali' : null;
-      String? textPushUp = rawPushUp > 0 ? '${rawPushUp.toInt()} Kali' : null;
-      String? textShuttleRun = rawShuttleRun > 0 ? '${rawShuttleRun.toStringAsFixed(1)} Detik' : null;
-
-      double samaptaB = ScoringCalculator.hitungNGB(ngb1: pullUp, ngb2: sitUp, ngb3: pushUp, ngb4: shuttleRun);
+      double samaptaB = _getAnyScore(actualScores, ['SAMAPTA_B', 'NGB']);
+      if (samaptaB == 0) {
+        samaptaB = ScoringCalculator.hitungNGB(ngb1: pullUp, ngb2: sitUp, ngb3: pushUp, ngb4: shuttleRun);
+      }
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
