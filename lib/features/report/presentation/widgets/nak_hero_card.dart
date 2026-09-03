@@ -52,25 +52,34 @@ class NakHeroCard extends StatelessWidget {
   }
 
   bool get _isPassed {
-    return nakScore >= 70.0 && academicScore >= 65.0 && mentalScore >= 65.0 && physicalScore >= 65.0;
+    if (nakScore <= 0) return true;
+    if (nakScore < 70.0) return false;
+    if (academicScore > 0 && academicScore < 70.0) return false;
+    if (mentalScore > 0 && mentalScore < 70.0) return false;
+    if (physicalScore > 0 && physicalScore < 70.0) return false;
+    return true;
   }
 
   IconData get _watermarkIcon {
     if (nakScore <= 0) return Icons.military_tech_rounded;
-    if (!_isPassed || nakScore < 65.0) {
+    if (!_isPassed || nakScore < 70.0) {
       return Icons.warning_amber_rounded;
     }
     if (nakScore >= 85.0) return Icons.workspace_premium_rounded;
-    if (nakScore >= 75.0) return Icons.military_tech_rounded;
-    return Icons.verified_rounded;
+    if (nakScore >= 80.0) return Icons.stars_rounded;
+    if (nakScore >= 75.0) return Icons.verified_rounded;
+    return Icons.military_tech_rounded;
   }
 
   Color get _watermarkColor {
-    if (nakScore <= 0) return Colors.white.withValues(alpha: 0.035);
-    if (!_isPassed || nakScore < 65.0) {
-      return const Color(0xFFEF4444).withValues(alpha: 0.08);
+    if (nakScore <= 0) return Colors.white.withValues(alpha: 0.05);
+    if (!_isPassed || nakScore < 70.0) {
+      return const Color(0xFFEF4444).withValues(alpha: 0.15);
     }
-    return Colors.white.withValues(alpha: 0.035);
+    if (nakScore >= 85.0) return const Color(0xFF34D399).withValues(alpha: 0.12);
+    if (nakScore >= 80.0) return const Color(0xFF4ADE80).withValues(alpha: 0.12);
+    if (nakScore >= 75.0) return const Color(0xFF60A5FA).withValues(alpha: 0.12);
+    return const Color(0xFFFBBF24).withValues(alpha: 0.12);
   }
 
   @override
