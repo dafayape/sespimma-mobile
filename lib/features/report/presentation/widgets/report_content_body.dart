@@ -90,6 +90,7 @@ class ReportContentBody extends StatelessWidget {
                 academicScore: dynamicAcademicScore,
                 mentalScore: dynamicMentalScore,
                 physicalScore: dynamicJasmaniScore,
+                rawScores: reportData['raw_scores'] != null ? Map<String, dynamic>.from(reportData['raw_scores']) : null,
               ),
             ),
           ],
