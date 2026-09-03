@@ -26,7 +26,7 @@ import 'features/auth/presentation/pages/edit_profile_screen.dart';
 import 'features/auth/presentation/pages/help_faq_screen.dart';
 import 'features/report/presentation/pages/report_screen.dart';
 import 'features/attendance/presentation/pages/attendance_screen.dart';
-import 'features/attendance/presentation/pages/scan_qr_screen.dart';
+import 'features/attendance/presentation/pages/attendance_qr_scanner_screen.dart';
 import 'features/assignment/presentation/pages/assignment_detail_screen.dart';
 import 'features/assignment/presentation/pages/create_task_screen.dart';
 import 'features/assignment/presentation/pages/monitoring_task_screen.dart';
@@ -189,7 +189,7 @@ class MyApp extends StatelessWidget {
             '/help-faq': (context) => const HelpFaqScreen(),
             '/report': (context) => const ReportScreen(),
             '/attendance': (context) => const AttendanceScreen(),
-            '/scan-qr': (context) => const ScanQrScreen(),
+            '/scan-qr': (context) => const AttendanceQrScannerScreen(),
             '/assignment-detail': (context) => const AssignmentDetailScreen(),
             '/buat-tugas': (context) => const CreateTaskScreen(),
             '/monitoring-tugas': (context) => const MonitoringTaskScreen(),

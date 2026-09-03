@@ -147,6 +147,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           customBorder: const CircleBorder(),
           onTap: () {
             HapticFeedback.mediumImpact();
+            setState(() {
+              _currentIndex = 1;
+            });
             Navigator.pushNamed(context, '/scan-qr');
           },
           child: const Icon(
