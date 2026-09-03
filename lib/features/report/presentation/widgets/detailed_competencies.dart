@@ -245,55 +245,55 @@ class _CompetencyItem extends StatelessWidget {
 
   String get _status {
     if (score == 0) return '';
-    if (score > 85.00) return 'Sangat Memuaskan (SM)';
-    if (score > 80.00) return 'Memuaskan (M)';
-    if (score > 75.00) return 'Baik (B)';
-    if (score > 70.00) return 'Cukup (C)';
+    if (score >= 85.00) return 'Sangat Memuaskan (SM)';
+    if (score >= 80.00) return 'Memuaskan (M)';
+    if (score >= 75.00) return 'Baik (B)';
+    if (score >= 70.00) return 'Cukup (C)';
     return 'Kurang (K)';
   }
 
   Color get _borderColor {
     if (score == 0) return Colors.grey.shade100;
-    if (score > 85.00) return Colors.green.shade200;
-    if (score > 80.00) return Colors.lightGreen.shade200;
-    if (score > 75.00) return Colors.orange.shade200;
-    if (score > 70.00) return Colors.amber.shade200;
+    if (score >= 85.00) return Colors.green.shade300;
+    if (score >= 80.00) return Colors.lightGreen.shade300;
+    if (score >= 75.00) return Colors.blue.shade200;
+    if (score >= 70.00) return Colors.amber.shade200;
     return Colors.red.shade200;
   }
 
   Color get _iconBgColor {
     if (score == 0) return const Color(0xFFF0F4F8);
-    if (score > 85.00) return Colors.green.shade50;
-    if (score > 80.00) return Colors.lightGreen.shade50;
-    if (score > 75.00) return Colors.orange.shade50;
-    if (score > 70.00) return Colors.amber.shade50;
+    if (score >= 85.00) return Colors.green.shade50;
+    if (score >= 80.00) return Colors.lightGreen.shade50;
+    if (score >= 75.00) return Colors.blue.shade50;
+    if (score >= 70.00) return Colors.amber.shade50;
     return Colors.red.shade50;
   }
 
   Color get _iconColor {
     if (score == 0) return Colors.blueGrey.shade400;
-    if (score > 85.00) return Colors.green.shade700;
-    if (score > 80.00) return Colors.lightGreen.shade700;
-    if (score > 75.00) return Colors.orange.shade700;
-    if (score > 70.00) return Colors.amber.shade700;
+    if (score >= 85.00) return Colors.green.shade700;
+    if (score >= 80.00) return Colors.lightGreen.shade700;
+    if (score >= 75.00) return Colors.blue.shade700;
+    if (score >= 70.00) return Colors.amber.shade700;
     return Colors.red.shade700;
   }
 
   Color get _statusColor {
     if (score == 0) return Colors.blueGrey.shade500;
-    if (score > 85.00) return Colors.green.shade600;
-    if (score > 80.00) return Colors.lightGreen.shade600;
-    if (score > 75.00) return Colors.orange.shade600;
-    if (score > 70.00) return Colors.amber.shade700;
+    if (score >= 85.00) return Colors.green.shade700;
+    if (score >= 80.00) return Colors.lightGreen.shade700;
+    if (score >= 75.00) return Colors.blue.shade700;
+    if (score >= 70.00) return Colors.amber.shade700;
     return Colors.red.shade600;
   }
 
   Color get _scoreColor {
     if (score == 0) return const Color(0xFF001C40);
-    if (score > 85.00) return Colors.green.shade700;
-    if (score > 80.00) return Colors.lightGreen.shade700;
-    if (score > 75.00) return Colors.orange.shade700;
-    if (score > 70.00) return Colors.amber.shade700;
+    if (score >= 85.00) return Colors.green.shade700;
+    if (score >= 80.00) return Colors.lightGreen.shade700;
+    if (score >= 75.00) return Colors.blue.shade700;
+    if (score >= 70.00) return Colors.amber.shade700;
     return Colors.red.shade700;
   }
 
@@ -810,10 +810,10 @@ class _SectionTitle extends StatelessWidget {
 
   MaterialColor get _color {
     if (score == 0) return Colors.blueGrey;
-    if (score > 85.00) return Colors.green;
-    if (score > 80.00) return Colors.lightGreen;
-    if (score > 75.00) return Colors.orange;
-    if (score > 70.00) return Colors.amber;
+    if (score >= 85.00) return Colors.green;
+    if (score >= 80.00) return Colors.lightGreen;
+    if (score >= 75.00) return Colors.blue;
+    if (score >= 70.00) return Colors.amber;
     return Colors.red;
   }
 

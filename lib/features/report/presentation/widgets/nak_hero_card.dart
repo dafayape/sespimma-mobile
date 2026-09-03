@@ -19,35 +19,35 @@ class NakHeroCard extends StatelessWidget {
     if (nakScore >= 85.0) return 'Sangat Memuaskan';
     if (nakScore >= 80.0) return 'Memuaskan';
     if (nakScore >= 75.0) return 'Baik';
-    if (nakScore >= 65.0) return 'Cukup';
+    if (nakScore >= 70.0) return 'Cukup';
     if (nakScore > 0) return 'Kurang';
     return '-';
   }
 
   Color get _predikatBgColor {
-    if (nakScore >= 85.0) return const Color(0xFF065F46).withValues(alpha: 0.35);
-    if (nakScore >= 80.0) return const Color(0xFF1E40AF).withValues(alpha: 0.35);
-    if (nakScore >= 75.0) return const Color(0xFF0284C7).withValues(alpha: 0.35);
-    if (nakScore >= 65.0) return const Color(0xFF92400E).withValues(alpha: 0.35);
-    if (nakScore > 0) return const Color(0xFF991B1B).withValues(alpha: 0.35);
+    if (nakScore >= 85.0) return const Color(0xFF065F46).withValues(alpha: 0.35); // Emerald Green
+    if (nakScore >= 80.0) return const Color(0xFF15803D).withValues(alpha: 0.30); // Green (Memuaskan)
+    if (nakScore >= 75.0) return const Color(0xFF1D4ED8).withValues(alpha: 0.30); // Blue (Baik)
+    if (nakScore >= 70.0) return const Color(0xFFB45309).withValues(alpha: 0.30); // Amber (Cukup)
+    if (nakScore > 0) return const Color(0xFFB91C1C).withValues(alpha: 0.30); // Red (Kurang)
     return Colors.white.withValues(alpha: 0.08);
   }
 
   Color get _predikatTextColor {
-    if (nakScore >= 85.0) return const Color(0xFF34D399);
-    if (nakScore >= 80.0) return const Color(0xFF60A5FA);
-    if (nakScore >= 75.0) return const Color(0xFF38BDF8);
-    if (nakScore >= 65.0) return const Color(0xFFFBBF24);
-    if (nakScore > 0) return const Color(0xFFFCA5A5);
+    if (nakScore >= 85.0) return const Color(0xFF34D399); // Emerald
+    if (nakScore >= 80.0) return const Color(0xFF4ADE80); // Green
+    if (nakScore >= 75.0) return const Color(0xFF60A5FA); // Blue
+    if (nakScore >= 70.0) return const Color(0xFFFBBF24); // Amber
+    if (nakScore > 0) return const Color(0xFFFCA5A5); // Red
     return Colors.white70;
   }
 
   Color get _predikatBorderColor {
-    if (nakScore >= 85.0) return const Color(0xFF059669);
-    if (nakScore >= 80.0) return const Color(0xFF2563EB);
-    if (nakScore >= 75.0) return const Color(0xFF0284C7);
-    if (nakScore >= 65.0) return const Color(0xFFD97706);
-    if (nakScore > 0) return const Color(0xFFDC2626);
+    if (nakScore >= 85.0) return const Color(0xFF059669); // Emerald
+    if (nakScore >= 80.0) return const Color(0xFF16A34A); // Green
+    if (nakScore >= 75.0) return const Color(0xFF2563EB); // Blue
+    if (nakScore >= 70.0) return const Color(0xFFD97706); // Amber
+    if (nakScore > 0) return const Color(0xFFDC2626); // Red
     return Colors.white24;
   }
 
