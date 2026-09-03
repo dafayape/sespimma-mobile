@@ -442,31 +442,35 @@ class _CompetencyItem extends StatelessWidget {
                           ),
                         ),
                       ],
-                      if (rawText != null && rawText!.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          rawText!,
-                          style: TextStyle(
-                            fontSize: AppDimensions.fontXs,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.blueGrey.shade600,
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ),
-                SizedBox(
-                  width: 72,
-                  child: Text(
-                    score > 0 ? score.toStringAsFixed(2) : '-',
-                    style: TextStyle(
-                      fontSize: AppDimensions.fontXl,
-                      fontWeight: FontWeight.w800,
-                      color: _scoreColor,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      score > 0 ? score.toStringAsFixed(2) : '-',
+                      style: TextStyle(
+                        fontSize: AppDimensions.fontXl,
+                        fontWeight: FontWeight.w800,
+                        color: _scoreColor,
+                      ),
+                      textAlign: TextAlign.right,
                     ),
-                    textAlign: TextAlign.center,
-                  ),
+                    if (rawText != null && rawText!.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        rawText!,
+                        style: TextStyle(
+                          fontSize: AppDimensions.fontXs,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.blueGrey.shade600,
+                        ),
+                        textAlign: TextAlign.right,
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),
