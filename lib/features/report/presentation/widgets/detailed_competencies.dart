@@ -168,16 +168,11 @@ class DetailedCompetencies extends StatelessWidget {
       double kesStatus = _getScore(actualScores, 'STATUS_KESEHATAN') > 0
           ? _getScore(actualScores, 'STATUS_KESEHATAN')
           : (_getScore(actualScores, 'nilai_status') > 0 ? _getScore(actualScores, 'nilai_status') : 80.00);
-      double calculatedKes = ScoringCalculator.hitungNKes(tesAwal: kesAwal, tesAkhir: kesAkhir, statusKesehatan: kesStatus);
-      double kesehatan = _getScore(actualScores, 'kesehatan_score') > 0
-          ? _getScore(actualScores, 'kesehatan_score')
-          : calculatedKes;
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: AppDimensions.sm),
-          _SectionTitle(title: 'Pemeriksaan Kesehatan (100%)', score: kesehatan),
           _CompetencyItem(title: 'Tes Kesehatan Awal (A)', score: kesAwal),
           _CompetencyItem(title: 'Tes Kesehatan Akhir (B)', score: kesAkhir),
           _CompetencyItem(title: 'Status Kesehatan Selama Pendidikan (C)', score: kesStatus),
@@ -206,28 +201,40 @@ class DetailedCompetencies extends StatelessWidget {
           ? _getScore(actualScores, 'SHUTTLE_RUN')
           : (_getScore(actualScores, 'NGB4') > 0 ? _getScore(actualScores, 'NGB4') : _getScore(actualScores, 'P24'));
 
+      double rawSamaptaA = _getScore(actualScores, 'SAMAPTA_A_raw') > 0 ? _getScore(actualScores, 'SAMAPTA_A_raw') : _getScore(actualScores, 'P1_raw');
+      double rawPullUp = _getScore(actualScores, 'PULL_UP_raw') > 0 ? _getScore(actualScores, 'PULL_UP_raw') : _getScore(actualScores, 'P21_raw');
+      double rawSitUp = _getScore(actualScores, 'SIT_UP_raw') > 0 ? _getScore(actualScores, 'SIT_UP_raw') : _getScore(actualScores, 'P22_raw');
+      double rawPushUp = _getScore(actualScores, 'PUSH_UP_raw') > 0 ? _getScore(actualScores, 'PUSH_UP_raw') : _getScore(actualScores, 'P23_raw');
+      double rawShuttleRun = _getScore(actualScores, 'SHUTTLE_RUN_raw') > 0 ? _getScore(actualScores, 'SHUTTLE_RUN_raw') : _getScore(actualScores, 'P24_raw');
+
+      String? textSamaptaA = rawSamaptaA > 0 ? '${rawSamaptaA.toInt()} Meter' : null;
+      String? textPullUp = rawPullUp > 0 ? '${rawPullUp.toInt()} Kali' : null;
+      String? textSitUp = rawSitUp > 0 ? '${rawSitUp.toInt()} Kali' : null;
+      String? textPushUp = rawPushUp > 0 ? '${rawPushUp.toInt()} Kali' : null;
+      String? textShuttleRun = rawShuttleRun > 0 ? '${rawShuttleRun.toStringAsFixed(1)} Detik' : null;
+
       double samaptaB = ScoringCalculator.hitungNGB(ngb1: pullUp, ngb2: sitUp, ngb3: pushUp, ngb4: shuttleRun);
-      double jasmani = ScoringCalculator.hitungNJas(nga: samaptaA, ngb: samaptaB);
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: AppDimensions.sm),
-          _SectionTitle(title: 'Kesamaptaan Jasmani (100%)', score: jasmani),
           _CompetencyItem(
             title: 'Samapta A (Lari / Jalan 12 Menit)',
             score: samaptaA,
+            rawText: textSamaptaA,
           ),
           _ExpandableCompetencyGroup(
             title: 'Samapta B',
             score: samaptaB,
             children: [
-              _SubCompetencyItem(title: 'Pull Up (1 menit)', score: pullUp),
-              _SubCompetencyItem(title: 'Sit Up (1 menit)', score: sitUp),
-              _SubCompetencyItem(title: 'Push Up (1 menit)', score: pushUp),
+              _SubCompetencyItem(title: 'Pull Up (1 menit)', score: pullUp, rawText: textPullUp),
+              _SubCompetencyItem(title: 'Sit Up (1 menit)', score: sitUp, rawText: textSitUp),
+              _SubCompetencyItem(title: 'Push Up (1 menit)', score: pushUp, rawText: textPushUp),
               _SubCompetencyItem(
                 title: 'Shuttle Run (6x10m)',
                 score: shuttleRun,
+                rawText: textShuttleRun,
               ),
             ],
           ),
@@ -240,8 +247,13 @@ class DetailedCompetencies extends StatelessWidget {
 class _CompetencyItem extends StatelessWidget {
   final String title;
   final double score;
+  final String? rawText;
 
-  const _CompetencyItem({required this.title, required this.score});
+  const _CompetencyItem({
+    required this.title,
+    required this.score,
+    this.rawText,
+  });
 
   String get _status {
     if (score == 0) return '';
@@ -417,6 +429,17 @@ class _CompetencyItem extends StatelessWidget {
                             fontSize: AppDimensions.fontXs + 2,
                             fontWeight: FontWeight.w600,
                             color: _statusColor,
+                          ),
+                        ),
+                      ],
+                      if (rawText != null && rawText!.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          'Capaian Mentah: $rawText',
+                          style: TextStyle(
+                            fontSize: AppDimensions.fontXs,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.blueGrey.shade600,
                           ),
                         ),
                       ],
@@ -678,8 +701,13 @@ class _ExpandableCompetencyGroup extends StatelessWidget {
 class _SubCompetencyItem extends StatelessWidget {
   final String title;
   final double score;
+  final String? rawText;
 
-  const _SubCompetencyItem({required this.title, required this.score});
+  const _SubCompetencyItem({
+    required this.title,
+    required this.score,
+    this.rawText,
+  });
 
   Color get _scoreBgColor {
     if (score == 0) return Colors.blueGrey.shade50;
@@ -762,13 +790,30 @@ class _SubCompetencyItem extends StatelessWidget {
                         const SizedBox(width: AppDimensions.sm),
                       ],
                       Expanded(
-                        child: Text(
-                          displayTitle,
-                          style: TextStyle(
-                            fontSize: AppDimensions.fontSm,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.blueGrey.shade700,
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              displayTitle,
+                              style: TextStyle(
+                                fontSize: AppDimensions.fontSm,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.blueGrey.shade700,
+                              ),
+                            ),
+                            if (rawText != null && rawText!.isNotEmpty) ...[
+                              const SizedBox(height: 1),
+                              Text(
+                                'Capaian Mentah: $rawText',
+                                style: TextStyle(
+                                  fontSize: AppDimensions.fontXs - 1,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.blueGrey.shade600,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                     ],
@@ -802,106 +847,4 @@ class _SubCompetencyItem extends StatelessWidget {
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  final String title;
-  final double score;
 
-  const _SectionTitle({required this.title, required this.score});
-
-  MaterialColor get _color {
-    if (score == 0) return Colors.blueGrey;
-    if (score >= 85.00) return Colors.green;
-    if (score >= 80.00) return Colors.lightGreen;
-    if (score >= 75.00) return Colors.blue;
-    if (score >= 70.00) return Colors.amber;
-    return Colors.red;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final color = _color;
-
-    String displayTitle = title;
-    String? weight;
-    if (title.contains('(') && title.contains(')')) {
-      final start = title.lastIndexOf('(');
-      final end = title.lastIndexOf(')');
-      if (start < end && title.substring(start + 1, end).contains('%')) {
-        weight = title.substring(start + 1, end);
-        displayTitle = title.substring(0, start).trim();
-      }
-    }
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppDimensions.xs,
-        AppDimensions.sm,
-        AppDimensions.xs,
-        AppDimensions.md,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                if (weight != null) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF001C40).withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(
-                        AppDimensions.radiusSm,
-                      ),
-                    ),
-                    child: Text(
-                      weight,
-                      style: const TextStyle(
-                        fontSize: AppDimensions.fontXs,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF001C40),
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: AppDimensions.sm),
-                ],
-                Expanded(
-                  child: Text(
-                    displayTitle,
-                    style: const TextStyle(
-                      fontSize: AppDimensions.fontMd,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF001C40),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            width: 72,
-            alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            decoration: BoxDecoration(
-              color: color.shade50,
-              borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
-            ),
-            child: Text(
-              score.toStringAsFixed(2),
-              style: TextStyle(
-                fontSize: AppDimensions.fontMd,
-                fontWeight: FontWeight.w800,
-                color: score == 0 ? const Color(0xFF001C40) : color.shade900,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
